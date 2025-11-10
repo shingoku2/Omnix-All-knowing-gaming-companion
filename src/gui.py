@@ -20,33 +20,32 @@ class GameDetectionThread(QThread):
     game_detected = pyqtSignal(dict)
     game_lost = pyqtSignal()
 
-    def __init__(self, detector):
+    def __init__(self, game_detector):
         super().__init__()
-        self.detector = detector
+        self.game_detector = game_detector
         self.running = True
-        self.current_game = None
 
     def run(self):
-        """Run game detection loop"""
+        """Main thread loop"""
         while self.running:
-            game = self.detector.detect_running_game()
-
-            if game and game != self.current_game:
-                self.current_game = game
-                self.game_detected.emit(game)
-            elif not game and self.current_game:
-                self.current_game = None
-                self.game_lost.emit()
-
-            self.msleep(5000)  # Check every 5 seconds
+            try:
+                game = self.game_detector.detect_game()
+                if game:
+                    self.game_detected.emit(game)
+                else:
+                    self.game_lost.emit()
+                self.msleep(5000)  # Check every 5 seconds
+            except Exception as e:
+                print(f"Error in game detection thread: {e}")
+                self.msleep(5000)
 
     def stop(self):
-        """Stop the detection thread"""
+        """Stop the thread"""
         self.running = False
 
 
 class ChatWidget(QWidget):
-    """Chat widget for Q&A with AI"""
+    """Chat interface widget for Q&A interactions with AI assistant"""
 
     def __init__(self, ai_assistant):
         super().__init__()
@@ -54,10 +53,10 @@ class ChatWidget(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        """Initialize the UI"""
+        """Initialize the chat widget UI components"""
         layout = QVBoxLayout()
 
-        # Chat display
+        # Chat history display area
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
         self.chat_display.setStyleSheet("""
@@ -72,7 +71,7 @@ class ChatWidget(QWidget):
         """)
         layout.addWidget(self.chat_display)
 
-        # Input area
+        # User input area
         input_layout = QHBoxLayout()
 
         self.input_field = QLineEdit()
@@ -113,7 +112,7 @@ class ChatWidget(QWidget):
 
         layout.addLayout(input_layout)
 
-        # Clear button
+        # Clear chat history button
         self.clear_button = QPushButton("Clear Chat")
         self.clear_button.setStyleSheet("""
             QPushButton {
@@ -134,17 +133,17 @@ class ChatWidget(QWidget):
         self.setLayout(layout)
 
     def send_message(self):
-        """Send message to AI"""
+        """Process and send user message to AI assistant"""
         question = self.input_field.text().strip()
 
         if not question:
             return
 
-        # Display user message
+        # Display user's question in chat
         self.add_message("You", question, is_user=True)
         self.input_field.clear()
 
-        # Get AI response
+        # Disable send button while processing
         self.send_button.setEnabled(False)
         self.send_button.setText("Thinking...")
 
@@ -154,25 +153,34 @@ class ChatWidget(QWidget):
         except Exception as e:
             self.add_message("System", f"Error: {str(e)}", is_user=False)
 
+        # Re-enable send button
         self.send_button.setEnabled(True)
         self.send_button.setText("Send")
 
     def add_message(self, sender: str, message: str, is_user: bool = True):
-        """Add message to chat display"""
+        """
+        Add a formatted message to the chat display
+        
+        Args:
+            sender: Name of the message sender
+            message: Message content
+            is_user: True if message is from user, False if from AI/system
+        """
         color = "#14b8a6" if is_user else "#f59e0b"
         self.chat_display.append(f'<p><span style="color: {color}; font-weight: bold;">{sender}:</span> {message}</p>')
+        # Auto-scroll to bottom
         self.chat_display.verticalScrollBar().setValue(
             self.chat_display.verticalScrollBar().maximum()
         )
 
     def clear_chat(self):
-        """Clear chat history"""
+        """Clear chat display and conversation history"""
         self.chat_display.clear()
         self.ai_assistant.clear_history()
 
 
 class MainWindow(QMainWindow):
-    """Main application window"""
+    """Main application window with game detection and AI chat interface"""
 
     def __init__(self, game_detector, ai_assistant, info_scraper):
         super().__init__()
@@ -187,11 +195,11 @@ class MainWindow(QMainWindow):
         self.start_game_detection()
 
     def init_ui(self):
-        """Initialize the UI"""
+        """Initialize the main window UI components and styling"""
         self.setWindowTitle("Gaming AI Assistant")
         self.setGeometry(100, 100, 900, 700)
 
-        # Set dark theme
+        # Apply dark theme styling
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #121212;
@@ -201,18 +209,18 @@ class MainWindow(QMainWindow):
             }
         """)
 
-        # Central widget
+        # Setup central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
         # Main layout
         main_layout = QVBoxLayout()
 
-        # Header
+        # Application header
         header = self.create_header()
         main_layout.addWidget(header)
 
-        # Game info panel
+        # Game detection status panel
         self.game_info_label = QLabel("No game detected")
         self.game_info_label.setStyleSheet("""
             QLabel {
@@ -227,7 +235,7 @@ class MainWindow(QMainWindow):
         self.game_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(self.game_info_label)
 
-        # Quick actions
+        # Quick action buttons
         actions_layout = QHBoxLayout()
 
         self.tips_button = QPushButton("Get Tips")
@@ -238,6 +246,7 @@ class MainWindow(QMainWindow):
         self.overview_button.clicked.connect(self.get_overview)
         self.overview_button.setEnabled(False)
 
+        # Apply styling to action buttons
         for button in [self.tips_button, self.overview_button]:
             button.setStyleSheet("""
                 QPushButton {
@@ -261,20 +270,20 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(actions_layout)
 
-        # Chat widget
+        # AI chat interface
         self.chat_widget = ChatWidget(self.ai_assistant)
         main_layout.addWidget(self.chat_widget)
 
         central_widget.setLayout(main_layout)
 
-        # System tray
+        # System tray integration
         self.create_system_tray()
 
-        # Keyboard shortcuts
+        # Global keyboard shortcuts
         self.create_shortcuts()
 
     def create_header(self) -> QWidget:
-        """Create header widget"""
+        """Create and style the application header widget"""
         header = QFrame()
         header.setStyleSheet("""
             QFrame {
@@ -309,10 +318,10 @@ class MainWindow(QMainWindow):
         return header
 
     def create_system_tray(self):
-        """Create system tray icon"""
+        """Create system tray icon with context menu"""
         self.tray_icon = QSystemTrayIcon(self)
 
-        # Create menu
+        # Build tray context menu
         tray_menu = QMenu()
 
         show_action = QAction("Show", self)
@@ -331,13 +340,13 @@ class MainWindow(QMainWindow):
         self.tray_icon.show()
 
     def create_shortcuts(self):
-        """Create keyboard shortcuts"""
-        # Toggle visibility
+        """Register global keyboard shortcuts"""
+        # Ctrl+Shift+G: Toggle window visibility
         toggle_shortcut = QShortcut(QKeySequence("Ctrl+Shift+G"), self)
         toggle_shortcut.activated.connect(self.toggle_visibility)
 
     def toggle_visibility(self):
-        """Toggle window visibility"""
+        """Toggle main window visibility between shown and hidden states"""
         if self.isVisible():
             self.hide()
         else:
@@ -345,17 +354,23 @@ class MainWindow(QMainWindow):
             self.activateWindow()
 
     def start_game_detection(self):
-        """Start game detection thread"""
+        """Initialize and start the game detection background thread"""
         self.detection_thread = GameDetectionThread(self.game_detector)
         self.detection_thread.game_detected.connect(self.on_game_detected)
         self.detection_thread.game_lost.connect(self.on_game_lost)
         self.detection_thread.start()
 
     def on_game_detected(self, game: Dict):
-        """Handle game detection"""
+        """
+        Handle game detection event
+        
+        Args:
+            game: Dictionary containing detected game information
+        """
         self.current_game = game
         game_name = game.get('name', 'Unknown Game')
 
+        # Update UI to show detected game
         self.game_info_label.setText(f"🎮 Now Playing: {game_name}")
         self.game_info_label.setStyleSheet("""
             QLabel {
@@ -368,19 +383,22 @@ class MainWindow(QMainWindow):
             }
         """)
 
-        # Enable buttons
+        # Enable game-specific action buttons
         self.tips_button.setEnabled(True)
         self.overview_button.setEnabled(True)
 
-        # Update AI context
-        self.ai_assistant.set_current_game(game)
+        # Update AI assistant context with current game
+        if hasattr(self.ai_assistant, 'set_current_game'):
+            self.ai_assistant.set_current_game(game)
 
-        # Auto-get overview
+        # Automatically fetch and display game overview
         self.get_overview()
 
     def on_game_lost(self):
-        """Handle game close"""
+        """Handle game close/lost detection event"""
         self.current_game = None
+        
+        # Reset UI to default state
         self.game_info_label.setText("No game detected")
         self.game_info_label.setStyleSheet("""
             QLabel {
@@ -393,12 +411,12 @@ class MainWindow(QMainWindow):
             }
         """)
 
-        # Disable buttons
+        # Disable game-specific action buttons
         self.tips_button.setEnabled(False)
         self.overview_button.setEnabled(False)
 
     def get_tips(self):
-        """Get tips for current game"""
+        """Request and display tips for the currently detected game"""
         if not self.current_game:
             return
 
@@ -406,13 +424,19 @@ class MainWindow(QMainWindow):
         self.chat_widget.add_message("System", "Getting tips...", is_user=False)
 
         try:
-            tips = self.ai_assistant.get_tips_and_strategies()
-            self.chat_widget.add_message("AI Assistant", tips, is_user=False)
+            if hasattr(self.ai_assistant, 'get_tips_and_strategies'):
+                tips = self.ai_assistant.get_tips_and_strategies()
+                if tips:
+                    self.chat_widget.add_message("AI Assistant", tips, is_user=False)
+                else:
+                    self.chat_widget.add_message("System", "No tips available", is_user=False)
+            else:
+                self.chat_widget.add_message("System", "Tips functionality not available", is_user=False)
         except Exception as e:
             self.chat_widget.add_message("System", f"Error: {str(e)}", is_user=False)
 
     def get_overview(self):
-        """Get game overview"""
+        """Request and display overview of the currently detected game"""
         if not self.current_game:
             return
 
@@ -420,13 +444,24 @@ class MainWindow(QMainWindow):
         self.chat_widget.add_message("System", f"Getting overview of {game_name}...", is_user=False)
 
         try:
-            overview = self.ai_assistant.get_game_overview(game_name)
-            self.chat_widget.add_message("AI Assistant", overview, is_user=False)
+            if hasattr(self.ai_assistant, 'get_game_overview'):
+                overview = self.ai_assistant.get_game_overview(game_name)
+                if overview:
+                    self.chat_widget.add_message("AI Assistant", overview, is_user=False)
+                else:
+                    self.chat_widget.add_message("System", "No overview available", is_user=False)
+            else:
+                self.chat_widget.add_message("System", "Overview functionality not available", is_user=False)
         except Exception as e:
             self.chat_widget.add_message("System", f"Error: {str(e)}", is_user=False)
 
     def closeEvent(self, event):
-        """Handle window close"""
+        """
+        Handle window close event by minimizing to system tray instead of quitting
+        
+        Args:
+            event: QCloseEvent to be handled
+        """
         event.ignore()
         self.hide()
         self.tray_icon.showMessage(
@@ -438,7 +473,14 @@ class MainWindow(QMainWindow):
 
 
 def run_gui(game_detector, ai_assistant, info_scraper):
-    """Run the GUI application"""
+    """
+    Initialize and run the GUI application
+    
+    Args:
+        game_detector: Game detection service instance
+        ai_assistant: AI assistant service instance
+        info_scraper: Information scraper service instance
+    """
     app = QApplication(sys.argv)
     app.setApplicationName("Gaming AI Assistant")
 
@@ -449,5 +491,5 @@ def run_gui(game_detector, ai_assistant, info_scraper):
 
 
 if __name__ == "__main__":
-    # This would normally import from other modules
+    # Module should be run from main.py with proper dependencies
     print("GUI module - run from main.py")
