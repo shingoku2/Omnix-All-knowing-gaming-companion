@@ -210,7 +210,7 @@ say so and provide general gaming advice or suggest where to find the informatio
                 logger.warning("No user messages in history, using default greeting")
 
             response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-haiku-20240307",
                 max_tokens=1000,
                 system=system_msg,
                 messages=messages
