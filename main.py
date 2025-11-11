@@ -163,7 +163,7 @@ def main():
 
         # Run the GUI
         logger.info("Calling run_gui()...")
-        run_gui(game_detector, ai_assistant, info_scraper)
+        run_gui(game_detector, ai_assistant, info_scraper, config)
 
         logger.info("GUI exited normally")
 
