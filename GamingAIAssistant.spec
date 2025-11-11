@@ -3,10 +3,10 @@
 
 a = Analysis(
     ['main.py'],
-    pathex=[],
+    pathex=['src'],
     binaries=[],
     datas=[('.env.example', '.'), ('README.md', '.'), ('SETUP.md', '.')],
-    hiddenimports=['PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets', 'anthropic', 'openai', 'psutil', 'requests', 'bs4', 'dotenv'],
+    hiddenimports=['PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets', 'config', 'game_detector', 'ai_assistant', 'info_scraper', 'gui', 'anthropic', 'openai', 'psutil', 'requests', 'bs4', 'dotenv'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
