@@ -8,7 +8,8 @@ import logging
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTextEdit, QLineEdit, QPushButton, QLabel, QSystemTrayIcon,
-    QMenu, QFrame
+    QMenu, QFrame, QDialog, QRadioButton, QButtonGroup, QMessageBox,
+    QGroupBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QAction, QKeySequence, QShortcut, QIcon, QPixmap, QPainter, QColor
@@ -233,14 +234,305 @@ class ChatWidget(QWidget):
         logger.info("Chat history cleared")
 
 
+class SettingsDialog(QDialog):
+    """Settings dialog for managing API keys and AI provider selection"""
+
+    settings_saved = pyqtSignal(str, str, str)  # provider, openai_key, anthropic_key
+
+    def __init__(self, parent, config):
+        super().__init__(parent)
+        self.config = config
+        self.init_ui()
+
+    def init_ui(self):
+        """Initialize the settings dialog UI"""
+        self.setWindowTitle("Settings")
+        self.setGeometry(200, 200, 600, 400)
+        self.setModal(True)
+
+        # Apply dark theme styling
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #121212;
+            }
+            QLabel {
+                color: #ffffff;
+                font-size: 11pt;
+            }
+            QLineEdit {
+                background-color: #2a2a2a;
+                color: #ffffff;
+                border: 1px solid #3a3a3a;
+                border-radius: 5px;
+                padding: 8px;
+                font-size: 11pt;
+            }
+            QRadioButton {
+                color: #ffffff;
+                font-size: 11pt;
+                spacing: 5px;
+            }
+            QRadioButton::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QRadioButton::indicator::unchecked {
+                border: 2px solid #3a3a3a;
+                border-radius: 9px;
+                background-color: #2a2a2a;
+            }
+            QRadioButton::indicator::checked {
+                border: 2px solid #14b8a6;
+                border-radius: 9px;
+                background-color: #14b8a6;
+            }
+            QGroupBox {
+                color: #14b8a6;
+                font-size: 12pt;
+                font-weight: bold;
+                border: 2px solid #3a3a3a;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 5px;
+            }
+        """)
+
+        layout = QVBoxLayout()
+
+        # Title
+        title = QLabel("⚙️ AI Assistant Settings")
+        title.setStyleSheet("""
+            QLabel {
+                color: #14b8a6;
+                font-size: 16pt;
+                font-weight: bold;
+                padding: 10px;
+            }
+        """)
+        layout.addWidget(title)
+
+        # Current provider display
+        self.current_provider_label = QLabel(f"Current AI Provider: {self.config.ai_provider.upper()}")
+        self.current_provider_label.setStyleSheet("""
+            QLabel {
+                color: #f59e0b;
+                font-size: 12pt;
+                padding: 5px;
+            }
+        """)
+        layout.addWidget(self.current_provider_label)
+
+        # AI Provider Selection
+        provider_group = QGroupBox("Select AI Provider")
+        provider_layout = QVBoxLayout()
+
+        self.provider_button_group = QButtonGroup()
+
+        self.anthropic_radio = QRadioButton("Anthropic Claude")
+        self.openai_radio = QRadioButton("OpenAI GPT")
+
+        self.provider_button_group.addButton(self.anthropic_radio, 0)
+        self.provider_button_group.addButton(self.openai_radio, 1)
+
+        # Set current provider
+        if self.config.ai_provider == "anthropic":
+            self.anthropic_radio.setChecked(True)
+        else:
+            self.openai_radio.setChecked(True)
+
+        provider_layout.addWidget(self.anthropic_radio)
+        provider_layout.addWidget(self.openai_radio)
+        provider_group.setLayout(provider_layout)
+        layout.addWidget(provider_group)
+
+        # API Keys Section
+        keys_group = QGroupBox("API Keys")
+        keys_layout = QVBoxLayout()
+
+        # OpenAI API Key
+        openai_label = QLabel("OpenAI API Key:")
+        keys_layout.addWidget(openai_label)
+
+        self.openai_key_input = QLineEdit()
+        self.openai_key_input.setPlaceholderText("sk-...")
+        self.openai_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        if self.config.openai_api_key:
+            self.openai_key_input.setText(self.config.openai_api_key)
+        keys_layout.addWidget(self.openai_key_input)
+
+        # Show/Hide OpenAI key button
+        self.openai_show_button = QPushButton("Show")
+        self.openai_show_button.setFixedWidth(80)
+        self.openai_show_button.setStyleSheet("""
+            QPushButton {
+                background-color: #374151;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #4b5563;
+            }
+        """)
+        self.openai_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.openai_key_input, self.openai_show_button))
+        keys_layout.addWidget(self.openai_show_button)
+
+        keys_layout.addSpacing(10)
+
+        # Anthropic API Key
+        anthropic_label = QLabel("Anthropic API Key:")
+        keys_layout.addWidget(anthropic_label)
+
+        self.anthropic_key_input = QLineEdit()
+        self.anthropic_key_input.setPlaceholderText("sk-ant-...")
+        self.anthropic_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        if self.config.anthropic_api_key:
+            self.anthropic_key_input.setText(self.config.anthropic_api_key)
+        keys_layout.addWidget(self.anthropic_key_input)
+
+        # Show/Hide Anthropic key button
+        self.anthropic_show_button = QPushButton("Show")
+        self.anthropic_show_button.setFixedWidth(80)
+        self.anthropic_show_button.setStyleSheet("""
+            QPushButton {
+                background-color: #374151;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #4b5563;
+            }
+        """)
+        self.anthropic_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.anthropic_key_input, self.anthropic_show_button))
+        keys_layout.addWidget(self.anthropic_show_button)
+
+        keys_group.setLayout(keys_layout)
+        layout.addWidget(keys_group)
+
+        layout.addStretch()
+
+        # Buttons
+        button_layout = QHBoxLayout()
+
+        self.save_button = QPushButton("Save Settings")
+        self.save_button.setStyleSheet("""
+            QPushButton {
+                background-color: #0d7377;
+                color: #ffffff;
+                border: none;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-size: 11pt;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #14b8a6;
+            }
+        """)
+        self.save_button.clicked.connect(self.save_settings)
+        button_layout.addWidget(self.save_button)
+
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setStyleSheet("""
+            QPushButton {
+                background-color: #374151;
+                color: #ffffff;
+                border: none;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-size: 11pt;
+            }
+            QPushButton:hover {
+                background-color: #4b5563;
+            }
+        """)
+        self.cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(self.cancel_button)
+
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
+
+        logger.info("Settings dialog initialized")
+
+    def toggle_key_visibility(self, input_field, button):
+        """Toggle password visibility for API key fields"""
+        if input_field.echoMode() == QLineEdit.EchoMode.Password:
+            input_field.setEchoMode(QLineEdit.EchoMode.Normal)
+            button.setText("Hide")
+        else:
+            input_field.setEchoMode(QLineEdit.EchoMode.Password)
+            button.setText("Show")
+
+    def save_settings(self):
+        """Save settings and emit signal"""
+        # Get selected provider
+        provider = "anthropic" if self.anthropic_radio.isChecked() else "openai"
+
+        # Get API keys
+        openai_key = self.openai_key_input.text().strip()
+        anthropic_key = self.anthropic_key_input.text().strip()
+
+        # Validate that at least one key is provided
+        if not openai_key and not anthropic_key:
+            QMessageBox.warning(
+                self,
+                "Missing API Keys",
+                "Please provide at least one API key."
+            )
+            return
+
+        # Validate that the selected provider has a key
+        if provider == "anthropic" and not anthropic_key:
+            QMessageBox.warning(
+                self,
+                "Missing Anthropic Key",
+                "You selected Anthropic but didn't provide an API key.\nPlease enter your Anthropic API key."
+            )
+            return
+
+        if provider == "openai" and not openai_key:
+            QMessageBox.warning(
+                self,
+                "Missing OpenAI Key",
+                "You selected OpenAI but didn't provide an API key.\nPlease enter your OpenAI API key."
+            )
+            return
+
+        # Emit signal with settings
+        self.settings_saved.emit(provider, openai_key, anthropic_key)
+
+        logger.info(f"Settings saved: provider={provider}")
+
+        # Show success message
+        QMessageBox.information(
+            self,
+            "Settings Saved",
+            f"Settings saved successfully!\n\nAI Provider: {provider.upper()}\n\nThe application will now reload with the new settings."
+        )
+
+        self.accept()
+
+
 class MainWindow(QMainWindow):
     """Main application window with game detection and AI chat interface"""
 
-    def __init__(self, game_detector, ai_assistant, info_scraper):
+    def __init__(self, game_detector, ai_assistant, info_scraper, config):
         super().__init__()
         self.game_detector = game_detector
         self.ai_assistant = ai_assistant
         self.info_scraper = info_scraper
+        self.config = config
 
         self.current_game = None
         self.detection_thread = None
@@ -304,6 +596,9 @@ class MainWindow(QMainWindow):
         self.overview_button.clicked.connect(self.get_overview)
         self.overview_button.setEnabled(False)
 
+        self.settings_button = QPushButton("⚙️ Settings")
+        self.settings_button.clicked.connect(self.open_settings)
+
         # Apply styling to action buttons
         for button in [self.tips_button, self.overview_button]:
             button.setStyleSheet("""
@@ -325,6 +620,23 @@ class MainWindow(QMainWindow):
                 }
             """)
             actions_layout.addWidget(button)
+
+        # Settings button with distinct styling
+        self.settings_button.setStyleSheet("""
+            QPushButton {
+                background-color: #374151;
+                color: #ffffff;
+                border: none;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-size: 11pt;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #4b5563;
+            }
+        """)
+        actions_layout.addWidget(self.settings_button)
 
         main_layout.addLayout(actions_layout)
 
@@ -609,6 +921,66 @@ class MainWindow(QMainWindow):
         self.overview_worker.finished.connect(cleanup_worker)
         self.overview_worker.start()
 
+    def open_settings(self):
+        """Open the settings dialog"""
+        logger.info("Opening settings dialog")
+
+        dialog = SettingsDialog(self, self.config)
+        dialog.settings_saved.connect(self.handle_settings_saved)
+        dialog.exec()
+
+    def handle_settings_saved(self, provider, openai_key, anthropic_key):
+        """Handle settings being saved"""
+        logger.info("Handling settings save...")
+
+        try:
+            # Import config module to call save function
+            from config import Config
+
+            # Save settings to .env file
+            Config.save_to_env(provider, openai_key, anthropic_key)
+
+            # Reload configuration
+            self.config = Config()
+
+            # Reinitialize AI assistant with new settings
+            from ai_assistant import AIAssistant
+
+            old_ai_assistant = self.ai_assistant
+            self.ai_assistant = AIAssistant(
+                provider=self.config.ai_provider,
+                api_key=self.config.get_api_key()
+            )
+
+            # Transfer current game context to new assistant
+            if self.current_game:
+                self.ai_assistant.set_current_game(self.current_game)
+
+            # Update chat widget's AI assistant reference
+            self.chat_widget.ai_assistant = self.ai_assistant
+
+            # Show success message in chat
+            self.chat_widget.add_message(
+                "System",
+                f"Settings updated! Now using {provider.upper()} AI provider.",
+                is_user=False
+            )
+
+            logger.info(f"Settings applied successfully: provider={provider}")
+
+        except Exception as e:
+            logger.error(f"Error applying settings: {e}", exc_info=True)
+            self.chat_widget.add_message(
+                "System",
+                f"Error applying settings: {str(e)}",
+                is_user=False
+            )
+            QMessageBox.critical(
+                self,
+                "Settings Error",
+                f"Failed to apply settings:\n\n{str(e)}"
+            )
+
     def quit_application(self):
         """Quit the application cleanly"""
         logger.info("Quitting application")
@@ -668,7 +1040,7 @@ class MainWindow(QMainWindow):
         logger.info("Window close event - minimized to tray")
 
 
-def run_gui(game_detector, ai_assistant, info_scraper):
+def run_gui(game_detector, ai_assistant, info_scraper, config):
     """
     Initialize and run the GUI application
 
@@ -676,12 +1048,13 @@ def run_gui(game_detector, ai_assistant, info_scraper):
         game_detector: Game detection service instance
         ai_assistant: AI assistant service instance
         info_scraper: Information scraper service instance
+        config: Configuration instance
     """
     try:
         app = QApplication(sys.argv)
         app.setApplicationName("Gaming AI Assistant")
 
-        window = MainWindow(game_detector, ai_assistant, info_scraper)
+        window = MainWindow(game_detector, ai_assistant, info_scraper, config)
         window.show()
 
         # Handle application quit
