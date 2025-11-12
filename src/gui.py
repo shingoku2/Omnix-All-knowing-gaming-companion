@@ -15,6 +15,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QAction, QKeySequence, QShortcut, QIcon, QPixmap, QPainter, QColor
 from typing import Optional, Dict
 import os
+import webbrowser
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -407,6 +408,24 @@ class SettingsDialog(QDialog):
         self.openai_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.openai_key_input, self.openai_show_button))
         keys_layout.addWidget(self.openai_show_button)
 
+        # Get OpenAI API Key button
+        openai_get_key_button = QPushButton("Get API Key")
+        openai_get_key_button.setStyleSheet("""
+            QPushButton {
+                background-color: #10a37f;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #1a7f64;
+            }
+        """)
+        openai_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://platform.openai.com/api-keys"))
+        keys_layout.addWidget(openai_get_key_button)
+
         keys_layout.addSpacing(10)
 
         # Anthropic API Key
@@ -439,6 +458,26 @@ class SettingsDialog(QDialog):
         self.anthropic_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.anthropic_key_input, self.anthropic_show_button))
         keys_layout.addWidget(self.anthropic_show_button)
 
+        # Get Anthropic API Key button
+        anthropic_get_key_button = QPushButton("Get API Key")
+        anthropic_get_key_button.setStyleSheet("""
+            QPushButton {
+                background-color: #c96329;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #a44d1f;
+            }
+        """)
+        anthropic_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://console.anthropic.com/settings/keys"))
+        keys_layout.addWidget(anthropic_get_key_button)
+
+        keys_layout.addSpacing(10)
+
         # Gemini API Key
         gemini_label = QLabel("Gemini API Key:")
         keys_layout.addWidget(gemini_label)
@@ -469,6 +508,26 @@ class SettingsDialog(QDialog):
         self.gemini_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.gemini_key_input, self.gemini_show_button))
         keys_layout.addWidget(self.gemini_show_button)
 
+        # Get Gemini API Key button
+        gemini_get_key_button = QPushButton("Get API Key")
+        gemini_get_key_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1a73e8;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #1557b0;
+            }
+        """)
+        gemini_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://aistudio.google.com/app/apikey"))
+        keys_layout.addWidget(gemini_get_key_button)
+
+        keys_layout.addSpacing(10)
+
         # Ollama Endpoint
         ollama_label = QLabel("Ollama Endpoint (for local models):")
         keys_layout.addWidget(ollama_label)
@@ -492,6 +551,26 @@ class SettingsDialog(QDialog):
         self.open_webui_show_button = QPushButton("Show")
         self.open_webui_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.open_webui_key_input, self.open_webui_show_button))
         keys_layout.addWidget(self.open_webui_show_button)
+
+        # Open Open WebUI button
+        open_webui_button = QPushButton("Open Open WebUI")
+        open_webui_button.setStyleSheet("""
+            QPushButton {
+                background-color: #6366f1;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #4f46e5;
+            }
+        """)
+        open_webui_button.clicked.connect(lambda: self.open_api_key_page(self.ollama_endpoint_input.text() or "http://localhost:8080"))
+        keys_layout.addWidget(open_webui_button)
+
+        keys_layout.addSpacing(10)
 
         # Ollama help text
         ollama_help = QLabel(
@@ -571,6 +650,15 @@ class SettingsDialog(QDialog):
         else:
             input_field.setEchoMode(QLineEdit.EchoMode.Password)
             button.setText("Show")
+
+    def open_api_key_page(self, url):
+        """Open API key signup/login page in browser"""
+        try:
+            webbrowser.open(url)
+            logger.info(f"Opening API key page: {url}")
+        except Exception as e:
+            logger.error(f"Failed to open URL: {e}")
+            QMessageBox.warning(self, "Error", f"Failed to open browser: {str(e)}")
 
     def save_settings(self):
         """Save settings and emit signal"""
