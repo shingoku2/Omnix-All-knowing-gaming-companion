@@ -567,7 +567,7 @@ class SettingsDialog(QDialog):
                 background-color: #4f46e5;
             }
         """)
-        open_webui_button.clicked.connect(lambda: self.open_api_key_page(self.ollama_endpoint_input.text() or "http://localhost:8080"))
+        open_webui_button.clicked.connect(self.open_webui_and_focus)
         keys_layout.addWidget(open_webui_button)
 
         keys_layout.addSpacing(10)
@@ -577,6 +577,7 @@ class SettingsDialog(QDialog):
             "💡 Ollama/Open WebUI Setup (No package needed - uses REST API!):\n"
             "• Native Ollama: http://localhost:11434 (no API key needed)\n"
             "• Open WebUI: http://localhost:8080 (requires API key from Settings > Account)\n"
+            "  → Click 'Open Open WebUI' button, get your key, then Ctrl+V to paste\n"
             "• WSL: Use http://localhost:<port> (WSL2 auto-forwards)\n"
             "• Supports both native Ollama and OpenAI-compatible APIs\n"
             "• WSL: Ensure Ollama is running: ollama serve"
@@ -659,6 +660,31 @@ class SettingsDialog(QDialog):
         except Exception as e:
             logger.error(f"Failed to open URL: {e}")
             QMessageBox.warning(self, "Error", f"Failed to open browser: {str(e)}")
+
+    def open_webui_and_focus(self):
+        """Open Open WebUI in browser and focus the API key field for easy pasting"""
+        # Open the browser
+        endpoint = self.ollama_endpoint_input.text() or "http://localhost:8080"
+        self.open_api_key_page(endpoint)
+
+        # Focus the Open WebUI API key field and select all text
+        # This makes it easy for users to paste - they just need to press Ctrl+V
+        self.open_webui_key_input.setFocus()
+        self.open_webui_key_input.selectAll()
+
+        logger.info("Open WebUI API key field focused and ready for paste")
+
+        # Show a helpful message
+        QMessageBox.information(
+            self,
+            "Ready to Paste API Key",
+            "Open WebUI has been opened in your browser.\n\n"
+            "Once you get your API key from Settings > Account:\n"
+            "• The 'Open WebUI API Key' field is already focused\n"
+            "• Just press Ctrl+V to paste your key\n"
+            "• Then click 'Show' to verify it pasted correctly\n"
+            "• Click 'Save' to save your settings"
+        )
 
     def save_settings(self):
         """Save settings and emit signal"""
