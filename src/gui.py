@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTextEdit, QLineEdit, QPushButton, QLabel, QSystemTrayIcon,
     QMenu, QFrame, QDialog, QRadioButton, QButtonGroup, QMessageBox,
-    QGroupBox
+    QGroupBox, QSpinBox, QDoubleSpinBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QAction, QKeySequence, QShortcut, QIcon, QPixmap, QPainter, QColor
@@ -82,10 +82,13 @@ class GameDetectionThread(QThread):
 class ChatWidget(QWidget):
     """Chat interface widget for Q&A interactions with AI assistant"""
 
-    def __init__(self, ai_assistant):
+    message_added = pyqtSignal(str, str, bool)
+
+    def __init__(self, ai_assistant, font_size: int = 12):
         super().__init__()
         self.ai_assistant = ai_assistant
         self.ai_worker = None
+        self.font_size = font_size
         self.init_ui()
 
     def init_ui(self):
@@ -95,16 +98,6 @@ class ChatWidget(QWidget):
         # Chat history display area
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
-        self.chat_display.setStyleSheet("""
-            QTextEdit {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: 1px solid #3a3a3a;
-                border-radius: 5px;
-                padding: 10px;
-                font-size: 12pt;
-            }
-        """)
         layout.addWidget(self.chat_display)
 
         # User input area
@@ -112,41 +105,10 @@ class ChatWidget(QWidget):
 
         self.input_field = QLineEdit()
         self.input_field.setPlaceholderText("Ask a question about the game...")
-        self.input_field.setStyleSheet("""
-            QLineEdit {
-                background-color: #2a2a2a;
-                color: #ffffff;
-                border: 1px solid #3a3a3a;
-                border-radius: 5px;
-                padding: 8px;
-                font-size: 11pt;
-            }
-        """)
         self.input_field.returnPressed.connect(self.send_message)
         input_layout.addWidget(self.input_field)
 
         self.send_button = QPushButton("Send")
-        self.send_button.setStyleSheet("""
-            QPushButton {
-                background-color: #0d7377;
-                color: #ffffff;
-                border: none;
-                border-radius: 5px;
-                padding: 8px 20px;
-                font-size: 11pt;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #14b8a6;
-            }
-            QPushButton:pressed {
-                background-color: #0a5a5d;
-            }
-            QPushButton:disabled {
-                background-color: #374151;
-                color: #6b7280;
-            }
-        """)
         self.send_button.clicked.connect(self.send_message)
         input_layout.addWidget(self.send_button)
 
@@ -154,23 +116,72 @@ class ChatWidget(QWidget):
 
         # Clear chat history button
         self.clear_button = QPushButton("Clear Chat")
-        self.clear_button.setStyleSheet("""
-            QPushButton {
-                background-color: #dc2626;
-                color: #ffffff;
-                border: none;
-                border-radius: 5px;
-                padding: 5px;
-                font-size: 10pt;
-            }
-            QPushButton:hover {
-                background-color: #ef4444;
-            }
-        """)
         self.clear_button.clicked.connect(self.clear_chat)
         layout.addWidget(self.clear_button)
 
         self.setLayout(layout)
+        self.apply_styles()
+
+    def apply_styles(self):
+        """Apply styling based on the configured font size"""
+        base_font = max(self.font_size, 8)
+        input_font = max(self.font_size - 1, 8)
+        button_font = max(self.font_size - 1, 8)
+        small_font = max(self.font_size - 2, 8)
+
+        self.chat_display.setStyleSheet(
+            "QTextEdit {"
+            " background-color: #1e1e1e;"
+            " color: #ffffff;"
+            " border: 1px solid #3a3a3a;"
+            " border-radius: 5px;"
+            " padding: 10px;"
+            f" font-size: {base_font}pt;"
+            " }"
+        )
+
+        self.input_field.setStyleSheet(
+            "QLineEdit {"
+            " background-color: #2a2a2a;"
+            " color: #ffffff;"
+            " border: 1px solid #3a3a3a;"
+            " border-radius: 5px;"
+            " padding: 8px;"
+            f" font-size: {input_font}pt;"
+            " }"
+        )
+
+        self.send_button.setStyleSheet(
+            "QPushButton {"
+            " background-color: #0d7377;"
+            " color: #ffffff;"
+            " border: none;"
+            " border-radius: 5px;"
+            " padding: 8px 20px;"
+            f" font-size: {button_font}pt;"
+            " font-weight: bold;"
+            " }"
+            " QPushButton:hover { background-color: #14b8a6; }"
+            " QPushButton:pressed { background-color: #0a5a5d; }"
+            " QPushButton:disabled { background-color: #374151; color: #6b7280; }"
+        )
+
+        self.clear_button.setStyleSheet(
+            "QPushButton {"
+            " background-color: #dc2626;"
+            " color: #ffffff;"
+            " border: none;"
+            " border-radius: 5px;"
+            " padding: 5px;"
+            f" font-size: {small_font}pt;"
+            " }"
+            " QPushButton:hover { background-color: #ef4444; }"
+        )
+
+    def set_font_size(self, font_size: int):
+        """Update font size for the chat interface"""
+        self.font_size = font_size
+        self.apply_styles()
 
     def send_message(self):
         """Process and send user message to AI assistant"""
@@ -220,7 +231,7 @@ class ChatWidget(QWidget):
         self.send_button.setText("Send")
         self.ai_worker = None
 
-    def add_message(self, sender: str, message: str, is_user: bool = True):
+    def add_message(self, sender: str, message: str, is_user: bool = True, emit_signal: bool = True):
         """
         Add a formatted message to the chat display
 
@@ -228,6 +239,7 @@ class ChatWidget(QWidget):
             sender: Name of the message sender
             message: Message content
             is_user: True if message is from user, False if from AI/system
+            emit_signal: Whether to emit the message_added signal
         """
         color = "#14b8a6" if is_user else "#f59e0b"
         # Escape HTML to prevent issues with special characters
@@ -237,6 +249,8 @@ class ChatWidget(QWidget):
         self.chat_display.verticalScrollBar().setValue(
             self.chat_display.verticalScrollBar().maximum()
         )
+        if emit_signal:
+            self.message_added.emit(sender, message, is_user)
 
     def clear_chat(self):
         """Clear chat display and conversation history"""
@@ -246,10 +260,102 @@ class ChatWidget(QWidget):
         logger.info("Chat history cleared")
 
 
+class OverlayWindow(QWidget):
+    """Floating in-game overlay window"""
+
+    def __init__(self, parent, ai_assistant, config):
+        super().__init__(parent, Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        self.setWindowTitle("Gaming AI Overlay")
+        self.ai_assistant = ai_assistant
+        self.config = config
+
+        self.chat_widget = ChatWidget(self.ai_assistant, font_size=self.config.overlay_font_size)
+
+        self.init_ui()
+        self.apply_preferences(self.config)
+        self.hide()
+
+    def init_ui(self):
+        """Build overlay UI"""
+        layout = QVBoxLayout()
+        layout.setContentsMargins(6, 6, 6, 6)
+
+        container = QFrame()
+        container.setStyleSheet(
+            "QFrame {"
+            " background-color: rgba(18, 18, 18, 220);"
+            " border: 1px solid #14b8a6;"
+            " border-radius: 8px;"
+            " }"
+        )
+
+        container_layout = QVBoxLayout()
+        container_layout.setContentsMargins(12, 12, 12, 12)
+        container_layout.setSpacing(8)
+
+        header_layout = QHBoxLayout()
+        header_label = QLabel("🎮 In-Game Overlay")
+        header_label.setStyleSheet(
+            "QLabel {"
+            " color: #14b8a6;"
+            " font-size: 12pt;"
+            " font-weight: bold;"
+            " }"
+        )
+        header_layout.addWidget(header_label)
+
+        close_button = QPushButton("✕")
+        close_button.setFixedSize(24, 24)
+        close_button.setStyleSheet(
+            "QPushButton {"
+            " background-color: #dc2626;"
+            " color: #ffffff;"
+            " border: none;"
+            " border-radius: 12px;"
+            " font-weight: bold;"
+            " }"
+            " QPushButton:hover { background-color: #ef4444; }"
+        )
+        close_button.clicked.connect(self.hide)
+        header_layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignRight)
+
+        container_layout.addLayout(header_layout)
+        container_layout.addWidget(self.chat_widget)
+
+        container.setLayout(container_layout)
+        layout.addWidget(container)
+
+        self.setLayout(layout)
+
+    def apply_preferences(self, config):
+        """Apply overlay preferences from configuration"""
+        try:
+            self.resize(config.overlay_width, config.overlay_height)
+        except Exception as e:
+            logger.error(f"Failed resizing overlay: {e}")
+        opacity = max(0.3, min(config.overlay_opacity, 1.0))
+        self.setWindowOpacity(opacity)
+        self.chat_widget.set_font_size(config.overlay_font_size)
+
+    def add_external_message(self, sender: str, message: str, is_user: bool):
+        """Display message originating from another chat widget"""
+        self.chat_widget.add_message(sender, message, is_user, emit_signal=False)
+
+    def update_ai_assistant(self, ai_assistant):
+        """Update AI assistant reference"""
+        self.ai_assistant = ai_assistant
+        self.chat_widget.ai_assistant = ai_assistant
+
+    def closeEvent(self, event):
+        """Ensure overlay hides instead of closing"""
+        event.ignore()
+        self.hide()
+
+
 class SettingsDialog(QDialog):
     """Settings dialog for managing API keys and AI provider selection"""
 
-    settings_saved = pyqtSignal(str, str, str, str, str, str)  # provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key
+    settings_saved = pyqtSignal(str, str, str, str, str, str, str, int, int, float, int)
 
     def __init__(self, parent, config):
         super().__init__(parent)
@@ -597,6 +703,69 @@ class SettingsDialog(QDialog):
         keys_group.setLayout(keys_layout)
         layout.addWidget(keys_group)
 
+        # Overlay preferences
+        overlay_group = QGroupBox("Overlay & Shortcuts")
+        overlay_layout = QVBoxLayout()
+
+        overlay_hotkey_label = QLabel("Overlay Hotkey (e.g., Ctrl+Shift+G):")
+        overlay_layout.addWidget(overlay_hotkey_label)
+
+        self.overlay_hotkey_input = QLineEdit()
+        self.overlay_hotkey_input.setPlaceholderText("Ctrl+Shift+G")
+        if self.config.overlay_hotkey:
+            self.overlay_hotkey_input.setText(self.config.overlay_hotkey)
+        overlay_layout.addWidget(self.overlay_hotkey_input)
+
+        size_layout = QHBoxLayout()
+        width_label = QLabel("Width:")
+        self.overlay_width_spin = QSpinBox()
+        self.overlay_width_spin.setRange(300, 1600)
+        self.overlay_width_spin.setValue(self.config.overlay_width)
+        height_label = QLabel("Height:")
+        self.overlay_height_spin = QSpinBox()
+        self.overlay_height_spin.setRange(200, 1200)
+        self.overlay_height_spin.setValue(self.config.overlay_height)
+
+        size_layout.addWidget(width_label)
+        size_layout.addWidget(self.overlay_width_spin)
+        size_layout.addSpacing(12)
+        size_layout.addWidget(height_label)
+        size_layout.addWidget(self.overlay_height_spin)
+        overlay_layout.addLayout(size_layout)
+
+        font_layout = QHBoxLayout()
+        font_label = QLabel("Font Size:")
+        self.overlay_font_spin = QSpinBox()
+        self.overlay_font_spin.setRange(8, 24)
+        self.overlay_font_spin.setValue(self.config.overlay_font_size)
+        font_layout.addWidget(font_label)
+        font_layout.addWidget(self.overlay_font_spin)
+        overlay_layout.addLayout(font_layout)
+
+        opacity_layout = QHBoxLayout()
+        opacity_label = QLabel("Opacity:")
+        self.overlay_opacity_spin = QDoubleSpinBox()
+        self.overlay_opacity_spin.setRange(0.3, 1.0)
+        self.overlay_opacity_spin.setSingleStep(0.05)
+        self.overlay_opacity_spin.setDecimals(2)
+        self.overlay_opacity_spin.setValue(self.config.overlay_opacity)
+        opacity_layout.addWidget(opacity_label)
+        opacity_layout.addWidget(self.overlay_opacity_spin)
+        overlay_layout.addLayout(opacity_layout)
+
+        overlay_hint = QLabel("Tip: Adjust opacity and size so the overlay fits your playstyle without obstructing gameplay.")
+        overlay_hint.setWordWrap(True)
+        overlay_hint.setStyleSheet("""
+            QLabel {
+                color: #9ca3af;
+                font-size: 10pt;
+            }
+        """)
+        overlay_layout.addWidget(overlay_hint)
+
+        overlay_group.setLayout(overlay_layout)
+        layout.addWidget(overlay_group)
+
         layout.addStretch()
 
         # Buttons
@@ -744,8 +913,43 @@ class SettingsDialog(QDialog):
             )
             return
 
+        # Overlay settings
+        overlay_hotkey = self.overlay_hotkey_input.text().strip()
+        if not overlay_hotkey:
+            QMessageBox.warning(
+                self,
+                "Missing Hotkey",
+                "Please enter an overlay hotkey (e.g., Ctrl+Shift+G)."
+            )
+            return
+
+        if QKeySequence(overlay_hotkey).toString() == "":
+            QMessageBox.warning(
+                self,
+                "Invalid Hotkey",
+                "The overlay hotkey you entered is not valid. Please try a different key combination."
+            )
+            return
+
+        overlay_width = self.overlay_width_spin.value()
+        overlay_height = self.overlay_height_spin.value()
+        overlay_opacity = float(self.overlay_opacity_spin.value())
+        overlay_font_size = self.overlay_font_spin.value()
+
         # Emit signal with settings
-        self.settings_saved.emit(provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key)
+        self.settings_saved.emit(
+            provider,
+            openai_key,
+            anthropic_key,
+            gemini_key,
+            ollama_endpoint,
+            open_webui_api_key,
+            overlay_hotkey,
+            overlay_width,
+            overlay_height,
+            overlay_opacity,
+            overlay_font_size
+        )
 
         logger.info(f"Settings saved: provider={provider}")
 
@@ -753,7 +957,7 @@ class SettingsDialog(QDialog):
         QMessageBox.information(
             self,
             "Settings Saved",
-            f"Settings saved successfully!\n\nAI Provider: {provider.upper()}\n\nThe application will now reload with the new settings."
+            f"Settings saved successfully!\n\nAI Provider: {provider.upper()}\nOverlay Hotkey: {overlay_hotkey}\n\nThe application will now reload with the new settings."
         )
 
         self.accept()
@@ -778,6 +982,11 @@ class MainWindow(QMainWindow):
 
         # Track if this is first show (for auto-opening settings)
         self.first_show = True
+
+        # Overlay management
+        self.overlay_window = None
+        self.overlay_shortcut = None
+        self.window_shortcut = None
 
         self.init_ui()
         self.start_game_detection()
@@ -834,11 +1043,14 @@ class MainWindow(QMainWindow):
         self.overview_button.clicked.connect(self.get_overview)
         self.overview_button.setEnabled(False)
 
+        self.overlay_button = QPushButton("Open Overlay")
+        self.overlay_button.clicked.connect(self.show_overlay)
+
         self.settings_button = QPushButton("⚙️ Settings")
         self.settings_button.clicked.connect(self.open_settings)
 
         # Apply styling to action buttons
-        for button in [self.tips_button, self.overview_button]:
+        for button in [self.tips_button, self.overview_button, self.overlay_button]:
             button.setStyleSheet("""
                 QPushButton {
                     background-color: #6366f1;
@@ -881,6 +1093,11 @@ class MainWindow(QMainWindow):
         # AI chat interface
         self.chat_widget = ChatWidget(self.ai_assistant)
         main_layout.addWidget(self.chat_widget)
+
+        # Overlay window setup
+        self.overlay_window = OverlayWindow(self, self.ai_assistant, self.config)
+        self.chat_widget.message_added.connect(self.overlay_window.add_external_message)
+        self.overlay_window.chat_widget.message_added.connect(self.relay_overlay_message)
 
         central_widget.setLayout(main_layout)
 
@@ -970,9 +1187,13 @@ class MainWindow(QMainWindow):
 
     def create_shortcuts(self):
         """Register global keyboard shortcuts"""
-        # Ctrl+Shift+G: Toggle window visibility
-        toggle_shortcut = QShortcut(QKeySequence("Ctrl+Shift+G"), self)
-        toggle_shortcut.activated.connect(self.toggle_visibility)
+        # Overlay toggle shortcut
+        self.overlay_shortcut = QShortcut(QKeySequence(self.config.overlay_hotkey), self)
+        self.overlay_shortcut.activated.connect(self.toggle_overlay)
+
+        # Secondary shortcut for toggling the main window
+        self.window_shortcut = QShortcut(QKeySequence("Ctrl+Shift+M"), self)
+        self.window_shortcut.activated.connect(self.toggle_visibility)
 
     def toggle_visibility(self):
         """Toggle main window visibility between shown and hidden states"""
@@ -983,6 +1204,36 @@ class MainWindow(QMainWindow):
             self.show()
             self.activateWindow()
             logger.info("Window shown")
+
+    def toggle_overlay(self):
+        """Toggle overlay visibility using configured settings"""
+        if not self.overlay_window:
+            return
+
+        if self.overlay_window.isVisible():
+            self.overlay_window.hide()
+            logger.info("Overlay hidden")
+        else:
+            self.overlay_window.apply_preferences(self.config)
+            self.overlay_window.show()
+            self.overlay_window.raise_()
+            self.overlay_window.activateWindow()
+            logger.info("Overlay shown")
+
+    def show_overlay(self):
+        """Show the overlay window with current preferences"""
+        if not self.overlay_window:
+            return
+
+        self.overlay_window.apply_preferences(self.config)
+        self.overlay_window.show()
+        self.overlay_window.raise_()
+        self.overlay_window.activateWindow()
+        logger.info("Overlay opened from main window")
+
+    def relay_overlay_message(self, sender: str, message: str, is_user: bool):
+        """Forward overlay chat messages to the main chat widget"""
+        self.chat_widget.add_message(sender, message, is_user, emit_signal=False)
 
     def start_game_detection(self):
         """Initialize and start the game detection background thread"""
@@ -1190,7 +1441,20 @@ class MainWindow(QMainWindow):
         dialog.settings_saved.connect(self.handle_settings_saved)
         dialog.exec()
 
-    def handle_settings_saved(self, provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key):
+    def handle_settings_saved(
+        self,
+        provider,
+        openai_key,
+        anthropic_key,
+        gemini_key,
+        ollama_endpoint,
+        open_webui_api_key,
+        overlay_hotkey,
+        overlay_width,
+        overlay_height,
+        overlay_opacity,
+        overlay_font_size
+    ):
         """Handle settings being saved"""
         logger.info("Handling settings save...")
 
@@ -1199,7 +1463,20 @@ class MainWindow(QMainWindow):
             from config import Config
 
             # Save settings to .env file
-            Config.save_to_env(provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key)
+            Config.save_to_env(
+                provider,
+                openai_key,
+                anthropic_key,
+                gemini_key,
+                ollama_endpoint,
+                open_webui_api_key,
+                overlay_hotkey=overlay_hotkey,
+                overlay_width=overlay_width,
+                overlay_height=overlay_height,
+                overlay_opacity=overlay_opacity,
+                overlay_font_size=overlay_font_size,
+                check_interval=self.config.check_interval
+            )
 
             # Reload configuration
             self.config = Config()
@@ -1221,6 +1498,15 @@ class MainWindow(QMainWindow):
 
             # Update chat widget's AI assistant reference
             self.chat_widget.ai_assistant = self.ai_assistant
+
+            # Update overlay configuration
+            if self.overlay_window:
+                self.overlay_window.update_ai_assistant(self.ai_assistant)
+                self.overlay_window.apply_preferences(self.config)
+
+            # Update overlay shortcut
+            if self.overlay_shortcut:
+                self.overlay_shortcut.setKey(QKeySequence(self.config.overlay_hotkey))
 
             # Show success message in chat
             self.chat_widget.add_message(
@@ -1282,6 +1568,10 @@ class MainWindow(QMainWindow):
             if self.overview_worker.isRunning():
                 logger.warning("Overview worker did not stop gracefully")
                 self.overview_worker.terminate()
+
+        # Hide overlay window
+        if self.overlay_window:
+            self.overlay_window.hide()
 
         logger.info("Cleanup complete")
 
