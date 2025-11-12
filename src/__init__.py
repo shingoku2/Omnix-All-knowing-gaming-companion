@@ -9,12 +9,12 @@ __description__ = "An intelligent gaming companion that detects games and provid
 
 from .game_detector import GameDetector
 from .ai_assistant import AIAssistant
-from .info_scraper import GameInfoScraper
+from .info_scraper import InfoScraper
 from .config import Config
 
 __all__ = [
     'GameDetector',
     'AIAssistant',
-    'GameInfoScraper',
+    'InfoScraper',
     'Config',
 ]

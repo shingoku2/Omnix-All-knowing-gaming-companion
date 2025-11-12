@@ -1,273 +1,196 @@
 """
 Configuration Module
-Handles application configuration and settings
+Handles loading and managing configuration
 """
 
 import os
-import sys
+import json
+import logging
+from typing import Optional, Dict, Any
 from pathlib import Path
-from typing import Optional
-from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class Config:
-    """Application configuration"""
+    """Manages application configuration"""
 
-    def __init__(self, env_file: Optional[str] = None, require_keys: bool = False):
+    DEFAULT_CONFIG = {
+        "ai_provider": "anthropic",
+        "openai_api_key": "",
+        "anthropic_api_key": "",
+        "gemini_api_key": "",
+        "ollama_endpoint": "http://localhost:11434",
+        "open_webui_api_key": "",
+        "overlay_width": 400,
+        "overlay_height": 300,
+        "overlay_opacity": 0.9,
+        "overlay_font_size": 10,
+        "overlay_hotkey": "Ctrl+Shift+O",
+        "auto_launch": False,
+        "log_level": "INFO"
+    }
+
+    def __init__(self, config_path: Optional[str] = None):
         """
         Initialize configuration
 
         Args:
-            env_file: Path to .env file (optional)
-            require_keys: If True, raise error if API keys are missing (default: False)
+            config_path: Path to config file (optional)
         """
-        # Load environment variables
-        if env_file and os.path.exists(env_file):
-            load_dotenv(env_file, override=True)  # Override existing env vars
-        else:
-            # Try multiple locations for .env file
-            # This handles both development and PyInstaller bundled scenarios
-            possible_paths = [
-                Path('.env'),  # Current working directory
-                Path(__file__).parent.parent / '.env',  # Relative to this file
-                Path(sys.executable).parent / '.env',  # Next to executable
-            ]
+        self.config_path = config_path or self._get_default_config_path()
+        self.config: Dict[str, Any] = self.DEFAULT_CONFIG.copy()
+        self.load_config()
 
-            # For PyInstaller, also check sys._MEIPASS
-            if getattr(sys, 'frozen', False):
-                # Running in a bundle
-                bundle_dir = Path(sys.executable).parent
-                possible_paths.insert(0, bundle_dir / '.env')
+    def _get_default_config_path(self) -> str:
+        """Get default configuration file path"""
+        if os.name == 'nt':  # Windows
+            config_dir = os.path.expandvars(r'%APPDATA%\GamingAIAssistant')
+        else:  # Unix/Linux
+            config_dir = os.path.expanduser('~/.config/gaming-ai-assistant')
 
-            for env_path in possible_paths:
-                if env_path.exists():
-                    load_dotenv(env_path, override=True)  # Override existing env vars
-                    # Log which file was loaded
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.info(f"Loaded .env from: {env_path}")
-                    break
+        os.makedirs(config_dir, exist_ok=True)
+        return os.path.join(config_dir, 'config.json')
 
-        # AI Configuration
-        self.ai_provider = os.getenv('AI_PROVIDER', 'anthropic').lower()
-        self.openai_api_key = os.getenv('OPENAI_API_KEY')
-        self.anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
-        self.gemini_api_key = os.getenv('GEMINI_API_KEY')
-        self.ollama_endpoint = os.getenv('OLLAMA_ENDPOINT', 'http://localhost:11434')
-        self.open_webui_api_key = os.getenv('OPEN_WEBUI_API_KEY')  # API key for Open WebUI authentication
-
-        # Debug logging for Open WebUI API key
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Config loaded - Open WebUI API key present: {bool(self.open_webui_api_key)}, length: {len(self.open_webui_api_key) if self.open_webui_api_key else 0}")
-
-        # Application Settings
-        self.overlay_hotkey = os.getenv('OVERLAY_HOTKEY', 'ctrl+shift+g')
-
-        try:
-            self.overlay_width = int(os.getenv('OVERLAY_WIDTH', '420'))
-        except (TypeError, ValueError):
-            self.overlay_width = 420
-
-        try:
-            self.overlay_height = int(os.getenv('OVERLAY_HEIGHT', '520'))
-        except (TypeError, ValueError):
-            self.overlay_height = 520
-
-        try:
-            self.overlay_opacity = float(os.getenv('OVERLAY_OPACITY', '0.85'))
-        except (TypeError, ValueError):
-            self.overlay_opacity = 0.85
-
-        try:
-            self.overlay_font_size = int(os.getenv('OVERLAY_FONT_SIZE', '12'))
-        except (TypeError, ValueError):
-            self.overlay_font_size = 12
-
-        self.check_interval = int(os.getenv('CHECK_INTERVAL', '5'))
-
-        # Validate configuration (only if required)
-        if require_keys:
-            self._validate()
-
-    def _validate(self):
-        """Validate configuration - raises ValueError if invalid"""
-        # Check if we have the required API key for the provider
-        if self.ai_provider == 'openai' and not self.openai_api_key:
-            raise ValueError("OpenAI API key not found. Please set OPENAI_API_KEY in .env")
-
-        if self.ai_provider == 'anthropic' and not self.anthropic_api_key:
-            raise ValueError("Anthropic API key not found. Please set ANTHROPIC_API_KEY in .env")
-
-        if self.ai_provider == 'gemini' and not self.gemini_api_key:
-            raise ValueError("Gemini API key not found. Please set GEMINI_API_KEY in .env")
-
-        # Ollama doesn't require an API key, but validate endpoint format
-        if self.ai_provider == 'ollama':
-            if not self.ollama_endpoint.startswith('http'):
-                raise ValueError("Ollama endpoint must be a valid HTTP/HTTPS URL")
-
-        if self.ai_provider not in ['openai', 'anthropic', 'gemini', 'ollama']:
-            raise ValueError(f"Invalid AI provider: {self.ai_provider}. Must be 'openai', 'anthropic', 'gemini', or 'ollama'")
-
-    def is_configured(self) -> bool:
+    def load_config(self) -> bool:
         """
-        Check if configuration has valid API keys
+        Load configuration from file
 
         Returns:
-            True if at least one API key is configured or ollama is selected, False otherwise
+            True if loaded successfully
         """
-        return bool(
-            self.openai_api_key or
-            self.anthropic_api_key or
-            self.gemini_api_key or
-            self.ai_provider == 'ollama'  # Ollama doesn't need API key
-        )
+        try:
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r') as f:
+                    loaded_config = json.load(f)
+                    # Merge with defaults to handle missing keys
+                    self.config.update(loaded_config)
+                logger.info(f"Configuration loaded from {self.config_path}")
+                return True
+            else:
+                logger.info("No existing config file found, using defaults")
+                self.save_config()
+                return False
 
-    def has_provider_key(self) -> bool:
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing config file: {e}")
+            self.config = self.DEFAULT_CONFIG.copy()
+            return False
+        except Exception as e:
+            logger.error(f"Error loading config: {e}", exc_info=True)
+            self.config = self.DEFAULT_CONFIG.copy()
+            return False
+
+    def save_config(self) -> bool:
         """
-        Check if the selected provider has a valid API key
+        Save configuration to file
 
         Returns:
-            True if current provider has an API key (or is ollama), False otherwise
+            True if saved successfully
         """
-        if self.ai_provider == 'openai':
-            return bool(self.openai_api_key)
-        elif self.ai_provider == 'anthropic':
-            return bool(self.anthropic_api_key)
-        elif self.ai_provider == 'gemini':
-            return bool(self.gemini_api_key)
-        elif self.ai_provider == 'ollama':
-            return True  # Ollama doesn't require API key
-        return False
+        try:
+            config_dir = os.path.dirname(self.config_path)
+            os.makedirs(config_dir, exist_ok=True)
 
-    def get_api_key(self) -> str:
-        """Get the API key for the selected provider"""
-        if self.ai_provider == 'openai':
-            return self.openai_api_key
-        elif self.ai_provider == 'anthropic':
-            return self.anthropic_api_key
-        elif self.ai_provider == 'gemini':
-            return self.gemini_api_key
-        elif self.ai_provider == 'ollama':
-            return None  # Ollama doesn't use API key
-        return None
+            with open(self.config_path, 'w') as f:
+                json.dump(self.config, f, indent=4)
 
-    @staticmethod
-    def save_to_env(provider: str, openai_key: str, anthropic_key: str, gemini_key: str = '',
-                    ollama_endpoint: str = 'http://localhost:11434',
-                    open_webui_api_key: str = '',
-                    overlay_hotkey: str = 'ctrl+shift+g',
-                    overlay_width: int = 420,
-                    overlay_height: int = 520,
-                    overlay_opacity: float = 0.85,
-                    overlay_font_size: int = 12,
-                    check_interval: int = 5):
+            logger.info(f"Configuration saved to {self.config_path}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error saving config: {e}", exc_info=True)
+            return False
+
+    def get(self, key: str, default: Any = None) -> Any:
         """
-        Save configuration to .env file
+        Get configuration value
 
         Args:
-            provider: AI provider ('openai', 'anthropic', 'gemini', or 'ollama')
-            openai_key: OpenAI API key
-            anthropic_key: Anthropic API key
-            gemini_key: Gemini API key (optional)
-            ollama_endpoint: Ollama endpoint URL (default: 'http://localhost:11434')
-            open_webui_api_key: Open WebUI API key for authentication (optional)
-            overlay_hotkey: Hotkey for overlay (default: 'ctrl+shift+g')
-            overlay_width: Overlay window width in pixels (default: 420)
-            overlay_height: Overlay window height in pixels (default: 520)
-            overlay_opacity: Overlay window opacity (0.3 - 1.0, default: 0.85)
-            overlay_font_size: Overlay font size in points (default: 12)
-            check_interval: Game check interval in seconds (default: 5)
+            key: Configuration key
+            default: Default value if key not found
+
+        Returns:
+            Configuration value
         """
-        # Determine .env file location
-        # Try multiple locations, prioritizing the most appropriate one
-        possible_paths = [
-            Path('.env'),  # Current working directory
-            Path(__file__).parent.parent / '.env',  # Relative to this file (project root)
-            Path(sys.executable).parent / '.env',  # Next to executable (for bundled app)
-        ]
+        return self.config.get(key, default)
 
-        # For PyInstaller bundles, use directory next to executable
-        if getattr(sys, 'frozen', False):
-            env_path = Path(sys.executable).parent / '.env'
+    def set(self, key: str, value: Any) -> None:
+        """
+        Set configuration value
+
+        Args:
+            key: Configuration key
+            value: Configuration value
+        """
+        self.config[key] = value
+
+    def get_all(self) -> Dict[str, Any]:
+        """Get all configuration"""
+        return self.config.copy()
+
+    def update(self, config_dict: Dict[str, Any]) -> None:
+        """
+        Update configuration with dictionary
+
+        Args:
+            config_dict: Dictionary with configuration updates
+        """
+        self.config.update(config_dict)
+
+    def validate_api_keys(self) -> Dict[str, bool]:
+        """
+        Validate that required API keys are set
+
+        Returns:
+            Dictionary with validation results
+        """
+        provider = self.get("ai_provider", "anthropic").lower()
+
+        validation = {
+            "provider_set": provider in ["openai", "anthropic", "gemini", "ollama"],
+            "openai_key_set": bool(self.get("openai_api_key")),
+            "anthropic_key_set": bool(self.get("anthropic_api_key")),
+            "gemini_key_set": bool(self.get("gemini_api_key")),
+        }
+
+        # Validate based on selected provider
+        if provider == "openai":
+            validation["provider_valid"] = validation["openai_key_set"]
+        elif provider == "anthropic":
+            validation["provider_valid"] = validation["anthropic_key_set"]
+        elif provider == "gemini":
+            validation["provider_valid"] = validation["gemini_key_set"]
+        elif provider == "ollama":
+            validation["provider_valid"] = True  # Ollama doesn't require API key
         else:
-            # In development, use project root
-            env_path = Path(__file__).parent.parent / '.env'
+            validation["provider_valid"] = False
 
-        # Read existing .env file if it exists
-        existing_content = {}
-        if env_path.exists():
-            with open(env_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith('#') and '=' in line:
-                        key, value = line.split('=', 1)
-                        existing_content[key.strip()] = value.strip()
+        return validation
 
-        # Update with new values
-        existing_content['AI_PROVIDER'] = provider
-        existing_content['OPENAI_API_KEY'] = openai_key
-        existing_content['ANTHROPIC_API_KEY'] = anthropic_key
-        existing_content['GEMINI_API_KEY'] = gemini_key
-        existing_content['OLLAMA_ENDPOINT'] = ollama_endpoint
-        existing_content['OPEN_WEBUI_API_KEY'] = open_webui_api_key
-        existing_content['OVERLAY_HOTKEY'] = overlay_hotkey
-        existing_content['OVERLAY_WIDTH'] = str(overlay_width)
-        existing_content['OVERLAY_HEIGHT'] = str(overlay_height)
-        existing_content['OVERLAY_OPACITY'] = f"{overlay_opacity:.2f}"
-        existing_content['OVERLAY_FONT_SIZE'] = str(overlay_font_size)
-        existing_content['CHECK_INTERVAL'] = str(check_interval)
+    def reset_to_defaults(self) -> None:
+        """Reset configuration to defaults"""
+        self.config = self.DEFAULT_CONFIG.copy()
+        logger.info("Configuration reset to defaults")
 
-        # Debug logging
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Config.save_to_env - Open WebUI API key present: {bool(open_webui_api_key)}, length: {len(open_webui_api_key) if open_webui_api_key else 0}")
-
-        # Write to .env file
-        with open(env_path, 'w', encoding='utf-8') as f:
-            f.write("# Gaming AI Assistant Configuration\n")
-            f.write("# This file was generated by the Settings dialog\n\n")
-
-            f.write("# AI Provider Selection\n")
-            f.write(f"AI_PROVIDER={existing_content['AI_PROVIDER']}\n\n")
-
-            f.write("# API Keys\n")
-            f.write(f"OPENAI_API_KEY={existing_content['OPENAI_API_KEY']}\n")
-            f.write(f"ANTHROPIC_API_KEY={existing_content['ANTHROPIC_API_KEY']}\n")
-            f.write(f"GEMINI_API_KEY={existing_content['GEMINI_API_KEY']}\n\n")
-
-            f.write("# Open WebUI Authentication\n")
-            f.write(f"OPEN_WEBUI_API_KEY={existing_content['OPEN_WEBUI_API_KEY']}\n\n")
-
-            f.write("# Ollama Settings\n")
-            f.write(f"OLLAMA_ENDPOINT={existing_content['OLLAMA_ENDPOINT']}\n\n")
-
-            f.write("# Application Settings\n")
-            f.write(f"OVERLAY_HOTKEY={existing_content['OVERLAY_HOTKEY']}\n")
-            f.write(f"OVERLAY_WIDTH={existing_content['OVERLAY_WIDTH']}\n")
-            f.write(f"OVERLAY_HEIGHT={existing_content['OVERLAY_HEIGHT']}\n")
-            f.write(f"OVERLAY_OPACITY={existing_content['OVERLAY_OPACITY']}\n")
-            f.write(f"OVERLAY_FONT_SIZE={existing_content['OVERLAY_FONT_SIZE']}\n")
-            f.write(f"CHECK_INTERVAL={existing_content['CHECK_INTERVAL']}\n")
-
-        return env_path
-
-    def __repr__(self):
-        """String representation"""
-        return f"Config(provider={self.ai_provider}, hotkey={self.overlay_hotkey})"
+    def __repr__(self) -> str:
+        """String representation of config"""
+        return f"Config(path={self.config_path}, keys={list(self.config.keys())})"
 
 
 if __name__ == "__main__":
-    # Test configuration
-    try:
-        config = Config()
-        print("Configuration loaded successfully:")
-        print(config)
-        print(f"API Key present: {'Yes' if config.get_api_key() else 'No'}")
-    except Exception as e:
-        print(f"Configuration error: {e}")
-        print("\nPlease:")
-        print("1. Copy .env.example to .env")
-        print("2. Add your API key to .env")
-        print("3. Set AI_PROVIDER to 'openai' or 'anthropic'")
+    config = Config()
+
+    print("Current configuration:")
+    for key, value in config.get_all().items():
+        # Hide API keys for security
+        if "key" in key.lower() or "token" in key.lower():
+            value = "***hidden***" if value else "not set"
+        print(f"  {key}: {value}")
+
+    print("\nValidation:")
+    validation = config.validate_api_keys()
+    for check, result in validation.items():
+        print(f"  {check}: {result}")
