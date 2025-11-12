@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from config import Config
 from ai_assistant import AIAssistant
 from game_detector import GameDetector
-from info_scraper import GameInfoScraper
+from info_scraper import InfoScraper
 
 print("=" * 70)
 print("GAMING AI ASSISTANT - LIVE API TEST")
@@ -50,7 +50,7 @@ except Exception as e:
 # Test 3: Initialize Info Scraper
 print("\n[3/6] Initializing info scraper...")
 try:
-    info_scraper = GameInfoScraper()
+    info_scraper = InfoScraper()
     print(f"✓ Info scraper initialized")
     print(f"  - Wiki sources configured: {len(info_scraper.wiki_urls)}")
 except Exception as e:

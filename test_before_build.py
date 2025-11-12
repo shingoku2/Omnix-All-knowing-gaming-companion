@@ -105,8 +105,8 @@ print()
 # Test 5: Import info scraper
 print("[5/8] Testing info_scraper module...")
 try:
-    from info_scraper import GameInfoScraper
-    scraper = GameInfoScraper()
+    from info_scraper import InfoScraper
+    scraper = InfoScraper()
     print(f"  ✓ Info scraper works")
 except Exception as e:
     errors.append(f"Info scraper import failed: {e}")

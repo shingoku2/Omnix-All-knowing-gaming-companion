@@ -50,7 +50,7 @@ try:
     from ai_assistant import AIAssistant
     logger.info("  [OK] ai_assistant imported")
 
-    from info_scraper import GameInfoScraper
+    from info_scraper import InfoScraper
     logger.info("  [OK] info_scraper imported")
 
     from gui import run_gui
@@ -137,7 +137,7 @@ def main():
         logger.info("Step 4: Initializing information scraper...")
         print("Initializing information scraper...")
 
-        info_scraper = GameInfoScraper()
+        info_scraper = InfoScraper()
 
         logger.info(f"Info scraper initialized")
         logger.info(f"  Wiki sources: {len(info_scraper.wiki_urls)}")

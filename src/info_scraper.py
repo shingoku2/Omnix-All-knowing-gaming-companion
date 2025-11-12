@@ -29,6 +29,11 @@ class InfoScraper:
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
+        # Basic wiki sources configuration (for UI/tests to introspect)
+        self.wiki_urls: Dict[str, str] = {
+            "Gamepedia": "https://www.gamepedia.com/{name}",
+            "Fandom": "https://www.fandom.com/wiki/{name}",
+        }
 
     def search_game_info(self, game_name: str) -> Optional[Dict]:
         """
