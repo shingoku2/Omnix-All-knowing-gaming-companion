@@ -1,15 +1,13 @@
 """
-Game Detector Module
-Detects currently running games and identifies them
+Game Detection Module
+Detects running games on the system
 """
 
-import psutil
-import re
-import json
 import os
 import logging
-from typing import Optional, Dict, List
-from pathlib import Path, PureWindowsPath
+from typing import Optional, Dict
+import subprocess
+import psutil
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,291 +15,172 @@ logger = logging.getLogger(__name__)
 
 
 class GameDetector:
-    """Detects and identifies currently running games"""
+    """Detects running games on Windows"""
 
-    # Common game executables and platforms
-    KNOWN_GAMES = {
-        # Popular Games
-        "league of legends.exe": "League of Legends",
-        "valorant.exe": "VALORANT",
-        "valorant-win64-shipping.exe": "VALORANT",
-        "overwatch.exe": "Overwatch",
-        "dota2.exe": "Dota 2",
-        "csgo.exe": "Counter-Strike: Global Offensive",
+    #: Legacy mapping of process -> friendly game name used by older test harnesses
+    #: and documentation. Populated at instantiation time to maintain backwards
+    #: compatibility with scripts that expect ``GameDetector.KNOWN_GAMES`` to
+    #: exist.
+    DEFAULT_KNOWN_GAMES = {
+        "LeagueClientUx.exe": "League of Legends",
+        "League of Legends.exe": "League of Legends",
+        "VALORANT.exe": "Valorant",
+        "valorant.exe": "Valorant",
         "cs2.exe": "Counter-Strike 2",
-        "fortnite.exe": "Fortnite",
-        "fortnitelauncher.exe": "Fortnite",
-        "rocketleague.exe": "Rocket League",
-        "apexlegends.exe": "Apex Legends",
-        "r5apex.exe": "Apex Legends",
-
-        # RPG/Adventure
+        "csgo.exe": "Counter-Strike 2",
+        "dota2.exe": "Dota 2",
+        "Wow.exe": "World of Warcraft",
+        "WowClassic.exe": "World of Warcraft",
+        "javaw.exe": "Minecraft",
+        "Minecraft.exe": "Minecraft",
+        "FortniteClient-Win64-Shipping.exe": "Fortnite",
+        "TslGame.exe": "PUBG",
         "eldenring.exe": "Elden Ring",
-        "darksouls3.exe": "Dark Souls 3",
-        "witcher3.exe": "The Witcher 3",
-        "skyrimse.exe": "Skyrim Special Edition",
-        "fallout4.exe": "Fallout 4",
-        "cyberpunk2077.exe": "Cyberpunk 2077",
-
-        # Strategy
-        "civilization6.exe": "Civilization VI",
-        "ck3.exe": "Crusader Kings 3",
-        "stellaris.exe": "Stellaris",
-        "totalwar.exe": "Total War",
-
-        # MMO
-        "wow.exe": "World of Warcraft",
-        "ffxiv_dx11.exe": "Final Fantasy XIV",
-        "gw2-64.exe": "Guild Wars 2",
-        "elderscrollsonline.exe": "Elder Scrolls Online",
-
-        # Minecraft
-        "minecraft.exe": "Minecraft",
-        "minecraftlauncher.exe": "Minecraft",
-
-        # Battle Royale
-        "pubg.exe": "PUBG",
-        "cod.exe": "Call of Duty",
-        "warzone.exe": "Call of Duty: Warzone",
-
-        # Others
-        "gta5.exe": "Grand Theft Auto V",
-        "rdr2.exe": "Red Dead Redemption 2",
-        "destiny2.exe": "Destiny 2",
-        "halo.exe": "Halo",
-        "palworld-win64-shipping.exe": "Palworld",
-        "helldivers2.exe": "Helldivers 2",
+        "DarkSoulsIII.exe": "Dark Souls III",
+        "bg3.exe": "Baldur's Gate 3",
+        "Cyberpunk2077.exe": "Cyberpunk 2077",
+        "GTA5.exe": "GTA V",
+        "gtavicecity.exe": "GTA V",
     }
 
-    # Game launchers to ignore
-    LAUNCHERS = {
-        "steam.exe", "epicgameslauncher.exe", "origin.exe",
-        "uplay.exe", "battlenet.exe", "riotclientservices.exe",
-        "launcher.exe", "launchpad.exe"
-    }
+    def __init__(self):
+        """Initialize game detector with common game process names"""
+        self.common_games = {
+            "League of Legends": ["LeagueClientUx.exe", "League of Legends.exe"],
+            "Valorant": ["VALORANT.exe", "valorant.exe"],
+            "Counter-Strike 2": ["cs2.exe", "csgo.exe"],
+            "Dota 2": ["dota2.exe"],
+            "World of Warcraft": ["Wow.exe", "WowClassic.exe"],
+            "Minecraft": ["javaw.exe", "Minecraft.exe"],
+            "Fortnite": ["FortniteClient-Win64-Shipping.exe"],
+            "PUBG": ["TslGame.exe"],
+            "Elden Ring": ["eldenring.exe"],
+            "Dark Souls III": ["DarkSoulsIII.exe"],
+            "Baldur's Gate 3": ["bg3.exe"],
+            "Cyberpunk 2077": ["Cyberpunk2077.exe"],
+            "GTA V": ["GTA5.exe", "gtavicecity.exe"],
+        }
+        self._refresh_legacy_mappings()
 
-    def __init__(self, cache_file: str = "game_cache.json"):
-        self.cache_file = cache_file
-        self.current_game = None
-        self.game_info_cache = self._load_cache()
-
-    def _load_cache(self) -> Dict:
-        """Load game information cache"""
-        if os.path.exists(self.cache_file):
-            try:
-                with open(self.cache_file, 'r') as f:
-                    return json.load(f)
-            except json.JSONDecodeError as e:
-                logger.warning(f"Invalid JSON in cache file: {e}")
-                return {}
-            except Exception as e:
-                logger.error(f"Error loading cache: {e}", exc_info=True)
-                return {}
-        return {}
-
-    def _save_cache(self):
-        """Save game information cache"""
-        try:
-            with open(self.cache_file, 'w') as f:
-                json.dump(self.game_info_cache, f, indent=2)
-        except Exception as e:
-            logger.error(f"Error saving cache: {e}", exc_info=True)
+    def _refresh_legacy_mappings(self) -> None:
+        """Synchronize legacy mapping attributes used by historic tooling."""
+        known_games = dict(self.DEFAULT_KNOWN_GAMES)
+        for game_name, process_names in self.common_games.items():
+            for process_name in process_names:
+                known_games.setdefault(process_name, game_name)
+        self.KNOWN_GAMES = known_games
+        # ``KNOWN_PROCESSES`` is kept as an alias for scripts introduced during the
+        # refactor where this attribute name briefly replaced ``KNOWN_GAMES``.
+        self.KNOWN_PROCESSES = self.KNOWN_GAMES
 
     def detect_running_game(self) -> Optional[Dict[str, str]]:
         """
-        Detect currently running game
-        Returns: Dictionary with game info or None
+        Detect if any known game is currently running
+
+        Returns:
+            Dictionary with game info if found, None otherwise
         """
-        running_processes = []
-
         try:
-            for proc in psutil.process_iter(['name', 'exe', 'cmdline']):
-                try:
-                    proc_name = proc.info['name'].lower()
-
-                    # Skip launchers
-                    if proc_name in self.LAUNCHERS:
-                        continue
-
-                    # Check if it's a known game
-                    if proc_name in self.KNOWN_GAMES:
-                        game_name = self.KNOWN_GAMES[proc_name]
-                        self.current_game = {
-                            'name': game_name,
-                            'process': proc_name,
-                            'exe': proc.info.get('exe', ''),
+            for game_name, process_names in self.common_games.items():
+                for process_name in process_names:
+                    if self._is_process_running(process_name):
+                        logger.info(f"Game detected: {game_name}")
+                        return {
+                            "name": game_name,
+                            "process": process_name,
+                            "detected_at": str(self._get_current_time())
                         }
-                        return self.current_game
-
-                    # Check for potential games (executables with common game patterns)
-                    if proc_name.endswith('.exe') and self._looks_like_game(proc):
-                        running_processes.append(proc)
-
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-
-            # If no known game found, try to identify from running processes
-            if running_processes:
-                game = self._identify_unknown_game(running_processes[0])
-                if game:
-                    self.current_game = game
-                    return game
-
-        except psutil.Error as e:
-            logger.error(f"PSUtil error detecting game: {e}")
-        except Exception as e:
-            logger.error(f"Error detecting game: {e}", exc_info=True)
-
-        return None
-
-    def _looks_like_game(self, proc) -> bool:
-        """Heuristic to identify if a process might be a game"""
-        try:
-            proc_name = proc.info['name'].lower()
-
-            # Skip system processes and common non-game applications
-            skip_keywords = [
-                'windows', 'microsoft', 'system32', 'svchost', 'explorer',
-                'chrome', 'firefox', 'edge', 'discord', 'spotify', 'slack',
-                'code', 'visual', 'pycharm', 'intellij', 'eclipse', 'javaw', 'java',
-                # Security and system tools
-                'antivirus', 'eset', 'kaspersky', 'norton', 'mcafee', 'avast', 'avg',
-                'defender', 'security', 'firewall', 'malware',
-                # Common utilities and drivers
-                'nvidia', 'nvcontainer', 'nvdisplay', 'nvcpl', 'nvprofileupdater',
-                'amd', 'radeon', 'intel', 'driver', 'update', 'service',
-                'adobe', 'office', 'outlook', 'teams', 'zoom', 'skype',
-                # System containers and helpers
-                'container', 'helper', 'updater', 'background'
-            ]
-            if any(x in proc_name for x in skip_keywords):
-                return False
-
-            # Check for game-related keywords in process name
-            game_keywords = [
-                'game', 'play',
-                'win64-shipping', 'win32-shipping'  # More specific than just win64/win32
-            ]
-
-            if any(keyword in proc_name for keyword in game_keywords):
-                return True
-
-            # Check if in specific game directories (more specific paths)
-            if proc.info.get('exe'):
-                exe_path = proc.info['exe'].lower()
-                game_paths = [
-                    'steam\\steamapps',  # Steam games
-                    'epic games\\',      # Epic Games
-                    'riot games\\',      # Riot Games
-                    '\\games\\',         # Generic games folder
-                    'gog galaxy\\games'  # GOG Galaxy
-                ]
-                if any(path in exe_path for path in game_paths):
-                    return True
-
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            pass
-        except Exception as e:
-            logger.debug(f"Error checking if process looks like game: {e}")
-
-        return False
-
-    def _identify_unknown_game(self, proc) -> Optional[Dict[str, str]]:
-        """Try to identify an unknown game"""
-        try:
-            proc_name = proc.info['name']
-            exe_path = proc.info.get('exe', '')
-
-            # Extract potential game name from path or process name
-            game_name = None
-
-            if exe_path:
-                # Use PureWindowsPath to handle Windows paths correctly
-                # (works on any OS)
-                path = PureWindowsPath(exe_path)
-
-                # Check the full path for system folders
-                path_lower = str(path).lower()
-
-                # First, check if it's in a known game directory
-                # These paths are allowed even if in Program Files
-                game_directories = [
-                    '\\steam\\steamapps\\',
-                    '\\steamapps\\',
-                    '\\epic games\\',
-                    '\\riot games\\',
-                    '\\games\\',
-                    '\\gog galaxy\\games\\',
-                ]
-
-                is_in_game_directory = any(gdir in path_lower for gdir in game_directories)
-
-                # Only filter out system folders if it's NOT in a game directory
-                if not is_in_game_directory:
-                    # Filter out system and common folders
-                    system_folders = [
-                        '\\system32\\', '\\syswow64\\', '\\windows\\',
-                        '\\program files\\', '\\program files (x86)\\',
-                        '\\programdata\\', '\\common files\\',
-                        '\\microsoft\\', '\\windowsapps\\', '\\temp\\',
-                        '\\appdata\\', 'c:\\windows\\'
-                    ]
-
-                    if any(folder in path_lower for folder in system_folders):
-                        # This is likely a system process, not a game
-                        return None
-
-                # Get parent folder name for game name extraction
-                parent_folder = path.parent.name
-
-                # Clean up the name
-                game_name = self._clean_game_name(parent_folder)
-
-            if not game_name:
-                game_name = self._clean_game_name(proc_name.replace('.exe', ''))
-
-            return {
-                'name': game_name,
-                'process': proc_name,
-                'exe': exe_path,
-                'unknown': True
-            }
-
-        except Exception as e:
-            logger.error(f"Error identifying unknown game: {e}", exc_info=True)
             return None
 
-    def _clean_game_name(self, name: str) -> str:
-        """Clean up game name for display"""
-        # Remove common suffixes
-        name = re.sub(r'(-win64|-win32|-shipping|\.exe)$', '', name, flags=re.IGNORECASE)
+        except Exception as e:
+            logger.error(f"Error detecting game: {e}", exc_info=True)
+            return None
 
-        # Replace separators with spaces
-        name = re.sub(r'[_-]', ' ', name)
+    def _is_process_running(self, process_name: str) -> bool:
+        """
+        Check if a process is currently running
 
-        # Capitalize words
-        name = ' '.join(word.capitalize() for word in name.split())
+        Args:
+            process_name: Name of the process to check
 
-        return name
+        Returns:
+            True if process is running, False otherwise
+        """
+        try:
+            if not process_name:
+                return False
+            for proc in psutil.process_iter(['pid', 'name']):
+                try:
+                    name = proc.info.get('name')
+                    if name and name.lower() == process_name.lower():
+                        return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+            return False
 
-    def get_current_game(self) -> Optional[Dict[str, str]]:
-        """Get currently detected game"""
-        return self.current_game
+        except Exception as e:
+            logger.error(f"Error checking process: {e}", exc_info=True)
+            return False
 
-    def add_known_game(self, process_name: str, game_name: str):
-        """Add a game to the known games list"""
-        self.KNOWN_GAMES[process_name.lower()] = game_name
-        self._save_cache()
+    def _get_current_time(self) -> str:
+        """Get current time as string"""
+        from datetime import datetime
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def get_running_games(self) -> list:
+        """
+        Get all running games from the common games list
+
+        Returns:
+            List of running games
+        """
+        running_games = []
+        try:
+            for game_name, process_names in self.common_games.items():
+                for process_name in process_names:
+                    if self._is_process_running(process_name):
+                        running_games.append({
+                            "name": game_name,
+                            "process": process_name
+                        })
+                        break
+            return running_games
+
+        except Exception as e:
+            logger.error(f"Error getting running games: {e}", exc_info=True)
+            return []
+
+    def add_custom_game(self, game_name: str, process_names: list) -> bool:
+        """
+        Add a custom game to the detection list
+
+        Args:
+            game_name: Name of the game
+            process_names: List of process names to detect
+
+        Returns:
+            True if added successfully
+        """
+        try:
+            if game_name not in self.common_games:
+                self.common_games[game_name] = process_names
+                self._refresh_legacy_mappings()
+                logger.info(f"Added custom game: {game_name}")
+                return True
+            else:
+                logger.warning(f"Game {game_name} already exists")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error adding custom game: {e}", exc_info=True)
+            return False
 
 
 if __name__ == "__main__":
-    # Test the game detector
     detector = GameDetector()
-    print("Scanning for running games...")
-
     game = detector.detect_running_game()
+    
     if game:
-        print(f"\nDetected game: {game['name']}")
-        print(f"Process: {game['process']}")
+        print(f"Game detected: {game['name']}")
     else:
-        print("\nNo game detected")
+        print("No game detected")

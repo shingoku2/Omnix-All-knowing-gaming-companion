@@ -12,7 +12,7 @@ src_path = Path(__file__).parent / 'src'
 sys.path.insert(0, str(src_path))
 
 from game_detector import GameDetector
-from info_scraper import GameInfoScraper
+from info_scraper import InfoScraper
 import psutil
 
 
@@ -77,7 +77,7 @@ def test_info_scraper():
     """Test web scraping functionality"""
     print_header("Testing Information Scraper")
 
-    scraper = GameInfoScraper()
+    scraper = InfoScraper()
 
     print(f"✓ Info scraper initialized")
     print(f"✓ Configured for {len(scraper.wiki_urls)} game wikis")
@@ -104,7 +104,7 @@ def test_module_integration():
     try:
         from game_detector import GameDetector
         from ai_assistant import AIAssistant
-        from info_scraper import GameInfoScraper
+        from info_scraper import InfoScraper
         from config import Config
 
         print("✓ game_detector module")

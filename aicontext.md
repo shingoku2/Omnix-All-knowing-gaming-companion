@@ -655,3 +655,140 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 *Last Updated: 2025-11-11*
 *Session: Open WebUI Integration & Authentication*
 *Status: All tests passing ✅*
+
+## Recent Session: Headless Environment GUI Test (2025-11-12)
+
+### Session Goals
+1. Execute the full PyQt6 desktop client to verify graphical startup sequence.
+
+### Actions Taken
+- Installed all dependencies from `requirements.txt`.
+- Ran `python main.py` inside the container.
+
+### Outcome
+- Application startup aborted during GUI import because the container lacks the system OpenGL runtime (`libGL.so.1`).
+- PyQt6 requires X11/Wayland display services and the GL shim, which are unavailable in this headless environment.
+
+### Next Steps
+- Install an OpenGL-compatible package (e.g., `libgl1` on Debian/Ubuntu) and provide a virtual display via Xvfb or run the application on a machine with a graphical environment.
+
+*Last Updated: 2025-11-12*
+*Session: Headless Environment GUI Test*
+*Status: Blocked ❌*
+
+## Recent Session: Branch Comparison (2025-11-13)
+
+### Session Goals
+1. Compare `codex/create-adjustable-in-game-overlay` against `main` to determine which branch has the latest code.
+2. Align future work with the most up-to-date branch.
+
+### Actions Taken
+- Reconstructed the historical branch tips using commit `e8c3026` for `codex/create-adjustable-in-game-overlay` and `11119cc` for `main`.
+- Ran `git diff main..codex/create-adjustable-in-game-overlay --stat` to audit file-level differences.
+- Inspected `test_before_build.py` and `aicontext.md` in both branches to confirm that `main` contains the newest headless-environment safeguards and documentation updates.
+
+### Outcome
+- `main` is ahead of `codex/create-adjustable-in-game-overlay` (latter is ancestor commit `e8c3026`).
+- No merge required; continue development from `main` (currently mirrored by the `work` branch).
+- Documented findings here for continuity.
+
+*Last Updated: 2025-11-13*
+*Session: Branch Comparison*
+*Status: Complete ✅*
+
+## Current Session: Persist Open WebUI API Key (2025-11-12)
+
+### Session Goals
+1. Ensure Open WebUI API keys saved via Settings dialog persist in the generated `.env` file.
+2. Run a lightweight syntax validation to confirm configuration changes compile.
+
+### Actions Taken
+- Updated `src/config.py` so `Config.save_to_env` writes the `OPEN_WEBUI_API_KEY` value into the `.env` output block under a new **Open WebUI Authentication** section.
+- Executed `python -m compileall src` to verify the source tree compiles without syntax errors inside the container.
+
+### Outcome
+- Open WebUI API keys are now persisted alongside other credentials, preventing loss of authentication between application restarts.
+- Syntax validation succeeded with no errors reported.
+
+*Last Updated: 2025-11-12*
+*Session: Persist Open WebUI API Key*
+*Status: Complete ✅*
+
+## Current Session: Expand Open WebUI Endpoint Compatibility (2025-11-14)
+
+### Session Goals
+1. Resolve persistent `405 Method Not Allowed` errors when using Open WebUI via the Windows debug build.
+2. Broaden REST endpoint detection to accommodate newer Open WebUI deployments that nest APIs under `/api/v1`.
+3. Provide richer authentication headers compatible with both legacy and current Open WebUI releases.
+
+### Actions Taken
+- Refactored `src/ai_assistant.py` Ollama/Open WebUI request flow to iterate through a prioritized list of candidate endpoints, automatically falling back across OpenAI-compatible, native, and legacy generate routes (including the new `/api/v1/*` variants).
+- Added dual authentication headers (`Authorization: Bearer` and `X-API-Key`) plus `Accept: application/json` to satisfy stricter Open WebUI API gateways.
+- Introduced centralized error tracking so the final exception bubbles up the last encountered HTTP or transport issue for clearer GUI notifications.
+
+### Outcome
+- The assistant now gracefully retries alternate endpoints instead of halting after the first 405 response, improving compatibility with Open WebUI releases that re-map APIs.
+- Users running behind locked-down reverse proxies gain broader header support, reducing false "authentication failed" alerts when valid API keys are supplied.
+- Verified source tree compiles successfully via `python -m compileall src`.
+
+### Update (2025-11-14 - Model Auto-Detection)
+- Added dynamic model discovery in `src/ai_assistant.py` that parses `/v1/models` and `/api/tags` responses to select an installed model instead of hard-coding `llama2`.
+- When Open WebUI responds with a 400 error indicating an unknown model, the assistant now refreshes the model list and retries with the detected default to avoid cascading 405 fallbacks.
+- Introduced helper utilities to refresh model metadata while preserving authentication headers and retry ordering.
+
+### Tests
+- `python -m compileall src`
+
+*Last Updated: 2025-11-14*
+*Session: Expand Open WebUI Endpoint Compatibility*
+*Status: In Progress ⚙️*
+
+## Current Session: Restore GameDetector Legacy Interface (2025-11-14)
+
+### Session Goals
+1. Resolve the regression where legacy tests expect `GameDetector.KNOWN_GAMES`.
+2. Verify the updated detector compiles and report any remaining blocker encountered during smoke tests.
+
+### Actions Taken
+- Added `DEFAULT_KNOWN_GAMES` plus `_refresh_legacy_mappings()` inside `src/game_detector.py` so instantiated detectors expose both `KNOWN_GAMES` and `KNOWN_PROCESSES` dictionaries.
+- Ensured `add_custom_game` triggers a refresh so compatibility data stays synchronized after runtime modifications.
+
+### Outcome
+- Legacy harnesses now discover the restored attribute, unblocking automated environment checks that rely on process -> game mappings.
+- Running `python test_minimal.py` still halts on the expected "No API key" guard when Anthropic credentials are absent; compilation checks succeed.
+
+### Tests
+- `python -m compileall src`
+- `python test_minimal.py`
+
+*Last Updated: 2025-11-14*
+*Session: Restore GameDetector Legacy Interface*
+*Status: In Progress ⚙️ (API key requirement remains)*
+## Current Session: Comprehensive Test Audit (2025-11-12)
+
+### Session Goals
+1. Execute all distributed test harnesses to validate functionality and identify blocking issues.
+2. Document environment-dependent failures for follow-up remediation.
+
+### Actions Taken
+- Ran `python -m compileall src` to ensure the source tree compiles cleanly (no errors reported).
+- Executed `python test_modules.py` to exercise module imports and component checks; GUI-related tests failed because the container lacks `libGL.so.1`, and Anthropic-specific checks were skipped without API keys.
+- Executed `python test.py`; run aborted when legacy expectations for `GameDetector.KNOWN_GAMES` triggered an `AttributeError` due to the current implementation exposing `KNOWN_PROCESSES` instead.
+- Executed `python test_edge_cases.py`; all edge-case suites passed, though network scraping gracefully degraded behind the sandbox proxy.
+- Executed `python test_minimal.py`; halted on the same `GameDetector.KNOWN_GAMES` attribute mismatch seen in `test.py`.
+- Executed `python test_before_build.py`; reported missing `KNOWN_GAMES` attribute and skipped GUI/PyQt6 checks because `libGL.so.1` is unavailable in this headless environment.
+
+### Outcomes
+- Source compilation succeeded.
+- Functional coverage scripts repeatedly surfaced an AttributeError: `'GameDetector' object has no attribute 'KNOWN_GAMES'`; this regression blocks several pre-build and smoke-test flows.
+- GUI validation remains blocked by the absence of the system OpenGL shim (`libGL.so.1`) in the container.
+- Web-scraping routines emitted proxy-related warnings but continued without hard failures.
+
+### Next Steps
+- Align the test harnesses with the current `GameDetector` API (or restore a compatibility shim exposing `KNOWN_GAMES`).
+- Install `libgl1` (or equivalent) and a virtual display (e.g., Xvfb) if GUI smoke tests must run headlessly.
+- Optionally mock outbound HTTP calls in scraper tests to avoid proxy-induced warnings.
+
+*Last Updated: 2025-11-12*
+*Session: Comprehensive Test Audit*
+*Status: Attention Required ⚠️*

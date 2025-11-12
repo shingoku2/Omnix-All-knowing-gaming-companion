@@ -31,8 +31,8 @@ try:
     print(f"   ✓ AI assistant loaded")
 
     print("\n4. Testing info scraper...")
-    from info_scraper import GameInfoScraper
-    scraper = GameInfoScraper()
+    from info_scraper import InfoScraper
+    scraper = InfoScraper()
     print(f"   ✓ Info scraper loaded")
 
     print("\n" + "=" * 50)
