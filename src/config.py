@@ -176,6 +176,11 @@ class Config:
         existing_content['OVERLAY_HOTKEY'] = overlay_hotkey
         existing_content['CHECK_INTERVAL'] = str(check_interval)
 
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Config.save_to_env - Open WebUI API key present: {bool(open_webui_api_key)}, length: {len(open_webui_api_key) if open_webui_api_key else 0}")
+
         # Write to .env file
         with open(env_path, 'w', encoding='utf-8') as f:
             f.write("# Gaming AI Assistant Configuration\n")

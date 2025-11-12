@@ -681,6 +681,9 @@ class SettingsDialog(QDialog):
         ollama_endpoint = self.ollama_endpoint_input.text().strip() or "http://localhost:11434"
         open_webui_api_key = self.open_webui_key_input.text().strip()
 
+        # Debug logging
+        logger.info(f"Saving settings - Open WebUI API key present: {bool(open_webui_api_key)}, length: {len(open_webui_api_key) if open_webui_api_key else 0}")
+
         # Validate that at least one key is provided (or ollama is selected)
         if not openai_key and not anthropic_key and not gemini_key and provider != "ollama":
             QMessageBox.warning(
