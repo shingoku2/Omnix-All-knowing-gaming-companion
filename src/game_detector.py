@@ -218,7 +218,18 @@ class GameDetector:
             if exe_path:
                 # Try to get folder name
                 path = Path(exe_path)
-                parent_folder = path.parent.name
+                parent_folder = path.parent.name.lower()
+
+                # Filter out system and common folders
+                system_folders = [
+                    'system32', 'syswow64', 'windows', 'program files',
+                    'program files (x86)', 'programdata', 'common files',
+                    'microsoft', 'windowsapps', 'temp', 'appdata'
+                ]
+
+                if any(folder in parent_folder for folder in system_folders):
+                    # This is likely a system process, not a game
+                    return None
 
                 # Clean up the name
                 game_name = self._clean_game_name(parent_folder)
