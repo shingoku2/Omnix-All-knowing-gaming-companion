@@ -167,9 +167,12 @@ class GameDetector:
                 # Security and system tools
                 'antivirus', 'eset', 'kaspersky', 'norton', 'mcafee', 'avast', 'avg',
                 'defender', 'security', 'firewall', 'malware',
-                # Common utilities
-                'nvidia', 'amd', 'intel', 'driver', 'update', 'service',
-                'adobe', 'office', 'outlook', 'teams', 'zoom', 'skype'
+                # Common utilities and drivers
+                'nvidia', 'nvcontainer', 'nvdisplay', 'nvcpl', 'nvprofileupdater',
+                'amd', 'radeon', 'intel', 'driver', 'update', 'service',
+                'adobe', 'office', 'outlook', 'teams', 'zoom', 'skype',
+                # System containers and helpers
+                'container', 'helper', 'updater', 'background'
             ]
             if any(x in proc_name for x in skip_keywords):
                 return False
