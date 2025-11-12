@@ -15,6 +15,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QAction, QKeySequence, QShortcut, QIcon, QPixmap, QPainter, QColor
 from typing import Optional, Dict
 import os
+import webbrowser
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -248,7 +249,7 @@ class ChatWidget(QWidget):
 class SettingsDialog(QDialog):
     """Settings dialog for managing API keys and AI provider selection"""
 
-    settings_saved = pyqtSignal(str, str, str, str, str)  # provider, openai_key, anthropic_key, gemini_key, ollama_endpoint
+    settings_saved = pyqtSignal(str, str, str, str, str, str)  # provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key
 
     def __init__(self, parent, config):
         super().__init__(parent)
@@ -407,6 +408,24 @@ class SettingsDialog(QDialog):
         self.openai_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.openai_key_input, self.openai_show_button))
         keys_layout.addWidget(self.openai_show_button)
 
+        # Get OpenAI API Key button
+        openai_get_key_button = QPushButton("Get API Key")
+        openai_get_key_button.setStyleSheet("""
+            QPushButton {
+                background-color: #10a37f;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #1a7f64;
+            }
+        """)
+        openai_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://platform.openai.com/api-keys"))
+        keys_layout.addWidget(openai_get_key_button)
+
         keys_layout.addSpacing(10)
 
         # Anthropic API Key
@@ -439,6 +458,26 @@ class SettingsDialog(QDialog):
         self.anthropic_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.anthropic_key_input, self.anthropic_show_button))
         keys_layout.addWidget(self.anthropic_show_button)
 
+        # Get Anthropic API Key button
+        anthropic_get_key_button = QPushButton("Get API Key")
+        anthropic_get_key_button.setStyleSheet("""
+            QPushButton {
+                background-color: #c96329;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #a44d1f;
+            }
+        """)
+        anthropic_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://console.anthropic.com/settings/keys"))
+        keys_layout.addWidget(anthropic_get_key_button)
+
+        keys_layout.addSpacing(10)
+
         # Gemini API Key
         gemini_label = QLabel("Gemini API Key:")
         keys_layout.addWidget(gemini_label)
@@ -469,6 +508,26 @@ class SettingsDialog(QDialog):
         self.gemini_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.gemini_key_input, self.gemini_show_button))
         keys_layout.addWidget(self.gemini_show_button)
 
+        # Get Gemini API Key button
+        gemini_get_key_button = QPushButton("Get API Key")
+        gemini_get_key_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1a73e8;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #1557b0;
+            }
+        """)
+        gemini_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://aistudio.google.com/app/apikey"))
+        keys_layout.addWidget(gemini_get_key_button)
+
+        keys_layout.addSpacing(10)
+
         # Ollama Endpoint
         ollama_label = QLabel("Ollama Endpoint (for local models):")
         keys_layout.addWidget(ollama_label)
@@ -478,11 +537,46 @@ class SettingsDialog(QDialog):
         self.ollama_endpoint_input.setText(self.config.ollama_endpoint)
         keys_layout.addWidget(self.ollama_endpoint_input)
 
+        # Open WebUI API Key
+        open_webui_key_label = QLabel("Open WebUI API Key (optional, for authentication):")
+        keys_layout.addWidget(open_webui_key_label)
+
+        self.open_webui_key_input = QLineEdit()
+        self.open_webui_key_input.setPlaceholderText("Get from Settings > Account in Open WebUI")
+        self.open_webui_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        if self.config.open_webui_api_key:
+            self.open_webui_key_input.setText(self.config.open_webui_api_key)
+        keys_layout.addWidget(self.open_webui_key_input)
+
+        self.open_webui_show_button = QPushButton("Show")
+        self.open_webui_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.open_webui_key_input, self.open_webui_show_button))
+        keys_layout.addWidget(self.open_webui_show_button)
+
+        # Open Open WebUI button
+        open_webui_button = QPushButton("Open Open WebUI")
+        open_webui_button.setStyleSheet("""
+            QPushButton {
+                background-color: #6366f1;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #4f46e5;
+            }
+        """)
+        open_webui_button.clicked.connect(lambda: self.open_api_key_page(self.ollama_endpoint_input.text() or "http://localhost:8080"))
+        keys_layout.addWidget(open_webui_button)
+
+        keys_layout.addSpacing(10)
+
         # Ollama help text
         ollama_help = QLabel(
             "💡 Ollama/Open WebUI Setup (No package needed - uses REST API!):\n"
-            "• Native Ollama: http://localhost:11434\n"
-            "• Open WebUI: http://localhost:8080 (or your custom port)\n"
+            "• Native Ollama: http://localhost:11434 (no API key needed)\n"
+            "• Open WebUI: http://localhost:8080 (requires API key from Settings > Account)\n"
             "• WSL: Use http://localhost:<port> (WSL2 auto-forwards)\n"
             "• Supports both native Ollama and OpenAI-compatible APIs\n"
             "• WSL: Ensure Ollama is running: ollama serve"
@@ -557,6 +651,15 @@ class SettingsDialog(QDialog):
             input_field.setEchoMode(QLineEdit.EchoMode.Password)
             button.setText("Show")
 
+    def open_api_key_page(self, url):
+        """Open API key signup/login page in browser"""
+        try:
+            webbrowser.open(url)
+            logger.info(f"Opening API key page: {url}")
+        except Exception as e:
+            logger.error(f"Failed to open URL: {e}")
+            QMessageBox.warning(self, "Error", f"Failed to open browser: {str(e)}")
+
     def save_settings(self):
         """Save settings and emit signal"""
         # Get selected provider
@@ -576,6 +679,7 @@ class SettingsDialog(QDialog):
         anthropic_key = self.anthropic_key_input.text().strip()
         gemini_key = self.gemini_key_input.text().strip()
         ollama_endpoint = self.ollama_endpoint_input.text().strip() or "http://localhost:11434"
+        open_webui_api_key = self.open_webui_key_input.text().strip()
 
         # Validate that at least one key is provided (or ollama is selected)
         if not openai_key and not anthropic_key and not gemini_key and provider != "ollama":
@@ -612,7 +716,7 @@ class SettingsDialog(QDialog):
             return
 
         # Emit signal with settings
-        self.settings_saved.emit(provider, openai_key, anthropic_key, gemini_key, ollama_endpoint)
+        self.settings_saved.emit(provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key)
 
         logger.info(f"Settings saved: provider={provider}")
 
@@ -1057,7 +1161,7 @@ class MainWindow(QMainWindow):
         dialog.settings_saved.connect(self.handle_settings_saved)
         dialog.exec()
 
-    def handle_settings_saved(self, provider, openai_key, anthropic_key, gemini_key, ollama_endpoint):
+    def handle_settings_saved(self, provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key):
         """Handle settings being saved"""
         logger.info("Handling settings save...")
 
@@ -1066,7 +1170,7 @@ class MainWindow(QMainWindow):
             from config import Config
 
             # Save settings to .env file
-            Config.save_to_env(provider, openai_key, anthropic_key, gemini_key, ollama_endpoint)
+            Config.save_to_env(provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key)
 
             # Reload configuration
             self.config = Config()
@@ -1078,7 +1182,8 @@ class MainWindow(QMainWindow):
             self.ai_assistant = AIAssistant(
                 provider=self.config.ai_provider,
                 api_key=self.config.get_api_key(),
-                ollama_endpoint=self.config.ollama_endpoint
+                ollama_endpoint=self.config.ollama_endpoint,
+                open_webui_api_key=self.config.open_webui_api_key
             )
 
             # Transfer current game context to new assistant
