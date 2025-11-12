@@ -397,11 +397,56 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
             }
 
             logger.debug(f"Calling native Ollama API at {native_api_url}")
-            response = requests.post(native_api_url, json=native_payload, timeout=30)
+            try:
+                response = requests.post(native_api_url, json=native_payload, timeout=30)
+
+                if response.status_code == 200:
+                    result = response.json()
+                    return result['message']['content']
+                elif response.status_code == 404:
+                    # /api/chat not found, try older /api/generate endpoint
+                    logger.info("Native /api/chat endpoint returned 404, trying /api/generate")
+                else:
+                    response.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    logger.info("Native /api/chat endpoint not found, trying /api/generate")
+                else:
+                    raise
+
+            # Last resort: try /api/generate (older Ollama endpoint)
+            generate_api_url = f"{self.ollama_endpoint}/api/generate"
+
+            # Convert messages to a single prompt for /api/generate
+            prompt_parts = []
+            for msg in messages:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if role == "system":
+                    prompt_parts.append(f"System: {content}")
+                elif role == "user":
+                    prompt_parts.append(f"User: {content}")
+                elif role == "assistant":
+                    prompt_parts.append(f"Assistant: {content}")
+
+            prompt = "\n\n".join(prompt_parts) + "\n\nAssistant:"
+
+            generate_payload = {
+                "model": "llama2",
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "num_predict": 1000,
+                }
+            }
+
+            logger.debug(f"Calling Ollama /api/generate at {generate_api_url}")
+            response = requests.post(generate_api_url, json=generate_payload, timeout=30)
             response.raise_for_status()
 
             result = response.json()
-            return result['message']['content']
+            return result['response']
 
         except requests.exceptions.ConnectionError as e:
             logger.error(f"Cannot connect to Ollama: {e}")
