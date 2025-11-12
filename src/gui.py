@@ -240,7 +240,8 @@ class ChatWidget(QWidget):
     def clear_chat(self):
         """Clear chat display and conversation history"""
         self.chat_display.clear()
-        self.ai_assistant.clear_history()
+        if self.ai_assistant:
+            self.ai_assistant.clear_history()
         logger.info("Chat history cleared")
 
 

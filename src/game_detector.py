@@ -163,24 +163,36 @@ class GameDetector:
             skip_keywords = [
                 'windows', 'microsoft', 'system32', 'svchost', 'explorer',
                 'chrome', 'firefox', 'edge', 'discord', 'spotify', 'slack',
-                'code', 'visual', 'pycharm', 'intellij', 'eclipse', 'javaw', 'java'
+                'code', 'visual', 'pycharm', 'intellij', 'eclipse', 'javaw', 'java',
+                # Security and system tools
+                'antivirus', 'eset', 'kaspersky', 'norton', 'mcafee', 'avast', 'avg',
+                'defender', 'security', 'firewall', 'malware',
+                # Common utilities
+                'nvidia', 'amd', 'intel', 'driver', 'update', 'service',
+                'adobe', 'office', 'outlook', 'teams', 'zoom', 'skype'
             ]
             if any(x in proc_name for x in skip_keywords):
                 return False
 
-            # Check for game-related keywords
+            # Check for game-related keywords in process name
             game_keywords = [
-                'game', 'play', 'launcher', 'client',
-                'win64', 'win32', 'shipping'
+                'game', 'play',
+                'win64-shipping', 'win32-shipping'  # More specific than just win64/win32
             ]
 
             if any(keyword in proc_name for keyword in game_keywords):
                 return True
 
-            # Check if in common game directories
+            # Check if in specific game directories (more specific paths)
             if proc.info.get('exe'):
                 exe_path = proc.info['exe'].lower()
-                game_paths = ['steam', 'games', 'epic', 'program files', 'riot games']
+                game_paths = [
+                    'steam\\steamapps',  # Steam games
+                    'epic games\\',      # Epic Games
+                    'riot games\\',      # Riot Games
+                    '\\games\\',         # Generic games folder
+                    'gog galaxy\\games'  # GOG Galaxy
+                ]
                 if any(path in exe_path for path in game_paths):
                     return True
 
