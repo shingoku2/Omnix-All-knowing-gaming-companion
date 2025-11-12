@@ -655,3 +655,23 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 *Last Updated: 2025-11-11*
 *Session: Open WebUI Integration & Authentication*
 *Status: All tests passing ✅*
+
+## Recent Session: Headless Environment GUI Test (2025-11-12)
+
+### Session Goals
+1. Execute the full PyQt6 desktop client to verify graphical startup sequence.
+
+### Actions Taken
+- Installed all dependencies from `requirements.txt`.
+- Ran `python main.py` inside the container.
+
+### Outcome
+- Application startup aborted during GUI import because the container lacks the system OpenGL runtime (`libGL.so.1`).
+- PyQt6 requires X11/Wayland display services and the GL shim, which are unavailable in this headless environment.
+
+### Next Steps
+- Install an OpenGL-compatible package (e.g., `libgl1` on Debian/Ubuntu) and provide a virtual display via Xvfb or run the application on a machine with a graphical environment.
+
+*Last Updated: 2025-11-12*
+*Session: Headless Environment GUI Test*
+*Status: Blocked ❌*
