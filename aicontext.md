@@ -714,23 +714,23 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 *Session: Persist Open WebUI API Key*
 *Status: Complete ✅*
 
-## Current Session: Decouple Overlay from Main Window (2025-11-13)
+## Current Session: Expand Open WebUI Endpoint Compatibility (2025-11-14)
 
 ### Session Goals
-1. Allow the main application window to minimize to the taskbar without hiding the in-game overlay.
-2. Preserve overlay interactivity and visibility while the main window is minimized.
+1. Resolve persistent `405 Method Not Allowed` errors when using Open WebUI via the Windows debug build.
+2. Broaden REST endpoint detection to accommodate newer Open WebUI deployments that nest APIs under `/api/v1`.
+3. Provide richer authentication headers compatible with both legacy and current Open WebUI releases.
 
 ### Actions Taken
-- Refactored `OverlayWindow` in `src/gui.py` to be a top-level, frameless window with translucent background and stay-on-top behavior, independent of the main window parent.
-- Added overlay state tracking helpers (`show_overlay`, `hide_overlay`, `restore_visibility`, and `hidden_by_user`) so user intent is preserved across window state changes.
-- Updated main window controls to use the new overlay helpers, ensuring overlay visibility toggles respect user intent and minimizing the main window no longer hides the overlay.
-- Introduced a `changeEvent` handler in `MainWindow` that restores the overlay after minimization when appropriate.
-- Executed `python -m compileall src` to validate syntax after refactoring.
+- Refactored `src/ai_assistant.py` Ollama/Open WebUI request flow to iterate through a prioritized list of candidate endpoints, automatically falling back across OpenAI-compatible, native, and legacy generate routes (including the new `/api/v1/*` variants).
+- Added dual authentication headers (`Authorization: Bearer` and `X-API-Key`) plus `Accept: application/json` to satisfy stricter Open WebUI API gateways.
+- Introduced centralized error tracking so the final exception bubbles up the last encountered HTTP or transport issue for clearer GUI notifications.
 
 ### Outcome
-- The overlay now remains visible and interactive even when the main application is minimized to the taskbar, meeting the decoupling requirement.
-- Syntax validation completed successfully with no errors reported.
+- The assistant now gracefully retries alternate endpoints instead of halting after the first 405 response, improving compatibility with Open WebUI releases that re-map APIs.
+- Users running behind locked-down reverse proxies gain broader header support, reducing false "authentication failed" alerts when valid API keys are supplied.
+- Verified source tree compiles successfully via `python -m compileall src`.
 
-*Last Updated: 2025-11-13*
-*Session: Decouple Overlay from Main Window*
-*Status: Complete ✅*
+*Last Updated: 2025-11-14*
+*Session: Expand Open WebUI Endpoint Compatibility*
+*Status: In Progress ⚙️*
