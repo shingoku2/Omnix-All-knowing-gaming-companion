@@ -63,6 +63,27 @@ class Config:
 
         # Application Settings
         self.overlay_hotkey = os.getenv('OVERLAY_HOTKEY', 'ctrl+shift+g')
+
+        try:
+            self.overlay_width = int(os.getenv('OVERLAY_WIDTH', '420'))
+        except (TypeError, ValueError):
+            self.overlay_width = 420
+
+        try:
+            self.overlay_height = int(os.getenv('OVERLAY_HEIGHT', '520'))
+        except (TypeError, ValueError):
+            self.overlay_height = 520
+
+        try:
+            self.overlay_opacity = float(os.getenv('OVERLAY_OPACITY', '0.85'))
+        except (TypeError, ValueError):
+            self.overlay_opacity = 0.85
+
+        try:
+            self.overlay_font_size = int(os.getenv('OVERLAY_FONT_SIZE', '12'))
+        except (TypeError, ValueError):
+            self.overlay_font_size = 12
+
         self.check_interval = int(os.getenv('CHECK_INTERVAL', '5'))
 
         # Validate configuration (only if required)
@@ -136,7 +157,12 @@ class Config:
     def save_to_env(provider: str, openai_key: str, anthropic_key: str, gemini_key: str = '',
                     ollama_endpoint: str = 'http://localhost:11434',
                     open_webui_api_key: str = '',
-                    overlay_hotkey: str = 'ctrl+shift+g', check_interval: int = 5):
+                    overlay_hotkey: str = 'ctrl+shift+g',
+                    overlay_width: int = 420,
+                    overlay_height: int = 520,
+                    overlay_opacity: float = 0.85,
+                    overlay_font_size: int = 12,
+                    check_interval: int = 5):
         """
         Save configuration to .env file
 
@@ -148,6 +174,10 @@ class Config:
             ollama_endpoint: Ollama endpoint URL (default: 'http://localhost:11434')
             open_webui_api_key: Open WebUI API key for authentication (optional)
             overlay_hotkey: Hotkey for overlay (default: 'ctrl+shift+g')
+            overlay_width: Overlay window width in pixels (default: 420)
+            overlay_height: Overlay window height in pixels (default: 520)
+            overlay_opacity: Overlay window opacity (0.3 - 1.0, default: 0.85)
+            overlay_font_size: Overlay font size in points (default: 12)
             check_interval: Game check interval in seconds (default: 5)
         """
         # Determine .env file location
@@ -183,6 +213,10 @@ class Config:
         existing_content['OLLAMA_ENDPOINT'] = ollama_endpoint
         existing_content['OPEN_WEBUI_API_KEY'] = open_webui_api_key
         existing_content['OVERLAY_HOTKEY'] = overlay_hotkey
+        existing_content['OVERLAY_WIDTH'] = str(overlay_width)
+        existing_content['OVERLAY_HEIGHT'] = str(overlay_height)
+        existing_content['OVERLAY_OPACITY'] = f"{overlay_opacity:.2f}"
+        existing_content['OVERLAY_FONT_SIZE'] = str(overlay_font_size)
         existing_content['CHECK_INTERVAL'] = str(check_interval)
 
         # Debug logging
@@ -208,6 +242,10 @@ class Config:
 
             f.write("# Application Settings\n")
             f.write(f"OVERLAY_HOTKEY={existing_content['OVERLAY_HOTKEY']}\n")
+            f.write(f"OVERLAY_WIDTH={existing_content['OVERLAY_WIDTH']}\n")
+            f.write(f"OVERLAY_HEIGHT={existing_content['OVERLAY_HEIGHT']}\n")
+            f.write(f"OVERLAY_OPACITY={existing_content['OVERLAY_OPACITY']}\n")
+            f.write(f"OVERLAY_FONT_SIZE={existing_content['OVERLAY_FONT_SIZE']}\n")
             f.write(f"CHECK_INTERVAL={existing_content['CHECK_INTERVAL']}\n")
 
         return env_path
