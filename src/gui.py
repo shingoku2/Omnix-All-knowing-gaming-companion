@@ -17,6 +17,8 @@ from typing import Optional, Dict
 import os
 import webbrowser
 
+from login_dialog import LoginDialog
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -254,6 +256,8 @@ class SettingsDialog(QDialog):
     def __init__(self, parent, config):
         super().__init__(parent)
         self.config = config
+        self.provider_sessions: Dict[str, dict] = dict(self.config.session_tokens)
+        self.session_status_labels: Dict[str, QLabel] = {}
         self.init_ui()
 
     def init_ui(self):
@@ -403,23 +407,50 @@ class SettingsDialog(QDialog):
         self.openai_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.openai_key_input, self.openai_show_button))
         keys_layout.addWidget(self.openai_show_button)
 
-        # Get OpenAI API Key button
-        openai_get_key_button = QPushButton("Get API Key")
-        openai_get_key_button.setStyleSheet("""
+        self.session_status_labels['openai'] = QLabel(self._session_status_text('openai'))
+        self.session_status_labels['openai'].setStyleSheet("""
+            QLabel {
+                color: #10a37f;
+                font-size: 9pt;
+                padding-top: 4px;
+            }
+        """)
+        keys_layout.addWidget(self.session_status_labels['openai'])
+
+        openai_actions = QHBoxLayout()
+        self.openai_login_button = QPushButton("Sign In")
+        self.openai_login_button.setStyleSheet("""
             QPushButton {
                 background-color: #10a37f;
                 color: #ffffff;
                 border: none;
                 border-radius: 3px;
-                padding: 5px 10px;
+                padding: 5px 12px;
                 font-size: 9pt;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #1a7f64;
             }
         """)
-        openai_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://platform.openai.com/api-keys"))
-        keys_layout.addWidget(openai_get_key_button)
+        self.openai_login_button.clicked.connect(lambda: self.launch_login_flow('openai'))
+        openai_actions.addWidget(self.openai_login_button)
+
+        openai_api_page_button = QPushButton("API Key Page")
+        openai_api_page_button.setFlat(True)
+        openai_api_page_button.setStyleSheet("""
+            QPushButton {
+                color: #93c5fd;
+                text-decoration: underline;
+            }
+            QPushButton:hover {
+                color: #bfdbfe;
+            }
+        """)
+        openai_api_page_button.clicked.connect(lambda: self.open_api_key_page("https://platform.openai.com/api-keys"))
+        openai_actions.addWidget(openai_api_page_button)
+        openai_actions.addStretch()
+        keys_layout.addLayout(openai_actions)
 
         keys_layout.addSpacing(10)
 
@@ -453,23 +484,50 @@ class SettingsDialog(QDialog):
         self.anthropic_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.anthropic_key_input, self.anthropic_show_button))
         keys_layout.addWidget(self.anthropic_show_button)
 
-        # Get Anthropic API Key button
-        anthropic_get_key_button = QPushButton("Get API Key")
-        anthropic_get_key_button.setStyleSheet("""
+        self.session_status_labels['anthropic'] = QLabel(self._session_status_text('anthropic'))
+        self.session_status_labels['anthropic'].setStyleSheet("""
+            QLabel {
+                color: #f97316;
+                font-size: 9pt;
+                padding-top: 4px;
+            }
+        """)
+        keys_layout.addWidget(self.session_status_labels['anthropic'])
+
+        anthropic_actions = QHBoxLayout()
+        self.anthropic_login_button = QPushButton("Sign In")
+        self.anthropic_login_button.setStyleSheet("""
             QPushButton {
                 background-color: #c96329;
                 color: #ffffff;
                 border: none;
                 border-radius: 3px;
-                padding: 5px 10px;
+                padding: 5px 12px;
                 font-size: 9pt;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #a44d1f;
             }
         """)
-        anthropic_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://console.anthropic.com/settings/keys"))
-        keys_layout.addWidget(anthropic_get_key_button)
+        self.anthropic_login_button.clicked.connect(lambda: self.launch_login_flow('anthropic'))
+        anthropic_actions.addWidget(self.anthropic_login_button)
+
+        anthropic_api_page_button = QPushButton("API Key Page")
+        anthropic_api_page_button.setFlat(True)
+        anthropic_api_page_button.setStyleSheet("""
+            QPushButton {
+                color: #fcd34d;
+                text-decoration: underline;
+            }
+            QPushButton:hover {
+                color: #fde68a;
+            }
+        """)
+        anthropic_api_page_button.clicked.connect(lambda: self.open_api_key_page("https://console.anthropic.com/settings/keys"))
+        anthropic_actions.addWidget(anthropic_api_page_button)
+        anthropic_actions.addStretch()
+        keys_layout.addLayout(anthropic_actions)
 
         keys_layout.addSpacing(10)
 
@@ -503,23 +561,50 @@ class SettingsDialog(QDialog):
         self.gemini_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.gemini_key_input, self.gemini_show_button))
         keys_layout.addWidget(self.gemini_show_button)
 
-        # Get Gemini API Key button
-        gemini_get_key_button = QPushButton("Get API Key")
-        gemini_get_key_button.setStyleSheet("""
+        self.session_status_labels['gemini'] = QLabel(self._session_status_text('gemini'))
+        self.session_status_labels['gemini'].setStyleSheet("""
+            QLabel {
+                color: #60a5fa;
+                font-size: 9pt;
+                padding-top: 4px;
+            }
+        """)
+        keys_layout.addWidget(self.session_status_labels['gemini'])
+
+        gemini_actions = QHBoxLayout()
+        self.gemini_login_button = QPushButton("Sign In")
+        self.gemini_login_button.setStyleSheet("""
             QPushButton {
                 background-color: #1a73e8;
                 color: #ffffff;
                 border: none;
                 border-radius: 3px;
-                padding: 5px 10px;
+                padding: 5px 12px;
                 font-size: 9pt;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #1557b0;
             }
         """)
-        gemini_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://aistudio.google.com/app/apikey"))
-        keys_layout.addWidget(gemini_get_key_button)
+        self.gemini_login_button.clicked.connect(lambda: self.launch_login_flow('gemini'))
+        gemini_actions.addWidget(self.gemini_login_button)
+
+        gemini_api_page_button = QPushButton("API Key Page")
+        gemini_api_page_button.setFlat(True)
+        gemini_api_page_button.setStyleSheet("""
+            QPushButton {
+                color: #bae6fd;
+                text-decoration: underline;
+            }
+            QPushButton:hover {
+                color: #e0f2fe;
+            }
+        """)
+        gemini_api_page_button.clicked.connect(lambda: self.open_api_key_page("https://aistudio.google.com/app/apikey"))
+        gemini_actions.addWidget(gemini_api_page_button)
+        gemini_actions.addStretch()
+        keys_layout.addLayout(gemini_actions)
 
         keys_layout.addSpacing(10)
 
@@ -638,6 +723,49 @@ class SettingsDialog(QDialog):
         except Exception as e:
             logger.error(f"Failed to open URL: {e}")
             QMessageBox.warning(self, "Error", f"Failed to open browser: {str(e)}")
+
+    def _session_status_text(self, provider: str) -> str:
+        session = self.provider_sessions.get(provider)
+        if session and session.get('cookies'):
+            cookie_count = len(session.get('cookies', []))
+            return f"Session active ({cookie_count} cookies)"
+        return "Session not connected"
+
+    def _update_session_status(self, provider: str) -> None:
+        label = self.session_status_labels.get(provider)
+        if label:
+            label.setText(self._session_status_text(provider))
+
+    def launch_login_flow(self, provider: str) -> None:
+        """Open the embedded login dialog for the selected provider."""
+        login_configs = {
+            'openai': {
+                'login_url': 'https://platform.openai.com/login',
+                'success_url_prefixes': ['https://platform.openai.com/'],
+            },
+            'anthropic': {
+                'login_url': 'https://console.anthropic.com/login',
+                'success_url_prefixes': ['https://console.anthropic.com/'],
+            },
+            'gemini': {
+                'login_url': 'https://accounts.google.com/',
+                'success_url_prefixes': ['https://aistudio.google.com/'],
+            },
+        }
+
+        config = login_configs.get(provider)
+        if not config:
+            logger.warning("No login configuration for provider %s", provider)
+            return
+
+        dialog = LoginDialog(self, provider=provider, **config)
+        dialog.session_acquired.connect(lambda payload, p=provider: self._handle_session_acquired(p, payload))
+        dialog.exec()
+
+    def _handle_session_acquired(self, provider: str, payload: dict) -> None:
+        logger.info("Captured session for %s with %d cookies", provider, len(payload.get('cookies', [])))
+        self.provider_sessions[provider] = payload
+        self._update_session_status(provider)
 
     def save_settings(self):
         """Save settings and emit signal"""
@@ -1486,6 +1614,9 @@ class MainWindow(QMainWindow):
 
             # Reload configuration
             self.config = Config()
+
+            # Persist the latest session tokens locally for runtime usage
+            self.config.session_tokens.update(session_tokens)
 
             # Reinitialize AI assistant with new settings
             from ai_assistant import AIAssistant
