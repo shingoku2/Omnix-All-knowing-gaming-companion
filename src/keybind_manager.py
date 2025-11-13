@@ -29,7 +29,8 @@ class KeybindAction(Enum):
     TOGGLE_AI_ASSISTANT = "toggle_ai_assistant"
     START_RECORDING = "start_recording"
     STOP_RECORDING = "stop_recording"
-    RUN_MACRO = "run_macro"
+    RUN_MACRO = "run_macro"  # Followed by macro_id
+    STOP_MACRO = "stop_macro"  # Stop currently running macro
     OPEN_SETTINGS = "open_settings"
     SHOW_TIPS = "show_tips"
     SHOW_OVERVIEW = "show_overview"
@@ -56,6 +57,26 @@ class Keybind:
     def from_dict(data: dict) -> 'Keybind':
         """Create Keybind from dictionary"""
         return Keybind(**data)
+
+
+@dataclass
+class MacroKeybind:
+    """Represents a keybind that triggers a macro"""
+    macro_id: str  # ID of macro to execute
+    keys: str  # Key combination (e.g., "ctrl+shift+1")
+    description: str  # Human-readable description
+    game_profile_id: Optional[str] = None  # None = global, otherwise game-specific
+    enabled: bool = True
+    system_wide: bool = True  # Macros are typically system-wide
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization"""
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(data: dict) -> 'MacroKeybind':
+        """Create MacroKeybind from dictionary"""
+        return MacroKeybind(**data)
 
 
 class KeybindManager:
@@ -408,6 +429,116 @@ class KeybindManager:
             return False, "Key combination must include at least one non-modifier key"
 
         return True, ""
+
+    def register_macro_keybind(self, macro_keybind: 'MacroKeybind', callback: Callable,
+                             override: bool = False) -> bool:
+        """
+        Register a macro keybind (shortcut for macro execution)
+
+        Args:
+            macro_keybind: MacroKeybind to register
+            callback: Function to call when keybind is pressed
+            override: If True, override existing keybind
+
+        Returns:
+            True if successful
+        """
+        # Check for conflicts
+        if not override and self._macro_keybind_has_conflict(macro_keybind):
+            logger.warning(f"Macro keybind conflict: {macro_keybind.keys} already assigned")
+            return False
+
+        # Create action key for macro
+        action_key = f"macro_{macro_keybind.macro_id}"
+
+        # Register as regular keybind
+        keybind = Keybind(
+            action=action_key,
+            keys=macro_keybind.keys,
+            description=macro_keybind.description,
+            enabled=macro_keybind.enabled,
+            system_wide=macro_keybind.system_wide
+        )
+
+        success = self.register_keybind(keybind, callback, override=override)
+
+        if success:
+            logger.info(f"Registered macro keybind: {macro_keybind.macro_id} -> {macro_keybind.keys}")
+
+        return success
+
+    def unregister_macro_keybind(self, macro_id: str) -> bool:
+        """
+        Unregister a macro keybind
+
+        Args:
+            macro_id: ID of macro
+
+        Returns:
+            True if successful
+        """
+        action_key = f"macro_{macro_id}"
+        return self.unregister_keybind(action_key)
+
+    def get_macro_keybind(self, macro_id: str) -> Optional[Keybind]:
+        """
+        Get keybind for a macro
+
+        Args:
+            macro_id: ID of macro
+
+        Returns:
+            Keybind or None
+        """
+        action_key = f"macro_{macro_id}"
+        return self.get_keybind(action_key)
+
+    def _macro_keybind_has_conflict(self, macro_keybind: 'MacroKeybind',
+                                   exclude_macro_id: Optional[str] = None) -> bool:
+        """
+        Check if macro keybind conflicts with another keybind
+
+        Args:
+            macro_keybind: MacroKeybind to check
+            exclude_macro_id: Macro ID to exclude from conflict check
+
+        Returns:
+            True if conflict exists
+        """
+        normalized_keys = self._normalize_keys(macro_keybind.keys)
+
+        for action, keybind in self.keybinds.items():
+            # Skip same macro
+            if exclude_macro_id and action == f"macro_{exclude_macro_id}":
+                continue
+
+            # Check if same scope (global vs game-specific)
+            if action.startswith("macro_"):
+                # For macro keybinds, we need to compare scope
+                # For now, just check if keys match
+                if self._normalize_keys(keybind.keys) == normalized_keys:
+                    return True
+
+        return False
+
+    def get_keybinds_for_game(self, game_profile_id: Optional[str] = None) -> List[Keybind]:
+        """
+        Get all keybinds available for a game profile
+
+        Args:
+            game_profile_id: Game profile ID or None for global
+
+        Returns:
+            List of Keybind objects
+        """
+        keybinds = []
+
+        for action, keybind in self.keybinds.items():
+            # Include global keybinds
+            if keybind.enabled:
+                keybinds.append(keybind)
+
+        return keybinds
 
     def save_to_dict(self) -> dict:
         """Save all keybinds to dictionary for JSON serialization"""

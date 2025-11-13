@@ -85,6 +85,12 @@ class Config:
         self.overlay_minimized = os.getenv('OVERLAY_MINIMIZED', 'false').lower() == 'true'
         self.overlay_opacity = float(os.getenv('OVERLAY_OPACITY', '0.95'))
 
+        # Macro & Keybind Settings
+        self.macros_enabled = os.getenv('MACROS_ENABLED', 'false').lower() == 'true'
+        self.macro_safety_understood = os.getenv('MACRO_SAFETY_UNDERSTOOD', 'false').lower() == 'true'
+        self.max_macro_repeat = int(os.getenv('MAX_MACRO_REPEAT', '10'))
+        self.macro_execution_timeout = int(os.getenv('MACRO_EXECUTION_TIMEOUT', '30'))  # seconds
+
         # Extended Settings (stored in separate JSON files)
         self.keybinds: Dict = {}
         self.macros: Dict = {}
