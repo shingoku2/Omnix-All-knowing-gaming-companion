@@ -165,17 +165,20 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
             else:
                 response = "Error: Invalid AI provider"
 
-            # Add response to history
-            self.conversation_history.append({
-                "role": "assistant",
-                "content": response
-            })
+            # Check if response is an error message (starts with warning/error emoji)
+            # If so, don't add to conversation history
+            if not response.startswith(('⚠️', '❌')):
+                # Add response to history
+                self.conversation_history.append({
+                    "role": "assistant",
+                    "content": response
+                })
 
             return response
 
         except Exception as e:
-            error_msg = f"Error getting AI response: {str(e)}"
-            logger.error(error_msg, exc_info=True)
+            error_msg = f"❌ Unexpected Error\n\nAn unexpected error occurred:\n{str(e)}\n\nPlease try again or contact support if the issue persists."
+            logger.error(f"Error getting AI response: {str(e)}", exc_info=True)
             return error_msg
 
     def _ask_openai(self) -> str:
@@ -204,7 +207,36 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
 
         except Exception as e:
             logger.error(f"OpenAI API error: {e}", exc_info=True)
-            raise Exception(f"OpenAI API error: {str(e)}")
+
+            # Handle OpenAI-specific errors with user-friendly messages
+            error_str = str(e).lower()
+
+            # Check for quota/billing issues
+            if 'insufficient_quota' in error_str or 'quota' in error_str:
+                return ("⚠️ OpenAI API Quota Exceeded\n\n"
+                       "Your OpenAI account has run out of credits or exceeded its quota.\n\n"
+                       "To fix this:\n"
+                       "1. Visit https://platform.openai.com/account/billing\n"
+                       "2. Add a payment method or purchase credits\n"
+                       "3. Check your usage limits and billing details\n\n"
+                       "Alternatively, you can switch to a different AI provider in Settings.")
+
+            # Check for rate limit issues (too many requests)
+            elif 'rate' in error_str and ('limit' in error_str or '429' in error_str):
+                return ("⚠️ OpenAI Rate Limit Reached\n\n"
+                       "You've sent too many requests in a short time.\n\n"
+                       "Please wait a moment and try again. Rate limits typically reset within 1-2 minutes.\n\n"
+                       "If this persists, consider upgrading your OpenAI plan for higher rate limits.")
+
+            # Check for authentication errors
+            elif 'authentication' in error_str or 'api key' in error_str or '401' in error_str:
+                return ("⚠️ OpenAI Authentication Error\n\n"
+                       "Your API key appears to be invalid or missing.\n\n"
+                       "Please check your Settings and ensure you've entered a valid OpenAI API key.")
+
+            # Generic error
+            else:
+                return f"❌ OpenAI API Error\n\nAn error occurred while contacting OpenAI:\n{str(e)}\n\nPlease try again or check your internet connection."
 
     def _ask_anthropic(self) -> str:
         """Get response from Anthropic (Claude)"""
@@ -242,7 +274,25 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
 
         except Exception as e:
             logger.error(f"Anthropic API error: {e}", exc_info=True)
-            raise Exception(f"Anthropic API error: {str(e)}")
+
+            # Handle Anthropic-specific errors with user-friendly messages
+            error_str = str(e).lower()
+
+            # Check for authentication errors
+            if 'authentication' in error_str or 'api key' in error_str or '401' in error_str:
+                return ("⚠️ Anthropic Authentication Error\n\n"
+                       "Your API key appears to be invalid or missing.\n\n"
+                       "Please check your Settings and ensure you've entered a valid Anthropic API key.")
+
+            # Check for rate limit issues
+            elif 'rate' in error_str and ('limit' in error_str or '429' in error_str):
+                return ("⚠️ Anthropic Rate Limit Reached\n\n"
+                       "You've sent too many requests in a short time.\n\n"
+                       "Please wait a moment and try again.")
+
+            # Generic error
+            else:
+                return f"❌ Anthropic API Error\n\nAn error occurred while contacting Anthropic:\n{str(e)}\n\nPlease try again or check your internet connection."
 
     def _ask_gemini(self) -> str:
         """Get response from Google Gemini"""
@@ -275,7 +325,31 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
 
         except Exception as e:
             logger.error(f"Gemini API error: {e}", exc_info=True)
-            raise Exception(f"Gemini API error: {str(e)}")
+
+            # Handle Gemini-specific errors with user-friendly messages
+            error_str = str(e).lower()
+
+            # Check for authentication errors
+            if 'authentication' in error_str or 'api key' in error_str or '401' in error_str:
+                return ("⚠️ Gemini Authentication Error\n\n"
+                       "Your API key appears to be invalid or missing.\n\n"
+                       "Please check your Settings and ensure you've entered a valid Gemini API key.")
+
+            # Check for rate limit issues
+            elif 'rate' in error_str and ('limit' in error_str or '429' in error_str):
+                return ("⚠️ Gemini Rate Limit Reached\n\n"
+                       "You've sent too many requests in a short time.\n\n"
+                       "Please wait a moment and try again.")
+
+            # Check for quota issues
+            elif 'quota' in error_str or 'resource_exhausted' in error_str:
+                return ("⚠️ Gemini API Quota Exceeded\n\n"
+                       "Your Gemini API quota has been exceeded.\n\n"
+                       "Please check your Google Cloud Console for quota limits and usage.")
+
+            # Generic error
+            else:
+                return f"❌ Gemini API Error\n\nAn error occurred while contacting Gemini:\n{str(e)}\n\nPlease try again or check your internet connection."
 
     def get_game_overview(self, game_name: str) -> str:
         """Get a general overview of the game"""
