@@ -1199,3 +1199,11 @@ Alternatively, you can switch to a different AI provider in Settings.
 *Last Updated: 2025-11-13*
 *Session: Improve OpenAI Rate Limit and Quota Error Handling*
 *Status: Complete ✅*
+
+## Session Update - Inject credential store and session token handling
+- Added `CredentialStore` module to load and decrypt stored session tokens (supports `enc:` and `b64:` formats).
+- Bootstrapped credential store in `main.py`, loading session tokens before initializing `AIAssistant` and passing the store into the GUI bootstrap.
+- Extended `AIAssistant` to accept session tokens, prefer them over API keys, retry requests after session expiry by falling back to keys, and notify the GUI of auth events.
+- Wired session events into `MainWindow` to clear cached tokens, inform the user, and prompt re-authentication when necessary.
+- Updated tests to cover the new module import path.
+- Tests: `pytest test_modules.py`.
