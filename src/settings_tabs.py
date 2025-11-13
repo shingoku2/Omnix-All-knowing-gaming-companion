@@ -16,7 +16,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 
 from keybind_manager import Keybind, KeybindManager, KeybindAction, DEFAULT_KEYBINDS
-from macro_manager import Macro, MacroManager, MacroAction, MacroActionType, DEFAULT_MACROS
+from macro_manager import Macro, MacroManager, MacroStep, MacroStepType, DEFAULT_MACROS
 from theme_manager import (
     Theme, ThemeManager, ThemeMode, UIScale, LayoutMode,
     OverlayAppearance, OverlayPosition,
@@ -503,7 +503,7 @@ class MacrosTab(QWidget):
             macros = self.macro_manager.get_all_macros()
 
         for macro in macros:
-            item_text = f"{macro.name} - {len(macro.actions)} actions"
+            item_text = f"{macro.name} - {len(macro.steps)} steps"
             if not macro.enabled:
                 item_text += " (Disabled)"
 
@@ -589,7 +589,7 @@ class MacrosTab(QWidget):
                 example['name'],
                 example['description']
             )
-            macro.actions = example['actions']
+            macro.steps = example.get('steps', [])
 
         self.load_macros()
         self.emit_macros()
@@ -648,37 +648,37 @@ class MacroEditDialog(QDialog):
         self.enabled_check.setChecked(True if not self.macro else self.macro.enabled)
         layout.addWidget(self.enabled_check)
 
-        # Actions list
-        actions_label = QLabel("Actions:")
-        layout.addWidget(actions_label)
+        # Steps list
+        steps_label = QLabel("Steps:")
+        layout.addWidget(steps_label)
 
-        self.actions_list = QListWidget()
+        self.steps_list = QListWidget()
         if self.macro:
-            for action in self.macro.actions:
-                self.add_action_to_list(action)
-        layout.addWidget(self.actions_list)
+            for step in self.macro.steps:
+                self.add_step_to_list(step)
+        layout.addWidget(self.steps_list)
 
-        # Action buttons
-        action_button_layout = QHBoxLayout()
+        # Step buttons
+        step_button_layout = QHBoxLayout()
 
-        add_action_button = QPushButton("Add Action")
-        add_action_button.clicked.connect(self.add_action)
-        action_button_layout.addWidget(add_action_button)
+        add_step_button = QPushButton("Add Step")
+        add_step_button.clicked.connect(self.add_step)
+        step_button_layout.addWidget(add_step_button)
 
-        remove_action_button = QPushButton("Remove Selected")
-        remove_action_button.clicked.connect(self.remove_action)
-        action_button_layout.addWidget(remove_action_button)
+        remove_step_button = QPushButton("Remove Selected")
+        remove_step_button.clicked.connect(self.remove_step)
+        step_button_layout.addWidget(remove_step_button)
 
         move_up_button = QPushButton("Move Up")
-        move_up_button.clicked.connect(self.move_action_up)
-        action_button_layout.addWidget(move_up_button)
+        move_up_button.clicked.connect(self.move_step_up)
+        step_button_layout.addWidget(move_up_button)
 
         move_down_button = QPushButton("Move Down")
-        move_down_button.clicked.connect(self.move_action_down)
-        action_button_layout.addWidget(move_down_button)
+        move_down_button.clicked.connect(self.move_step_down)
+        step_button_layout.addWidget(move_down_button)
 
-        action_button_layout.addStretch()
-        layout.addLayout(action_button_layout)
+        step_button_layout.addStretch()
+        layout.addLayout(step_button_layout)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -695,48 +695,59 @@ class MacroEditDialog(QDialog):
 
         self.setLayout(layout)
 
-    def add_action_to_list(self, action: MacroAction):
-        """Add an action to the list"""
-        action_text = f"{action.action_type}"
-        if action.parameters:
-            params_str = ", ".join([f"{k}={v}" for k, v in action.parameters.items()])
-            action_text += f" ({params_str})"
-        if action.delay_after > 0:
-            action_text += f" [delay: {action.delay_after}ms]"
+    def add_step_to_list(self, step: MacroStep):
+        """Add a step to the list"""
+        step_text = f"{step.type}"
 
-        item = QListWidgetItem(action_text)
-        item.setData(Qt.ItemDataRole.UserRole, action)
-        self.actions_list.addItem(item)
+        # Build a description of the step based on its type
+        details = []
+        if step.key:
+            details.append(f"key={step.key}")
+        if step.button:
+            details.append(f"button={step.button}")
+        if step.x is not None and step.y is not None:
+            details.append(f"pos=({step.x},{step.y})")
+        if step.duration_ms > 0:
+            details.append(f"duration={step.duration_ms}ms")
+        if step.scroll_amount != 0:
+            details.append(f"scroll={step.scroll_amount}")
 
-    def add_action(self):
-        """Add a new action"""
-        dialog = MacroActionDialog(None, self)
+        if details:
+            step_text += f" ({', '.join(details)})"
+
+        item = QListWidgetItem(step_text)
+        item.setData(Qt.ItemDataRole.UserRole, step)
+        self.steps_list.addItem(item)
+
+    def add_step(self):
+        """Add a new step"""
+        dialog = MacroStepDialog(None, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            action = dialog.get_action()
-            if action:
-                self.add_action_to_list(action)
+            step = dialog.get_step()
+            if step:
+                self.add_step_to_list(step)
 
-    def remove_action(self):
-        """Remove selected action"""
-        current_row = self.actions_list.currentRow()
+    def remove_step(self):
+        """Remove selected step"""
+        current_row = self.steps_list.currentRow()
         if current_row >= 0:
-            self.actions_list.takeItem(current_row)
+            self.steps_list.takeItem(current_row)
 
-    def move_action_up(self):
-        """Move action up"""
-        current_row = self.actions_list.currentRow()
+    def move_step_up(self):
+        """Move step up"""
+        current_row = self.steps_list.currentRow()
         if current_row > 0:
-            item = self.actions_list.takeItem(current_row)
-            self.actions_list.insertItem(current_row - 1, item)
-            self.actions_list.setCurrentRow(current_row - 1)
+            item = self.steps_list.takeItem(current_row)
+            self.steps_list.insertItem(current_row - 1, item)
+            self.steps_list.setCurrentRow(current_row - 1)
 
-    def move_action_down(self):
-        """Move action down"""
-        current_row = self.actions_list.currentRow()
-        if current_row < self.actions_list.count() - 1 and current_row >= 0:
-            item = self.actions_list.takeItem(current_row)
-            self.actions_list.insertItem(current_row + 1, item)
-            self.actions_list.setCurrentRow(current_row + 1)
+    def move_step_down(self):
+        """Move step down"""
+        current_row = self.steps_list.currentRow()
+        if current_row < self.steps_list.count() - 1 and current_row >= 0:
+            item = self.steps_list.takeItem(current_row)
+            self.steps_list.insertItem(current_row + 1, item)
+            self.steps_list.setCurrentRow(current_row + 1)
 
     def save_macro(self):
         """Save the macro"""
@@ -749,16 +760,16 @@ class MacroEditDialog(QDialog):
             QMessageBox.warning(self, "Invalid Input", "Macro name cannot be empty.")
             return
 
-        # Get actions
-        actions = []
-        for i in range(self.actions_list.count()):
-            item = self.actions_list.item(i)
-            action = item.data(Qt.ItemDataRole.UserRole)
-            if action:
-                actions.append(action)
+        # Get steps
+        steps = []
+        for i in range(self.steps_list.count()):
+            item = self.steps_list.item(i)
+            step = item.data(Qt.ItemDataRole.UserRole)
+            if step:
+                steps.append(step)
 
-        if not actions:
-            QMessageBox.warning(self, "Invalid Input", "Macro must have at least one action.")
+        if not steps:
+            QMessageBox.warning(self, "Invalid Input", "Macro must have at least one step.")
             return
 
         # Create or update macro
@@ -772,7 +783,7 @@ class MacroEditDialog(QDialog):
                 enabled=enabled
             )
 
-        self.macro.actions = actions
+        self.macro.steps = steps
         self.macro.enabled = enabled
 
         self.accept()
@@ -782,32 +793,32 @@ class MacroEditDialog(QDialog):
         return self.macro
 
 
-class MacroActionDialog(QDialog):
-    """Dialog for editing a macro action"""
+class MacroStepDialog(QDialog):
+    """Dialog for editing a macro step"""
 
-    def __init__(self, action: Optional[MacroAction], parent=None):
+    def __init__(self, step: Optional[MacroStep], parent=None):
         super().__init__(parent)
-        self.action = action
+        self.step = step
         self.init_ui()
 
     def init_ui(self):
         """Initialize UI"""
-        self.setWindowTitle("Add Action" if not self.action else "Edit Action")
+        self.setWindowTitle("Add Step" if not self.step else "Edit Step")
         self.setModal(True)
-        self.setFixedWidth(400)
+        self.setMinimumWidth(450)
 
         layout = QVBoxLayout()
 
-        # Action type
-        type_label = QLabel("Action Type:")
+        # Step type
+        type_label = QLabel("Step Type:")
         layout.addWidget(type_label)
 
         self.type_combo = QComboBox()
-        for action_type in MacroActionType:
-            self.type_combo.addItem(action_type.value)
+        for step_type in MacroStepType:
+            self.type_combo.addItem(step_type.value)
 
-        if self.action:
-            index = self.type_combo.findText(self.action.action_type)
+        if self.step:
+            index = self.type_combo.findText(self.step.type)
             if index >= 0:
                 self.type_combo.setCurrentIndex(index)
 
@@ -820,20 +831,20 @@ class MacroActionDialog(QDialog):
         self.params_widget.setLayout(self.params_layout)
         layout.addWidget(self.params_widget)
 
-        # Delay
-        delay_label = QLabel("Delay After (ms):")
-        layout.addWidget(delay_label)
+        # Duration (for delays)
+        duration_label = QLabel("Duration (ms):")
+        layout.addWidget(duration_label)
 
-        self.delay_input = QSpinBox()
-        self.delay_input.setRange(0, 10000)
-        self.delay_input.setValue(0 if not self.action else self.action.delay_after)
-        layout.addWidget(self.delay_input)
+        self.duration_input = QSpinBox()
+        self.duration_input.setRange(0, 60000)
+        self.duration_input.setValue(0 if not self.step else self.step.duration_ms)
+        layout.addWidget(self.duration_input)
 
         # Buttons
         button_layout = QHBoxLayout()
 
         save_button = QPushButton("Save")
-        save_button.clicked.connect(self.save_action)
+        save_button.clicked.connect(self.save_step)
         button_layout.addWidget(save_button)
 
         cancel_button = QPushButton("Cancel")
@@ -847,8 +858,8 @@ class MacroActionDialog(QDialog):
         # Load initial parameters UI
         self.on_type_changed(self.type_combo.currentText())
 
-    def on_type_changed(self, action_type: str):
-        """Handle action type change"""
+    def on_type_changed(self, step_type: str):
+        """Handle step type change"""
         # Clear parameters layout
         while self.params_layout.count():
             item = self.params_layout.takeAt(0)
@@ -856,69 +867,118 @@ class MacroActionDialog(QDialog):
                 item.widget().deleteLater()
 
         # Add parameter inputs based on type
-        if action_type == MacroActionType.SEND_MESSAGE.value:
-            msg_label = QLabel("Message:")
-            self.params_layout.addWidget(msg_label)
+        if step_type == MacroStepType.KEY_PRESS.value:
+            key_label = QLabel("Key:")
+            self.params_layout.addWidget(key_label)
 
-            self.message_input = QTextEdit()
-            self.message_input.setMaximumHeight(100)
-            if self.action and 'message' in self.action.parameters:
-                self.message_input.setPlainText(self.action.parameters['message'])
-            self.params_layout.addWidget(self.message_input)
+            self.key_input = QLineEdit()
+            self.key_input.setPlaceholderText("e.g., 'a', 'space', 'ctrl+shift+e'")
+            if self.step and self.step.key:
+                self.key_input.setText(self.step.key)
+            self.params_layout.addWidget(self.key_input)
 
-        elif action_type == MacroActionType.WAIT.value:
-            wait_label = QLabel("Wait Duration (ms):")
-            self.params_layout.addWidget(wait_label)
+        elif step_type == MacroStepType.KEY_SEQUENCE.value:
+            key_label = QLabel("Key Sequence:")
+            self.params_layout.addWidget(key_label)
 
-            self.wait_input = QSpinBox()
-            self.wait_input.setRange(0, 60000)
-            self.wait_input.setValue(1000)
-            if self.action and 'duration' in self.action.parameters:
-                self.wait_input.setValue(self.action.parameters['duration'])
-            self.params_layout.addWidget(self.wait_input)
+            self.key_input = QLineEdit()
+            self.key_input.setPlaceholderText("e.g., 'hello', 'test123'")
+            if self.step and self.step.key:
+                self.key_input.setText(self.step.key)
+            self.params_layout.addWidget(self.key_input)
 
-        elif action_type == MacroActionType.CUSTOM_COMMAND.value:
-            cmd_label = QLabel("Command:")
-            self.params_layout.addWidget(cmd_label)
+        elif step_type == MacroStepType.MOUSE_CLICK.value:
+            button_label = QLabel("Mouse Button:")
+            self.params_layout.addWidget(button_label)
 
-            self.command_input = QLineEdit()
-            if self.action and 'command' in self.action.parameters:
-                self.command_input.setText(self.action.parameters['command'])
-            self.params_layout.addWidget(self.command_input)
+            self.button_combo = QComboBox()
+            self.button_combo.addItems(["left", "right", "middle"])
+            if self.step and self.step.button:
+                index = self.button_combo.findText(self.step.button)
+                if index >= 0:
+                    self.button_combo.setCurrentIndex(index)
+            self.params_layout.addWidget(self.button_combo)
 
-    def save_action(self):
-        """Save the action"""
-        action_type = self.type_combo.currentText()
-        delay_after = self.delay_input.value()
-        parameters = {}
+        elif step_type == MacroStepType.MOUSE_MOVE.value:
+            x_label = QLabel("X Position:")
+            self.params_layout.addWidget(x_label)
 
-        # Get parameters based on type
-        if action_type == MacroActionType.SEND_MESSAGE.value:
-            message = self.message_input.toPlainText().strip()
-            if not message:
-                QMessageBox.warning(self, "Invalid Input", "Message cannot be empty.")
+            self.x_input = QSpinBox()
+            self.x_input.setRange(0, 10000)
+            if self.step and self.step.x is not None:
+                self.x_input.setValue(self.step.x)
+            self.params_layout.addWidget(self.x_input)
+
+            y_label = QLabel("Y Position:")
+            self.params_layout.addWidget(y_label)
+
+            self.y_input = QSpinBox()
+            self.y_input.setRange(0, 10000)
+            if self.step and self.step.y is not None:
+                self.y_input.setValue(self.step.y)
+            self.params_layout.addWidget(self.y_input)
+
+        elif step_type == MacroStepType.MOUSE_SCROLL.value:
+            amount_label = QLabel("Scroll Amount:")
+            self.params_layout.addWidget(amount_label)
+
+            self.scroll_input = QSpinBox()
+            self.scroll_input.setRange(-100, 100)
+            if self.step:
+                self.scroll_input.setValue(self.step.scroll_amount)
+            self.params_layout.addWidget(self.scroll_input)
+
+        elif step_type == MacroStepType.DELAY.value:
+            # Duration is already shown for delays
+            pass
+
+    def save_step(self):
+        """Save the step"""
+        step_type = self.type_combo.currentText()
+        duration_ms = self.duration_input.value()
+
+        # Validate and extract parameters based on type
+        key = None
+        button = None
+        x = None
+        y = None
+        scroll_amount = 0
+
+        if step_type == MacroStepType.KEY_PRESS.value:
+            key = self.key_input.text().strip()
+            if not key:
+                QMessageBox.warning(self, "Invalid Input", "Key cannot be empty.")
                 return
-            parameters['message'] = message
 
-        elif action_type == MacroActionType.WAIT.value:
-            parameters['duration'] = self.wait_input.value()
-
-        elif action_type == MacroActionType.CUSTOM_COMMAND.value:
-            command = self.command_input.text().strip()
-            if not command:
-                QMessageBox.warning(self, "Invalid Input", "Command cannot be empty.")
+        elif step_type == MacroStepType.KEY_SEQUENCE.value:
+            key = self.key_input.text().strip()
+            if not key:
+                QMessageBox.warning(self, "Invalid Input", "Key sequence cannot be empty.")
                 return
-            parameters['command'] = command
 
-        # Create action
-        self.action = MacroAction(
-            action_type=action_type,
-            parameters=parameters,
-            delay_after=delay_after
+        elif step_type == MacroStepType.MOUSE_CLICK.value:
+            button = self.button_combo.currentText()
+
+        elif step_type == MacroStepType.MOUSE_MOVE.value:
+            x = self.x_input.value()
+            y = self.y_input.value()
+
+        elif step_type == MacroStepType.MOUSE_SCROLL.value:
+            scroll_amount = self.scroll_input.value()
+
+        # Create step
+        self.step = MacroStep(
+            type=step_type,
+            key=key,
+            button=button,
+            x=x,
+            y=y,
+            scroll_amount=scroll_amount,
+            duration_ms=duration_ms
         )
 
         self.accept()
 
-    def get_action(self) -> Optional[MacroAction]:
-        """Get the action"""
-        return self.action
+    def get_step(self) -> Optional[MacroStep]:
+        """Get the step"""
+        return self.step

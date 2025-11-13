@@ -8,7 +8,7 @@ while delegating actual API calls to the provider layer.
 """
 
 import logging
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
 from config import Config
 from ai_router import get_router, AIRouter
@@ -142,17 +142,8 @@ class AIAssistant:
                 f"Switching provider from {self.provider} to {profile.default_provider} "
                 f"for profile {profile.id}"
             )
+            # Just set the provider name. The router will handle which key/client to use.
             self.provider = profile.default_provider
-            # Get the API key for the new provider
-            self.api_key = self._get_api_key()
-            try:
-                self._initialize_client(force=True)
-            except Exception as e:
-                logger.error(
-                    f"Failed to initialize client for provider {profile.default_provider}: {e}. "
-                    f"Continuing with existing provider."
-                )
-                # Keep the old provider if initialization fails
 
         # Add profile's system prompt as context
         self.conversation_history.append({

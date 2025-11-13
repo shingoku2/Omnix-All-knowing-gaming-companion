@@ -586,30 +586,29 @@ class MacroManager:
 DEFAULT_MACROS = [
     {
         'name': 'Quick Tips',
-        'description': 'Request tips and clear chat',
-        'actions': [
-            MacroAction(
-                action_type=MacroActionType.SHOW_TIPS.value,
-                delay_after=100
+        'description': 'Request tips and pause',
+        'steps': [
+            MacroStep(
+                type=MacroStepType.SHOW_TIPS.value,
+                duration_ms=100
             ),
-            MacroAction(
-                action_type=MacroActionType.WAIT.value,
-                parameters={'duration': 2000},
-                delay_after=0
+            MacroStep(
+                type=MacroStepType.DELAY.value,
+                duration_ms=2000
             ),
         ]
     },
     {
         'name': 'Reset View',
         'description': 'Clear chat and show overview',
-        'actions': [
-            MacroAction(
-                action_type=MacroActionType.CLEAR_CHAT.value,
-                delay_after=100
+        'steps': [
+            MacroStep(
+                type=MacroStepType.CLEAR_CHAT.value,
+                duration_ms=100
             ),
-            MacroAction(
-                action_type=MacroActionType.SHOW_OVERVIEW.value,
-                delay_after=100
+            MacroStep(
+                type=MacroStepType.SHOW_OVERVIEW.value,
+                duration_ms=100
             ),
         ]
     },
