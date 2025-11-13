@@ -123,31 +123,43 @@ class Config:
 
     def is_configured(self) -> bool:
         """
-        Check if configuration has valid API keys
+        Check if configuration has valid credentials (API keys or session tokens)
 
         Returns:
-            True if at least one API key is configured, False otherwise
+            True if at least one API key or session token is configured, False otherwise
         """
-        return bool(
+        # Check API keys
+        has_api_key = bool(
             self.openai_api_key or
             self.anthropic_api_key or
             self.gemini_api_key
         )
 
+        # Check session tokens
+        has_session = bool(self.session_tokens.get('openai') or
+                          self.session_tokens.get('anthropic') or
+                          self.session_tokens.get('gemini'))
+
+        return has_api_key or has_session
+
     def has_provider_key(self) -> bool:
         """
-        Check if the selected provider has a valid API key
+        Check if the selected provider has valid credentials (API key or session token)
 
         Returns:
-            True if current provider has an API key, False otherwise
+            True if current provider has an API key or session token, False otherwise
         """
+        has_api_key = False
+        has_session = bool(self.session_tokens.get(self.ai_provider))
+
         if self.ai_provider == 'openai':
-            return bool(self.openai_api_key)
+            has_api_key = bool(self.openai_api_key)
         elif self.ai_provider == 'anthropic':
-            return bool(self.anthropic_api_key)
+            has_api_key = bool(self.anthropic_api_key)
         elif self.ai_provider == 'gemini':
-            return bool(self.gemini_api_key)
-        return False
+            has_api_key = bool(self.gemini_api_key)
+
+        return has_api_key or has_session
 
     def get_api_key(self) -> str:
         """Get the API key for the selected provider"""
