@@ -17,6 +17,8 @@ from typing import Optional, Dict
 import os
 import webbrowser
 
+from login_dialog import LoginDialog
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -256,13 +258,15 @@ class ChatWidget(QWidget):
 
 
 class SettingsDialog(QDialog):
-    """Settings dialog for managing API keys and AI provider selection"""
+    """Settings dialog for managing API keys, AI provider selection, and overlay settings"""
 
-    settings_saved = pyqtSignal(str, str, str, str)  # provider, openai_key, anthropic_key, gemini_key
+    settings_saved = pyqtSignal(str, str, str, str, float)  # provider, openai_key, anthropic_key, gemini_key, overlay_opacity
 
     def __init__(self, parent, config):
         super().__init__(parent)
         self.config = config
+        self.provider_sessions: Dict[str, dict] = dict(self.config.session_tokens)
+        self.session_status_labels: Dict[str, QLabel] = {}
         self.init_ui()
 
     def init_ui(self):
@@ -412,23 +416,50 @@ class SettingsDialog(QDialog):
         self.openai_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.openai_key_input, self.openai_show_button))
         keys_layout.addWidget(self.openai_show_button)
 
-        # Get OpenAI API Key button
-        openai_get_key_button = QPushButton("Get API Key")
-        openai_get_key_button.setStyleSheet("""
+        self.session_status_labels['openai'] = QLabel(self._session_status_text('openai'))
+        self.session_status_labels['openai'].setStyleSheet("""
+            QLabel {
+                color: #10a37f;
+                font-size: 9pt;
+                padding-top: 4px;
+            }
+        """)
+        keys_layout.addWidget(self.session_status_labels['openai'])
+
+        openai_actions = QHBoxLayout()
+        self.openai_login_button = QPushButton("Sign In")
+        self.openai_login_button.setStyleSheet("""
             QPushButton {
                 background-color: #10a37f;
                 color: #ffffff;
                 border: none;
                 border-radius: 3px;
-                padding: 5px 10px;
+                padding: 5px 12px;
                 font-size: 9pt;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #1a7f64;
             }
         """)
-        openai_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://platform.openai.com/api-keys"))
-        keys_layout.addWidget(openai_get_key_button)
+        self.openai_login_button.clicked.connect(lambda: self.launch_login_flow('openai'))
+        openai_actions.addWidget(self.openai_login_button)
+
+        openai_api_page_button = QPushButton("API Key Page")
+        openai_api_page_button.setFlat(True)
+        openai_api_page_button.setStyleSheet("""
+            QPushButton {
+                color: #93c5fd;
+                text-decoration: underline;
+            }
+            QPushButton:hover {
+                color: #bfdbfe;
+            }
+        """)
+        openai_api_page_button.clicked.connect(lambda: self.open_api_key_page("https://platform.openai.com/api-keys"))
+        openai_actions.addWidget(openai_api_page_button)
+        openai_actions.addStretch()
+        keys_layout.addLayout(openai_actions)
 
         keys_layout.addSpacing(10)
 
@@ -462,23 +493,50 @@ class SettingsDialog(QDialog):
         self.anthropic_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.anthropic_key_input, self.anthropic_show_button))
         keys_layout.addWidget(self.anthropic_show_button)
 
-        # Get Anthropic API Key button
-        anthropic_get_key_button = QPushButton("Get API Key")
-        anthropic_get_key_button.setStyleSheet("""
+        self.session_status_labels['anthropic'] = QLabel(self._session_status_text('anthropic'))
+        self.session_status_labels['anthropic'].setStyleSheet("""
+            QLabel {
+                color: #f97316;
+                font-size: 9pt;
+                padding-top: 4px;
+            }
+        """)
+        keys_layout.addWidget(self.session_status_labels['anthropic'])
+
+        anthropic_actions = QHBoxLayout()
+        self.anthropic_login_button = QPushButton("Sign In")
+        self.anthropic_login_button.setStyleSheet("""
             QPushButton {
                 background-color: #c96329;
                 color: #ffffff;
                 border: none;
                 border-radius: 3px;
-                padding: 5px 10px;
+                padding: 5px 12px;
                 font-size: 9pt;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #a44d1f;
             }
         """)
-        anthropic_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://console.anthropic.com/settings/keys"))
-        keys_layout.addWidget(anthropic_get_key_button)
+        self.anthropic_login_button.clicked.connect(lambda: self.launch_login_flow('anthropic'))
+        anthropic_actions.addWidget(self.anthropic_login_button)
+
+        anthropic_api_page_button = QPushButton("API Key Page")
+        anthropic_api_page_button.setFlat(True)
+        anthropic_api_page_button.setStyleSheet("""
+            QPushButton {
+                color: #fcd34d;
+                text-decoration: underline;
+            }
+            QPushButton:hover {
+                color: #fde68a;
+            }
+        """)
+        anthropic_api_page_button.clicked.connect(lambda: self.open_api_key_page("https://console.anthropic.com/settings/keys"))
+        anthropic_actions.addWidget(anthropic_api_page_button)
+        anthropic_actions.addStretch()
+        keys_layout.addLayout(anthropic_actions)
 
         keys_layout.addSpacing(10)
 
@@ -512,28 +570,104 @@ class SettingsDialog(QDialog):
         self.gemini_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.gemini_key_input, self.gemini_show_button))
         keys_layout.addWidget(self.gemini_show_button)
 
-        # Get Gemini API Key button
-        gemini_get_key_button = QPushButton("Get API Key")
-        gemini_get_key_button.setStyleSheet("""
+        self.session_status_labels['gemini'] = QLabel(self._session_status_text('gemini'))
+        self.session_status_labels['gemini'].setStyleSheet("""
+            QLabel {
+                color: #60a5fa;
+                font-size: 9pt;
+                padding-top: 4px;
+            }
+        """)
+        keys_layout.addWidget(self.session_status_labels['gemini'])
+
+        gemini_actions = QHBoxLayout()
+        self.gemini_login_button = QPushButton("Sign In")
+        self.gemini_login_button.setStyleSheet("""
             QPushButton {
                 background-color: #1a73e8;
                 color: #ffffff;
                 border: none;
                 border-radius: 3px;
-                padding: 5px 10px;
+                padding: 5px 12px;
                 font-size: 9pt;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #1557b0;
             }
         """)
-        gemini_get_key_button.clicked.connect(lambda: self.open_api_key_page("https://aistudio.google.com/app/apikey"))
-        keys_layout.addWidget(gemini_get_key_button)
+        self.gemini_login_button.clicked.connect(lambda: self.launch_login_flow('gemini'))
+        gemini_actions.addWidget(self.gemini_login_button)
+
+        gemini_api_page_button = QPushButton("API Key Page")
+        gemini_api_page_button.setFlat(True)
+        gemini_api_page_button.setStyleSheet("""
+            QPushButton {
+                color: #bae6fd;
+                text-decoration: underline;
+            }
+            QPushButton:hover {
+                color: #e0f2fe;
+            }
+        """)
+        gemini_api_page_button.clicked.connect(lambda: self.open_api_key_page("https://aistudio.google.com/app/apikey"))
+        gemini_actions.addWidget(gemini_api_page_button)
+        gemini_actions.addStretch()
+        keys_layout.addLayout(gemini_actions)
 
         keys_layout.addSpacing(10)
 
         keys_group.setLayout(keys_layout)
         layout.addWidget(keys_group)
+
+        # Overlay Settings Section
+        overlay_group = QGroupBox("Overlay Appearance")
+        overlay_layout = QVBoxLayout()
+
+        # Overlay Opacity Slider
+        opacity_label = QLabel(f"Overlay Opacity: {int(self.config.overlay_opacity * 100)}%")
+        overlay_layout.addWidget(opacity_label)
+
+        from PyQt6.QtWidgets import QSlider
+        self.opacity_slider = QSlider(Qt.Orientation.Horizontal)
+        self.opacity_slider.setMinimum(50)  # Minimum 50% opacity
+        self.opacity_slider.setMaximum(100)  # Maximum 100% opacity
+        self.opacity_slider.setValue(int(self.config.overlay_opacity * 100))
+        self.opacity_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.opacity_slider.setTickInterval(10)
+        self.opacity_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #3a3a3a;
+                height: 8px;
+                background: #2a2a2a;
+                margin: 2px 0;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                background: #14b8a6;
+                border: 1px solid #14b8a6;
+                width: 18px;
+                margin: -5px 0;
+                border-radius: 9px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #0d7377;
+            }
+        """)
+
+        # Update label when slider changes
+        def update_opacity_label(value):
+            opacity_label.setText(f"Overlay Opacity: {value}%")
+
+        self.opacity_slider.valueChanged.connect(update_opacity_label)
+        overlay_layout.addWidget(self.opacity_slider)
+
+        opacity_help = QLabel("Adjust overlay transparency (50% - 100%)")
+        opacity_help.setStyleSheet("QLabel { color: #9ca3af; font-size: 9pt; }")
+        overlay_layout.addWidget(opacity_help)
+
+        overlay_group.setLayout(overlay_layout)
+        layout.addWidget(overlay_group)
 
         layout.addStretch()
 
@@ -599,6 +733,49 @@ class SettingsDialog(QDialog):
             logger.error(f"Failed to open URL: {e}")
             QMessageBox.warning(self, "Error", f"Failed to open browser: {str(e)}")
 
+    def _session_status_text(self, provider: str) -> str:
+        session = self.provider_sessions.get(provider)
+        if session and session.get('cookies'):
+            cookie_count = len(session.get('cookies', []))
+            return f"Session active ({cookie_count} cookies)"
+        return "Session not connected"
+
+    def _update_session_status(self, provider: str) -> None:
+        label = self.session_status_labels.get(provider)
+        if label:
+            label.setText(self._session_status_text(provider))
+
+    def launch_login_flow(self, provider: str) -> None:
+        """Open the embedded login dialog for the selected provider."""
+        login_configs = {
+            'openai': {
+                'login_url': 'https://platform.openai.com/login',
+                'success_url_prefixes': ['https://platform.openai.com/'],
+            },
+            'anthropic': {
+                'login_url': 'https://console.anthropic.com/login',
+                'success_url_prefixes': ['https://console.anthropic.com/'],
+            },
+            'gemini': {
+                'login_url': 'https://accounts.google.com/',
+                'success_url_prefixes': ['https://aistudio.google.com/'],
+            },
+        }
+
+        config = login_configs.get(provider)
+        if not config:
+            logger.warning("No login configuration for provider %s", provider)
+            return
+
+        dialog = LoginDialog(self, provider=provider, **config)
+        dialog.session_acquired.connect(lambda payload, p=provider: self._handle_session_acquired(p, payload))
+        dialog.exec()
+
+    def _handle_session_acquired(self, provider: str, payload: dict) -> None:
+        logger.info("Captured session for %s with %d cookies", provider, len(payload.get('cookies', [])))
+        self.provider_sessions[provider] = payload
+        self._update_session_status(provider)
+
     def save_settings(self):
         """Save settings and emit signal"""
         # Get selected provider
@@ -615,6 +792,9 @@ class SettingsDialog(QDialog):
         openai_key = self.openai_key_input.text().strip()
         anthropic_key = self.anthropic_key_input.text().strip()
         gemini_key = self.gemini_key_input.text().strip()
+
+        # Get overlay settings
+        overlay_opacity = self.opacity_slider.value() / 100.0  # Convert percentage to 0.0-1.0
 
         # Validate that at least one key is provided
         if not openai_key and not anthropic_key and not gemini_key:
@@ -651,9 +831,9 @@ class SettingsDialog(QDialog):
             return
 
         # Emit signal with settings
-        self.settings_saved.emit(provider, openai_key, anthropic_key, gemini_key)
+        self.settings_saved.emit(provider, openai_key, anthropic_key, gemini_key, overlay_opacity)
 
-        logger.info(f"Settings saved: provider={provider}")
+        logger.info(f"Settings saved: provider={provider}, overlay_opacity={overlay_opacity}")
 
         # Show success message
         QMessageBox.information(
@@ -663,6 +843,319 @@ class SettingsDialog(QDialog):
         )
 
         self.accept()
+
+
+class OverlayWindow(QWidget):
+    """Frameless in-game overlay window with drag/resize/minimize functionality"""
+
+    def __init__(self, ai_assistant, config, parent=None):
+        super().__init__(parent)
+        self.ai_assistant = ai_assistant
+        self.config = config
+
+        # Track dragging state
+        self.dragging = False
+        self.drag_position = None
+
+        # Track resize state
+        self.resizing = False
+        self.resize_direction = None
+
+        # Track minimized state
+        self.is_minimized = config.overlay_minimized
+        self.normal_height = config.overlay_height
+
+        self.init_ui()
+
+    def init_ui(self):
+        """Initialize overlay UI with frameless design"""
+        self.setWindowTitle("Gaming AI Assistant - Overlay")
+
+        # Make window frameless and always on top
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint |
+            Qt.WindowType.Tool
+        )
+
+        # Set window position and size from config
+        self.setGeometry(
+            self.config.overlay_x,
+            self.config.overlay_y,
+            self.config.overlay_width,
+            self.config.overlay_height
+        )
+
+        # Enable mouse tracking for resize grips
+        self.setMouseTracking(True)
+
+        # Apply dark theme with transparency
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: rgba(30, 30, 30, {int(self.config.overlay_opacity * 255)});
+                color: #ffffff;
+                border: 2px solid #14b8a6;
+                border-radius: 8px;
+            }}
+        """)
+
+        # Main layout
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Header with title and minimize button
+        header = self.create_header()
+        main_layout.addWidget(header)
+
+        # Chat widget
+        self.chat_widget = ChatWidget(self.ai_assistant)
+        main_layout.addWidget(self.chat_widget)
+
+        self.setLayout(main_layout)
+
+        logger.info("Overlay window initialized")
+
+    def create_header(self) -> QWidget:
+        """Create custom header with title and window controls"""
+        header = QFrame()
+        header.setStyleSheet("""
+            QFrame {
+                background-color: #1a1a1a;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                border-bottom: 1px solid #3a3a3a;
+                padding: 8px;
+            }
+        """)
+
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(10, 5, 10, 5)
+
+        # Title
+        title_layout = QVBoxLayout()
+        title_label = QLabel("🎮 Gaming AI Assistant")
+        title_label.setStyleSheet("""
+            QLabel {
+                color: #14b8a6;
+                font-size: 14pt;
+                font-weight: bold;
+                background: transparent;
+                border: none;
+            }
+        """)
+        title_layout.addWidget(title_label)
+
+        subtitle = QLabel("In-Game Overlay")
+        subtitle.setStyleSheet("""
+            QLabel {
+                color: #9ca3af;
+                font-size: 9pt;
+                background: transparent;
+                border: none;
+            }
+        """)
+        title_layout.addWidget(subtitle)
+
+        main_layout.addLayout(title_layout)
+        main_layout.addStretch()
+
+        # Window control buttons
+        controls_layout = QHBoxLayout()
+
+        # Minimize button
+        self.minimize_button = QPushButton("−")
+        self.minimize_button.setToolTip("Minimize/Restore")
+        self.minimize_button.clicked.connect(self.toggle_minimize)
+        self.minimize_button.setStyleSheet("""
+            QPushButton {
+                background-color: #374151;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                font-size: 16pt;
+                font-weight: bold;
+                min-width: 30px;
+                max-width: 30px;
+                min-height: 30px;
+                max-height: 30px;
+            }
+            QPushButton:hover {
+                background-color: #4b5563;
+            }
+            QPushButton:pressed {
+                background-color: #1f2937;
+            }
+        """)
+        controls_layout.addWidget(self.minimize_button)
+
+        # Close button (hides overlay, doesn't quit app)
+        close_button = QPushButton("×")
+        close_button.setToolTip("Hide Overlay (Press hotkey to show again)")
+        close_button.clicked.connect(self.hide)
+        close_button.setStyleSheet("""
+            QPushButton {
+                background-color: #dc2626;
+                color: #ffffff;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                font-size: 18pt;
+                font-weight: bold;
+                min-width: 30px;
+                max-width: 30px;
+                min-height: 30px;
+                max-height: 30px;
+            }
+            QPushButton:hover {
+                background-color: #ef4444;
+            }
+            QPushButton:pressed {
+                background-color: #991b1b;
+            }
+        """)
+        controls_layout.addWidget(close_button)
+
+        main_layout.addLayout(controls_layout)
+
+        header.setLayout(main_layout)
+        return header
+
+    def mousePressEvent(self, event):
+        """Handle mouse press for dragging and resizing"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Check if clicking near edges for resize
+            pos = event.pos()
+            rect = self.rect()
+            edge_margin = 10
+
+            # Determine resize direction
+            on_left = pos.x() < edge_margin
+            on_right = pos.x() > rect.width() - edge_margin
+            on_top = pos.y() < edge_margin
+            on_bottom = pos.y() > rect.height() - edge_margin
+
+            if on_left or on_right or on_top or on_bottom:
+                self.resizing = True
+                self.resize_direction = {
+                    'left': on_left,
+                    'right': on_right,
+                    'top': on_top,
+                    'bottom': on_bottom
+                }
+                self.drag_position = event.globalPosition().toPoint()
+            else:
+                # Start dragging
+                self.dragging = True
+                self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse move for dragging and resizing"""
+        if event.buttons() == Qt.MouseButton.LeftButton:
+            if self.dragging and self.drag_position is not None:
+                # Move window
+                self.move(event.globalPosition().toPoint() - self.drag_position)
+
+            elif self.resizing and self.resize_direction is not None:
+                # Resize window
+                delta = event.globalPosition().toPoint() - self.drag_position
+                self.drag_position = event.globalPosition().toPoint()
+
+                geometry = self.geometry()
+
+                if self.resize_direction['left']:
+                    geometry.setLeft(geometry.left() + delta.x())
+                if self.resize_direction['right']:
+                    geometry.setRight(geometry.right() + delta.x())
+                if self.resize_direction['top']:
+                    geometry.setTop(geometry.top() + delta.y())
+                if self.resize_direction['bottom']:
+                    geometry.setBottom(geometry.bottom() + delta.y())
+
+                # Enforce minimum size
+                if geometry.width() >= 400 and geometry.height() >= 300:
+                    self.setGeometry(geometry)
+
+        else:
+            # Update cursor based on position
+            pos = event.pos()
+            rect = self.rect()
+            edge_margin = 10
+
+            on_left = pos.x() < edge_margin
+            on_right = pos.x() > rect.width() - edge_margin
+            on_top = pos.y() < edge_margin
+            on_bottom = pos.y() > rect.height() - edge_margin
+
+            if (on_left and on_top) or (on_right and on_bottom):
+                self.setCursor(Qt.CursorShape.SizeFDiagCursor)
+            elif (on_right and on_top) or (on_left and on_bottom):
+                self.setCursor(Qt.CursorShape.SizeBDiagCursor)
+            elif on_left or on_right:
+                self.setCursor(Qt.CursorShape.SizeHorCursor)
+            elif on_top or on_bottom:
+                self.setCursor(Qt.CursorShape.SizeVerCursor)
+            else:
+                self.setCursor(Qt.CursorShape.ArrowCursor)
+
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release and save window position/size"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            if self.dragging or self.resizing:
+                # Save window position and size to config
+                self.save_window_state()
+
+            self.dragging = False
+            self.resizing = False
+            self.resize_direction = None
+            self.drag_position = None
+
+        super().mouseReleaseEvent(event)
+
+    def save_window_state(self):
+        """Save current window position and size to .env file"""
+        from src.config import Config
+        geometry = self.geometry()
+        Config.save_to_env(
+            provider=self.config.ai_provider,
+            openai_key=self.config.openai_api_key or '',
+            anthropic_key=self.config.anthropic_api_key or '',
+            gemini_key=self.config.gemini_api_key or '',
+            overlay_hotkey=self.config.overlay_hotkey,
+            check_interval=self.config.check_interval,
+            overlay_x=geometry.x(),
+            overlay_y=geometry.y(),
+            overlay_width=geometry.width(),
+            overlay_height=geometry.height(),
+            overlay_minimized=self.is_minimized,
+            overlay_opacity=self.config.overlay_opacity
+        )
+        logger.info(f"Saved overlay state: pos=({geometry.x()}, {geometry.y()}), size=({geometry.width()}x{geometry.height()})")
+
+    def toggle_minimize(self):
+        """Toggle window minimized state"""
+        if self.is_minimized:
+            # Restore
+            self.resize(self.width(), self.normal_height)
+            self.is_minimized = False
+        else:
+            # Minimize
+            self.normal_height = self.height()
+            self.resize(self.width(), 50)  # Minimize to title bar height
+            self.is_minimized = True
+
+        self.save_window_state()
+
+    def closeEvent(self, event):
+        """Handle close event by hiding instead of destroying"""
+        self.save_window_state()
+        self.hide()
+        event.ignore()
 
 
 class MainWindow(QMainWindow):
@@ -693,17 +1186,8 @@ class MainWindow(QMainWindow):
         # Track if this is first show (for auto-opening settings)
         self.first_show = True
 
-        # Track dragging state
-        self.dragging = False
-        self.drag_position = None
-
-        # Track resize state
-        self.resizing = False
-        self.resize_direction = None
-
-        # Track minimized state
-        self.is_minimized = config.overlay_minimized
-        self.normal_height = config.overlay_height
+        # Create overlay window (but don't show it yet)
+        self.overlay_window = OverlayWindow(ai_assistant, config, parent=self)
 
         self.session_event_bridge = SessionEventBridge()
         self.session_event_bridge.session_event.connect(self.on_session_event)
@@ -741,16 +1225,8 @@ class MainWindow(QMainWindow):
         """Initialize the main window UI components and styling"""
         self.setWindowTitle("Gaming AI Assistant")
 
-        # Set window position and size from config
-        self.setGeometry(
-            self.config.overlay_x,
-            self.config.overlay_y,
-            self.config.overlay_width,
-            self.config.overlay_height
-        )
-
-        # Enable mouse tracking for resize grips
-        self.setMouseTracking(True)
+        # Set default window size (normal app window, not overlay)
+        self.resize(900, 700)
 
         # Apply dark theme styling
         self.setStyleSheet("""
@@ -897,37 +1373,6 @@ class MainWindow(QMainWindow):
         top_row.addLayout(title_layout)
         top_row.addStretch()
 
-        # Window control buttons
-        controls_layout = QHBoxLayout()
-
-        self.minimize_button = QPushButton("−")
-        self.minimize_button.setToolTip("Minimize/Restore")
-        self.minimize_button.clicked.connect(self.toggle_minimize)
-        self.minimize_button.setStyleSheet("""
-            QPushButton {
-                background-color: #374151;
-                color: #ffffff;
-                border: none;
-                border-radius: 3px;
-                padding: 5px 10px;
-                font-size: 16pt;
-                font-weight: bold;
-                min-width: 30px;
-                max-width: 30px;
-                min-height: 30px;
-                max-height: 30px;
-            }
-            QPushButton:hover {
-                background-color: #4b5563;
-            }
-            QPushButton:pressed {
-                background-color: #1f2937;
-            }
-        """)
-        controls_layout.addWidget(self.minimize_button)
-
-        top_row.addLayout(controls_layout)
-
         main_layout.addLayout(top_row)
 
         header.setLayout(main_layout)
@@ -981,14 +1426,14 @@ class MainWindow(QMainWindow):
         toggle_shortcut.activated.connect(self.toggle_visibility)
 
     def toggle_visibility(self):
-        """Toggle main window visibility between shown and hidden states"""
-        if self.isVisible():
-            self.hide()
-            logger.info("Window hidden")
+        """Toggle overlay window visibility between shown and hidden states"""
+        if self.overlay_window.isVisible():
+            self.overlay_window.hide()
+            logger.info("Overlay hidden")
         else:
-            self.show()
-            self.activateWindow()
-            logger.info("Window shown")
+            self.overlay_window.show()
+            self.overlay_window.activateWindow()
+            logger.info("Overlay shown")
 
     def start_game_detection(self):
         """Initialize and start the game detection background thread"""
@@ -1196,7 +1641,7 @@ class MainWindow(QMainWindow):
         dialog.settings_saved.connect(self.handle_settings_saved)
         dialog.exec()
 
-    def handle_settings_saved(self, provider, openai_key, anthropic_key, gemini_key):
+    def handle_settings_saved(self, provider, openai_key, anthropic_key, gemini_key, overlay_opacity):
         """Handle settings being saved"""
         logger.info("Handling settings save...")
 
@@ -1204,11 +1649,20 @@ class MainWindow(QMainWindow):
             # Import config module to call save function
             from config import Config
 
-            # Save settings to .env file
-            Config.save_to_env(provider, openai_key, anthropic_key, gemini_key)
+            # Save settings to .env file including overlay opacity
+            Config.save_to_env(
+                provider=provider,
+                openai_key=openai_key,
+                anthropic_key=anthropic_key,
+                gemini_key=gemini_key,
+                overlay_opacity=overlay_opacity
+            )
 
             # Reload configuration
             self.config = Config()
+
+            # Persist the latest session tokens locally for runtime usage
+            self.config.session_tokens.update(session_tokens)
 
             # Reinitialize AI assistant with new settings
             from ai_assistant import AIAssistant
@@ -1226,14 +1680,27 @@ class MainWindow(QMainWindow):
             # Update chat widget's AI assistant reference
             self.chat_widget.ai_assistant = self.ai_assistant
 
+            # Update overlay window's AI assistant reference and opacity
+            self.overlay_window.ai_assistant = self.ai_assistant
+            self.overlay_window.config = self.config
+            # Update overlay opacity
+            self.overlay_window.setStyleSheet(f"""
+                QWidget {{
+                    background-color: rgba(30, 30, 30, {int(overlay_opacity * 255)});
+                    color: #ffffff;
+                    border: 2px solid #14b8a6;
+                    border-radius: 8px;
+                }}
+            """)
+
             # Show success message in chat
             self.chat_widget.add_message(
                 "System",
-                f"Settings updated! Now using {provider.upper()} AI provider.",
+                f"Settings updated! Now using {provider.upper()} AI provider.\nOverlay opacity set to {int(overlay_opacity * 100)}%.",
                 is_user=False
             )
 
-            logger.info(f"Settings applied successfully: provider={provider}")
+            logger.info(f"Settings applied successfully: provider={provider}, overlay_opacity={overlay_opacity}")
 
         except Exception as e:
             logger.error(f"Error applying settings: {e}", exc_info=True)
@@ -1318,133 +1785,6 @@ class MainWindow(QMainWindow):
                 # Schedule settings dialog to open after a short delay (so window is fully shown)
                 QTimer.singleShot(500, self.open_settings)
 
-    def mousePressEvent(self, event):
-        """Handle mouse press for dragging and resizing"""
-        if event.button() == Qt.MouseButton.LeftButton:
-            # Check if clicking near edges for resize
-            pos = event.pos()
-            rect = self.rect()
-            edge_margin = 10
-
-            # Determine resize direction
-            on_left = pos.x() < edge_margin
-            on_right = pos.x() > rect.width() - edge_margin
-            on_top = pos.y() < edge_margin
-            on_bottom = pos.y() > rect.height() - edge_margin
-
-            if on_left or on_right or on_top or on_bottom:
-                self.resizing = True
-                self.resize_direction = {
-                    'left': on_left,
-                    'right': on_right,
-                    'top': on_top,
-                    'bottom': on_bottom
-                }
-                self.drag_position = event.globalPosition().toPoint()
-            else:
-                # Start dragging
-                self.dragging = True
-                self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-
-        super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        """Handle mouse move for dragging and resizing"""
-        if event.buttons() == Qt.MouseButton.LeftButton:
-            if self.dragging and self.drag_position is not None:
-                # Move window
-                self.move(event.globalPosition().toPoint() - self.drag_position)
-
-            elif self.resizing and self.resize_direction is not None:
-                # Resize window
-                delta = event.globalPosition().toPoint() - self.drag_position
-                self.drag_position = event.globalPosition().toPoint()
-
-                geometry = self.geometry()
-
-                if self.resize_direction['left']:
-                    geometry.setLeft(geometry.left() + delta.x())
-                if self.resize_direction['right']:
-                    geometry.setRight(geometry.right() + delta.x())
-                if self.resize_direction['top']:
-                    geometry.setTop(geometry.top() + delta.y())
-                if self.resize_direction['bottom']:
-                    geometry.setBottom(geometry.bottom() + delta.y())
-
-                # Enforce minimum size
-                if geometry.width() >= 400 and geometry.height() >= 300:
-                    self.setGeometry(geometry)
-
-        else:
-            # Update cursor based on position
-            pos = event.pos()
-            rect = self.rect()
-            edge_margin = 10
-
-            on_left = pos.x() < edge_margin
-            on_right = pos.x() > rect.width() - edge_margin
-            on_top = pos.y() < edge_margin
-            on_bottom = pos.y() > rect.height() - edge_margin
-
-            if (on_left and on_top) or (on_right and on_bottom):
-                self.setCursor(Qt.CursorShape.SizeFDiagCursor)
-            elif (on_right and on_top) or (on_left and on_bottom):
-                self.setCursor(Qt.CursorShape.SizeBDiagCursor)
-            elif on_left or on_right:
-                self.setCursor(Qt.CursorShape.SizeHorCursor)
-            elif on_top or on_bottom:
-                self.setCursor(Qt.CursorShape.SizeVerCursor)
-            else:
-                self.setCursor(Qt.CursorShape.ArrowCursor)
-
-        super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        """Handle mouse release and save window position/size"""
-        if event.button() == Qt.MouseButton.LeftButton:
-            if self.dragging or self.resizing:
-                # Save window position and size to config
-                self.save_window_state()
-
-            self.dragging = False
-            self.resizing = False
-            self.resize_direction = None
-            self.drag_position = None
-
-        super().mouseReleaseEvent(event)
-
-    def save_window_state(self):
-        """Save current window position and size to .env file"""
-        geometry = self.geometry()
-        Config.save_to_env(
-            provider=self.config.ai_provider,
-            openai_key=self.config.openai_api_key or '',
-            anthropic_key=self.config.anthropic_api_key or '',
-            gemini_key=self.config.gemini_api_key or '',
-            overlay_hotkey=self.config.overlay_hotkey,
-            check_interval=self.config.check_interval,
-            overlay_x=geometry.x(),
-            overlay_y=geometry.y(),
-            overlay_width=geometry.width(),
-            overlay_height=geometry.height(),
-            overlay_minimized=self.is_minimized
-        )
-        logger.info(f"Saved window state: pos=({geometry.x()}, {geometry.y()}), size=({geometry.width()}x{geometry.height()})")
-
-    def toggle_minimize(self):
-        """Toggle window minimized state"""
-        if self.is_minimized:
-            # Restore
-            self.resize(self.width(), self.normal_height)
-            self.is_minimized = False
-        else:
-            # Minimize
-            self.normal_height = self.height()
-            self.resize(self.width(), 50)  # Minimize to title bar height
-            self.is_minimized = True
-
-        self.save_window_state()
-
     def closeEvent(self, event):
         """
         Handle window close event by minimizing to system tray instead of quitting
@@ -1452,14 +1792,11 @@ class MainWindow(QMainWindow):
         Args:
             event: QCloseEvent to be handled
         """
-        # Save window state before closing
-        self.save_window_state()
-
         event.ignore()
         self.hide()
         self.tray_icon.showMessage(
             "Gaming AI Assistant",
-            "Application minimized to tray. Press Ctrl+Shift+G to toggle.",
+            "Application minimized to tray. Press Ctrl+Shift+G to toggle overlay.",
             QSystemTrayIcon.MessageIcon.Information,
             2000
         )
