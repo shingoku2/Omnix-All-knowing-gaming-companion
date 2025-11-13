@@ -1025,3 +1025,177 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 *Last Updated: 2025-11-13*
 *Session: Implement Movable/Resizable Overlay Window*
 *Status: Complete ✅*
+
+---
+
+## Current Session: Improve OpenAI Rate Limit and Quota Error Handling (2025-11-13)
+
+### Session Goals
+1. Add user-friendly error messages for OpenAI API quota and rate limit errors
+2. Provide clear, actionable guidance to users when errors occur
+3. Extend improved error handling to all AI providers (Anthropic, Gemini)
+
+### Problem Context
+User reported encountering OpenAI API errors when the application attempted to fetch game overview:
+
+**Error encountered:**
+```
+openai.RateLimitError: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details...', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+```
+
+**Issues with previous error handling:**
+- Generic error messages like "Error getting AI response: OpenAI API error: ..."
+- No differentiation between quota issues, rate limits, and authentication errors
+- Technical jargon confusing for end users
+- No actionable guidance on how to resolve issues
+
+### Actions Taken
+
+#### Backend Error Handling (src/ai_assistant.py)
+
+**1. OpenAI Error Handling (Lines 205-236)**
+- Added specific detection for quota errors (`insufficient_quota`, `quota`)
+- Added detection for rate limit errors (`rate limit`, `429`)
+- Added detection for authentication errors (`authentication`, `api key`, `401`)
+- Each error type now returns a user-friendly message with:
+  - Visual indicator (⚠️ for warnings, ❌ for errors)
+  - Clear description of the issue
+  - Step-by-step instructions to fix
+  - Alternative actions (e.g., switch providers)
+
+**Example error message for quota issues:**
+```
+⚠️ OpenAI API Quota Exceeded
+
+Your OpenAI account has run out of credits or exceeded its quota.
+
+To fix this:
+1. Visit https://platform.openai.com/account/billing
+2. Add a payment method or purchase credits
+3. Check your usage limits and billing details
+
+Alternatively, you can switch to a different AI provider in Settings.
+```
+
+**2. Anthropic Error Handling (Lines 275-295)**
+- Added similar user-friendly error handling for Anthropic Claude API
+- Detects authentication, rate limit, and generic errors
+- Provides provider-specific guidance
+
+**3. Gemini Error Handling (Lines 326-352)**
+- Added comprehensive error handling for Google Gemini
+- Detects authentication, rate limit, quota (`resource_exhausted`), and generic errors
+- Includes Google Cloud Console links for quota management
+
+**4. Conversation History Management (Lines 168-176)**
+- Modified `ask_question()` to detect error messages by emoji prefix (⚠️, ❌)
+- Error messages are NOT added to conversation history
+- Prevents error messages from polluting AI context in subsequent requests
+- Only successful responses are stored for conversation continuity
+
+**5. Generic Error Messages (Line 180)**
+- Updated fallback error message to use user-friendly format
+- Consistent emoji-based visual indicators across all error types
+
+### Technical Implementation
+
+**Error Detection Strategy:**
+```python
+error_str = str(e).lower()
+
+# Check for specific error types
+if 'insufficient_quota' in error_str or 'quota' in error_str:
+    return user_friendly_quota_message
+elif 'rate' in error_str and ('limit' in error_str or '429' in error_str):
+    return user_friendly_rate_limit_message
+elif 'authentication' in error_str or 'api key' in error_str or '401' in error_str:
+    return user_friendly_auth_message
+else:
+    return generic_user_friendly_message
+```
+
+**History Management:**
+```python
+# Check if response is an error message (starts with warning/error emoji)
+# If so, don't add to conversation history
+if not response.startswith(('⚠️', '❌')):
+    self.conversation_history.append({
+        "role": "assistant",
+        "content": response
+    })
+```
+
+### Code Changes Summary
+
+**Files Modified:**
+- `src/ai_assistant.py` (84 lines added, 10 lines removed)
+
+**Key Changes:**
+- Line 168-176: Modified conversation history to skip error messages
+- Line 180-182: Updated generic error message format
+- Line 205-236: Added comprehensive OpenAI error handling (31 lines)
+- Line 275-295: Added Anthropic error handling (18 lines)
+- Line 326-352: Added Gemini error handling (24 lines)
+
+### Error Types Handled
+
+**OpenAI:**
+- ✅ Quota/billing errors (`insufficient_quota`, `quota`)
+- ✅ Rate limit errors (`rate limit`, `429`)
+- ✅ Authentication errors (`authentication`, `api key`, `401`)
+- ✅ Generic errors with connection troubleshooting
+
+**Anthropic:**
+- ✅ Authentication errors
+- ✅ Rate limit errors
+- ✅ Generic errors
+
+**Gemini:**
+- ✅ Authentication errors
+- ✅ Rate limit errors
+- ✅ Quota errors (`resource_exhausted`)
+- ✅ Generic errors
+
+### User Experience Improvements
+
+**Before:**
+```
+Error getting AI response: OpenAI API error: Error code: 429 - {'error': {'message': 'You exceeded your current quota...
+```
+
+**After:**
+```
+⚠️ OpenAI API Quota Exceeded
+
+Your OpenAI account has run out of credits or exceeded its quota.
+
+To fix this:
+1. Visit https://platform.openai.com/account/billing
+2. Add a payment method or purchase credits
+3. Check your usage limits and billing details
+
+Alternatively, you can switch to a different AI provider in Settings.
+```
+
+### Testing
+- `python -m py_compile src/ai_assistant.py` ✅ (Syntax validation passed)
+- `git diff src/ai_assistant.py` ✅ (Verified all changes)
+
+### Outcome
+- ✅ Users now receive clear, actionable error messages
+- ✅ Quota issues differentiated from rate limits and authentication errors
+- ✅ Provider-specific guidance with direct links to fix issues
+- ✅ Error messages use visual indicators (⚠️, ❌) for quick identification
+- ✅ Conversation history stays clean without error message pollution
+- ✅ Consistent error handling across all three AI providers
+- ✅ No breaking changes - all existing functionality preserved
+
+### Commits
+- `d0385af` - "Improve error handling for OpenAI rate limits and quota errors"
+
+### Branch
+- `claude/fix-openai-rate-limit-011CV5MGr3xJC4tri6AqtZYe`
+
+*Last Updated: 2025-11-13*
+*Session: Improve OpenAI Rate Limit and Quota Error Handling*
+*Status: Complete ✅*
