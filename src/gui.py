@@ -2103,14 +2103,65 @@ def run_gui(game_detector, ai_assistant, info_scraper, config, credential_store)
 
     Args:
         game_detector: Game detection service instance
-        ai_assistant: AI assistant service instance
+        ai_assistant: AI assistant service instance (can be None if no credentials)
         info_scraper: Information scraper service instance
         config: Configuration instance
+        credential_store: Credential store instance
     """
     try:
         app = QApplication(sys.argv)
         app.setApplicationName("Gaming AI Assistant")
 
+        # Check if this is first run (no credentials configured)
+        if not config.is_configured():
+            logger.info("No API keys configured - showing setup wizard")
+
+            from setup_wizard import SetupWizard
+
+            # Show setup wizard
+            wizard = SetupWizard()
+
+            def on_wizard_complete(default_provider, credentials):
+                """Handle wizard completion"""
+                logger.info(f"Setup wizard completed: provider={default_provider}, credentials={list(credentials.keys())}")
+
+                # Save provider to .env
+                Config.save_to_env(
+                    provider=default_provider,
+                    openai_key='',  # Keys are in credential store
+                    anthropic_key='',
+                    gemini_key=''
+                )
+
+                # Reinitialize config to load new credentials
+                nonlocal config, ai_assistant
+                config = Config(require_keys=False)
+
+                # Initialize AI assistant with new credentials
+                from ai_assistant import AIAssistant
+                ai_assistant = AIAssistant(
+                    provider=config.ai_provider,
+                    api_key=config.get_api_key(),
+                    session_tokens=config.session_tokens.get(config.ai_provider)
+                )
+
+                logger.info("AI assistant reinitialized after setup")
+
+            wizard.setup_complete.connect(on_wizard_complete)
+            result = wizard.exec()
+
+            if result != QDialog.DialogCode.Accepted:
+                # User cancelled setup wizard
+                logger.info("Setup wizard cancelled by user")
+                QMessageBox.warning(
+                    None,
+                    "Setup Required",
+                    "API key configuration is required to use the Gaming AI Assistant.\n\n"
+                    "The application will now exit. Please run it again when you're ready to set up."
+                )
+                return
+
+        # Create and show main window
         window = MainWindow(
             game_detector,
             ai_assistant,
