@@ -712,6 +712,383 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 
 ---
 
+## Current Session: Implement Local API Key Setup with Secure Storage (2025-11-13)
+
+### Session Goals
+1. Implement "Option B" - user-provided API keys stored securely on local machine
+2. Create a first-run setup wizard for beginner-friendly API key configuration
+3. Add connection testing for all providers (OpenAI, Anthropic, Gemini)
+4. Enhance Settings with dedicated AI Providers management tab
+5. Replace plain-text .env storage with encrypted credential store
+
+### Implementation Overview
+
+This session implements a comprehensive, user-friendly API key management system that prioritizes:
+- **User Privacy**: Keys never leave the user's machine
+- **Security**: Encrypted storage using OS-native credential managers
+- **Usability**: Setup wizard, connection testing, and clear error messages
+- **Flexibility**: Support for multiple providers and easy key rotation
+
+### Files Created
+
+#### 1. `src/provider_tester.py` - Connection Testing Module
+**Purpose**: Test API connectivity for each provider with user-friendly error messages
+
+**Key Features**:
+- `test_openai(api_key, base_url)`: Test OpenAI API connection
+  - Supports custom base URLs for OpenAI-compatible endpoints
+  - Tests with lightweight `/v1/models` call or minimal chat completion
+  - Detects quota, rate limit, and authentication errors
+- `test_anthropic(api_key)`: Test Anthropic Claude API
+  - Minimal message creation test
+  - User-friendly error categorization
+- `test_gemini(api_key)`: Test Google Gemini API
+  - Lightweight content generation test
+  - Handles resource_exhausted and quota errors
+
+**Error Handling**:
+- ✅ Success: Clear confirmation message with details
+- ❌ Authentication: Explains invalid/revoked keys
+- ⚠️ Quota: Directs to billing page with steps to fix
+- ⚠️ Rate Limit: Explains temporary limits
+- ❌ Connection: Network/timeout error guidance
+
+**Example Usage**:
+```python
+from provider_tester import ProviderTester
+
+success, message = ProviderTester.test_openai("sk-...")
+if success:
+    print(message)  # "✅ Connected successfully! Found 15 available models."
+else:
+    print(message)  # "❌ Authentication Failed\n\nYour API key is invalid..."
+```
+
+#### 2. `src/setup_wizard.py` - First-Run Setup Wizard
+**Purpose**: Multi-step wizard to guide users through initial API key configuration
+
+**Wizard Pages**:
+1. **Welcome Page**:
+   - Explains how the app uses user's own API keys
+   - Privacy guarantee: "Keys stay encrypted on your PC"
+   - Provider comparison (Claude, GPT, Gemini)
+
+2. **Provider Selection Page**:
+   - Checkboxes for OpenAI, Anthropic, Gemini
+   - Brief description of each provider's strengths
+   - "Get API Key" buttons that open signup pages
+   - Anthropic recommended by default
+
+3. **Key Input Page**:
+   - Dynamically generated sections for selected providers
+   - Password-masked input fields with show/hide toggle
+   - Custom base URL field for OpenAI (for local models)
+   - **"Test Connection" buttons** for each provider
+   - Real-time status: "Testing...", "✅ Connected", "❌ Failed"
+   - Detailed error popups on failure
+
+4. **Confirmation Page**:
+   - Summary of configured providers
+   - Test status for each provider
+   - Auto-selects default provider (first working one)
+   - Final instructions before starting
+
+**Key Features**:
+- Background thread for connection testing (non-blocking UI)
+- Navigation validation (can't proceed without at least one key)
+- Saves to secure credential store, not plain-text files
+- Emits `setup_complete(provider, credentials)` signal
+
+**Implementation Details**:
+```python
+wizard = SetupWizard()
+wizard.setup_complete.connect(on_complete)
+wizard.exec()
+```
+
+#### 3. `src/providers_tab.py` - AI Providers Management Tab
+**Purpose**: Settings tab for managing API keys after initial setup
+
+**Features**:
+- **Default Provider Selector**: Dropdown to choose primary AI provider
+- **Per-Provider Sections**: Each provider (OpenAI, Anthropic, Gemini) has:
+  - Status indicator: "✅ Configured", "❌ Not configured", "⚠️ Modified"
+  - Masked key display: "Current: sk-ant-ap...6ABC (enter new key to change)"
+  - Password field for entering new key
+  - Show/hide toggle for key visibility
+  - "Get API Key" button (opens provider's key page)
+  - "Test Connection" button (validates key)
+  - "Clear Key" button (removes from secure storage)
+- **Re-run Setup Wizard** button for complete reconfiguration
+- **Custom Base URL** field for OpenAI (for local/custom endpoints)
+
+**Security Features**:
+- Keys are masked when displayed
+- Only modified keys are saved (unchanged keys remain encrypted)
+- Clear confirmation dialog before deletion
+- All changes saved to credential store, not .env
+
+**Integration**:
+```python
+# In TabbedSettingsDialog
+self.providers_tab = ProvidersTab(self.config)
+self.providers_tab.provider_config_changed.connect(self.on_provider_config_changed)
+self.tab_widget.addTab(self.providers_tab, "🔑 AI Providers")
+```
+
+### Modified Files
+
+#### 1. `src/settings_dialog.py` - Updated Settings Dialog
+**Changes**:
+- Added `ProvidersTab` import
+- Added `provider_config_changed` signal
+- Added Providers tab as first tab (most important)
+- Updated `save_all_settings()` to save provider configuration
+- Saves default provider to .env (keys stay in credential store)
+
+**New Signal**:
+```python
+provider_config_changed = pyqtSignal(str, dict)  # default_provider, credentials
+```
+
+#### 2. `src/gui.py` - Updated GUI with Wizard Integration
+**Changes**:
+- Added first-run check in `run_gui()` function
+- Shows setup wizard if `config.is_configured()` returns False
+- Reinitializes config and AI assistant after wizard completion
+- Exits gracefully if user cancels wizard
+- Added QDialog import for wizard
+
+**Wizard Flow**:
+```python
+if not config.is_configured():
+    wizard = SetupWizard()
+    wizard.setup_complete.connect(on_wizard_complete)
+    result = wizard.exec()
+
+    if result != QDialog.DialogCode.Accepted:
+        # User cancelled - exit app
+        return
+```
+
+#### 3. `.env.example` - Updated Configuration Template
+**Changes**:
+- Comprehensive documentation explaining secure storage
+- Clear explanation that API keys are NOT stored in .env
+- Instructions on where keys are actually stored (OS credential manager)
+- Guidance on using Setup Wizard and Settings panel
+- Provider signup URLs
+- Detailed comments for all settings
+
+**Key Documentation**:
+```bash
+# API keys are stored in an ENCRYPTED credential store at:
+#   Windows: Credential Manager (via DPAPI)
+#   macOS: Keychain
+#   Linux: SecretService / keyring (with encrypted file fallback)
+#
+# These fields are intentionally left blank - keys are managed through:
+#   1. First-run Setup Wizard (appears automatically)
+#   2. Settings → AI Providers tab (⚙️ button in the app)
+```
+
+### Secure Credential Storage System
+
+**Already Existing** (`src/credential_store.py`):
+- Uses `cryptography` library with Fernet encryption
+- Leverages OS-native credential stores via `keyring` library
+- Fallback to encrypted file with secure permissions (0o600)
+- Stores credentials at `~/.gaming_ai_assistant/credentials.enc`
+
+**Storage Hierarchy**:
+1. **Windows**: Windows Credential Manager (DPAPI)
+2. **macOS**: Keychain
+3. **Linux**: SecretService / keyring
+4. **Fallback**: Encrypted file with Fernet (AES-128)
+
+**Security Properties**:
+- Encryption key stored in OS keyring (not in code)
+- File permissions restricted to user only
+- No plain-text keys in .env or any committed files
+- Keys never transmitted to any external server
+
+### User Experience Flow
+
+**First-Time User**:
+1. Launch app
+2. Setup wizard appears automatically
+3. User selects provider(s) (e.g., Anthropic)
+4. User enters API key from provider's website
+5. User clicks "Test Connection" → sees "✅ Connected"
+6. User clicks "Finish & Start Assistant"
+7. Keys saved securely, app opens
+8. From then on: just press hotkey to use overlay
+
+**Returning User**:
+1. Keys loaded automatically from secure storage
+2. App starts normally, AI ready to use
+3. Can manage keys via Settings → AI Providers tab
+
+**Key Rotation**:
+1. Open Settings (⚙️ button)
+2. Go to "AI Providers" tab
+3. Enter new key in password field
+4. Click "Test Connection" to verify
+5. Click "Save All Settings"
+6. Old key replaced with new key in secure storage
+
+**Multi-Provider Setup**:
+1. Enable multiple providers in wizard/settings
+2. Set default provider in dropdown
+3. App uses default, but all are available
+4. Can switch default provider anytime in Settings
+
+### Integration with Existing Systems
+
+**Config System** (`src/config.py`):
+- Already loads credentials from `CredentialStore`
+- Falls back to .env only in dev mode
+- Checks `is_configured()` to determine if wizard needed
+- `has_provider_key()` checks if current provider has credentials
+
+**AI Assistant** (`src/ai_assistant.py`):
+- Unchanged - already uses config.get_api_key()
+- Works seamlessly with new credential system
+- Existing error handling displays user-friendly messages
+
+**Main Entry Point** (`main.py`):
+- No changes needed - wizard handled in gui.py
+- Still checks `config.is_configured()` for informational logging
+
+### Error Handling & User Feedback
+
+**Connection Test Errors**:
+- Clear, non-technical error messages
+- Actionable steps to fix issues
+- Direct links to provider dashboards
+- Visual indicators (✅ ⚠️ ❌)
+
+**Setup Validation**:
+- Can't proceed without at least one provider selected
+- Can't finish without at least one key entered
+- Testing recommended but not required (user choice)
+
+**Runtime Errors** (in `ai_assistant.py`):
+- Already enhanced in previous session
+- Quota/rate limit/auth errors have clear messages
+- Directs users to Settings → AI Providers tab
+
+### Testing
+
+**Validation Commands**:
+```bash
+# Syntax validation
+python -m py_compile src/provider_tester.py
+python -m py_compile src/setup_wizard.py
+python -m py_compile src/providers_tab.py
+python -m py_compile src/settings_dialog.py
+python -m py_compile src/gui.py
+
+# Full codebase compile
+python -m compileall src
+```
+
+### Dependencies
+
+**New Requirements**:
+- All required libraries already in `requirements.txt`:
+  - `cryptography` - for Fernet encryption
+  - `keyring` - for OS-native credential storage
+  - `PyQt6` - for GUI components
+
+**No Additional Packages Needed**: The secure storage system was already implemented in a previous session.
+
+### Documentation Updates
+
+**README.md**: Should be updated to mention:
+- No manual .env editing required
+- First-run setup wizard
+- Settings → AI Providers tab for key management
+
+**aicontext.md**: This section documents the implementation
+
+### Future Enhancements
+
+**Potential Improvements**:
+1. **Model Selection**: Allow user to choose specific models per provider
+2. **Usage Tracking**: Display API usage/costs per provider
+3. **Automatic Key Validation**: Test keys periodically in background
+4. **Import/Export Keys**: Encrypted backup/restore functionality
+5. **Multi-Account Support**: Multiple sets of credentials per provider
+6. **Rate Limit Awareness**: Display remaining quota/limits
+
+### Key Design Decisions
+
+**Why Encrypted Storage vs. .env?**
+- Security: .env files are plain-text and easily exposed
+- User-friendly: No manual file editing required
+- Cross-platform: Works consistently on all OSes
+- Best practice: Industry standard for credential management
+
+**Why Test Buttons?**
+- User confidence: Immediate feedback on key validity
+- Error prevention: Catches issues before first use
+- Education: Shows what a working connection looks like
+- Debugging: Helps diagnose network/API issues
+
+**Why Multi-Step Wizard?**
+- Reduces cognitive load: One choice at a time
+- Guided experience: Clear next steps always shown
+- Flexibility: Can enable multiple providers easily
+- Beginner-friendly: Explains concepts as you go
+
+**Why Provider Management Tab?**
+- Post-setup control: Easy key rotation without wizard
+- Status visibility: See which providers are configured
+- Advanced users: Quick access for power users
+- Testing: Validate keys after expiration/changes
+
+### Breaking Changes
+
+**None**: This is additive functionality
+- Existing .env files still work (dev mode fallback)
+- Config system enhanced, not replaced
+- AI assistant unchanged
+- No API changes for other modules
+
+### Backward Compatibility
+
+**Preserves Existing Workflows**:
+- Developers can still use .env for testing
+- Old .env files automatically migrated on first settings save
+- No data loss - keys from .env imported to credential store
+
+### Commit Summary
+
+**Files Created** (3):
+- `src/provider_tester.py` - Connection testing utilities
+- `src/setup_wizard.py` - First-run setup wizard
+- `src/providers_tab.py` - Settings tab for provider management
+
+**Files Modified** (3):
+- `src/settings_dialog.py` - Integrated providers tab
+- `src/gui.py` - Added wizard on first run
+- `.env.example` - Comprehensive documentation
+
+**Lines Added**: ~2,000 lines of new functionality
+**Lines Modified**: ~100 lines of integration code
+
+### Status
+✅ Implementation complete
+⏳ Testing pending
+📝 Ready for commit and push
+
+*Last Updated: 2025-11-13*
+*Session: Implement Local API Key Setup with Secure Storage*
+*Status: Complete ✅*
+
+---
+
 ## Session: Persist Open WebUI API Key (2025-11-12) [DEPRECATED]
 
 **Note: This feature was later removed - see "Complete Ollama/Open WebUI Removal" session below**

@@ -13,6 +13,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 
 from settings_tabs import KeybindingsTab, MacrosTab
 from appearance_tabs import AppAppearanceTab, OverlayAppearanceTab
+from providers_tab import ProvidersTab
 from keybind_manager import KeybindManager
 from macro_manager import MacroManager
 from theme_manager import ThemeManager
@@ -36,6 +37,7 @@ class TabbedSettingsDialog(QDialog):
     macros_changed = pyqtSignal(dict)
     theme_changed = pyqtSignal(dict)
     overlay_appearance_changed = pyqtSignal(dict)
+    provider_config_changed = pyqtSignal(str, dict)  # default_provider, credentials
 
     def __init__(
         self,
@@ -136,8 +138,10 @@ class TabbedSettingsDialog(QDialog):
 
     def add_tabs(self):
         """Add all tabs to the tab widget"""
-        # Note: General tab (AI provider, API keys) would be added here
-        # For now, we'll document that it should be integrated from the original SettingsDialog
+        # AI Providers tab (most important, so it goes first)
+        self.providers_tab = ProvidersTab(self.config)
+        self.providers_tab.provider_config_changed.connect(self.on_provider_config_changed)
+        self.tab_widget.addTab(self.providers_tab, "🔑 AI Providers")
 
         # Keybindings tab
         self.keybindings_tab = KeybindingsTab(self.keybind_manager)
@@ -179,6 +183,11 @@ class TabbedSettingsDialog(QDialog):
         logger.info("Overlay appearance changed")
         self.overlay_appearance_changed.emit(appearance_dict)
 
+    def on_provider_config_changed(self, default_provider: str, credentials: dict):
+        """Handle provider configuration changed"""
+        logger.info(f"Provider config changed: {default_provider}, {len(credentials)} credentials")
+        self.provider_config_changed.emit(default_provider, credentials)
+
     def save_all_settings(self):
         """Save all settings from all tabs"""
         try:
@@ -188,23 +197,45 @@ class TabbedSettingsDialog(QDialog):
             theme = self.app_appearance_tab.get_theme()
             overlay_appearance = self.overlay_appearance_tab.get_overlay_appearance()
 
+            # Save provider configuration
+            provider_saved = self.providers_tab.save_provider_config()
+            if not provider_saved:
+                # If provider config save failed, don't proceed
+                return
+
+            # Get provider config
+            default_provider, credentials = self.providers_tab.get_provider_config()
+
             # Save to config
             self.config.save_keybinds(keybinds)
             self.config.save_macros(macros)
             self.config.save_theme(theme)
+
+            # Save provider to .env
+            if default_provider:
+                from config import Config
+                Config.save_to_env(
+                    provider=default_provider,
+                    openai_key='',  # Keys are in credential store, not .env
+                    anthropic_key='',
+                    gemini_key=''
+                )
 
             # Emit signals
             self.keybinds_changed.emit(keybinds)
             self.macros_changed.emit(macros)
             self.theme_changed.emit(theme)
             self.overlay_appearance_changed.emit(overlay_appearance)
+            self.provider_config_changed.emit(default_provider, credentials)
 
             # Emit comprehensive settings saved signal
             all_settings = {
                 'keybinds': keybinds,
                 'macros': macros,
                 'theme': theme,
-                'overlay_appearance': overlay_appearance
+                'overlay_appearance': overlay_appearance,
+                'default_provider': default_provider,
+                'credentials': credentials
             }
             self.settings_saved.emit(all_settings)
 
@@ -220,7 +251,7 @@ class TabbedSettingsDialog(QDialog):
             self.accept()
 
         except Exception as e:
-            logger.error(f"Error saving settings: {e}")
+            logger.error(f"Error saving settings: {e}", exc_info=True)
             QMessageBox.critical(
                 self,
                 "Save Error",
