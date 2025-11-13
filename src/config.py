@@ -71,6 +71,7 @@ class Config:
         self.overlay_width = int(os.getenv('OVERLAY_WIDTH', '900'))
         self.overlay_height = int(os.getenv('OVERLAY_HEIGHT', '700'))
         self.overlay_minimized = os.getenv('OVERLAY_MINIMIZED', 'false').lower() == 'true'
+        self.overlay_opacity = float(os.getenv('OVERLAY_OPACITY', '0.95'))
 
         # Validate configuration (only if required)
         if require_keys:
@@ -147,7 +148,7 @@ class Config:
                     overlay_hotkey: str = 'ctrl+shift+g', check_interval: int = 5,
                     overlay_x: int = None, overlay_y: int = None,
                     overlay_width: int = None, overlay_height: int = None,
-                    overlay_minimized: bool = None):
+                    overlay_minimized: bool = None, overlay_opacity: float = None):
         """
         Save configuration to .env file
 
@@ -163,6 +164,7 @@ class Config:
             overlay_width: Overlay window width (optional)
             overlay_height: Overlay window height (optional)
             overlay_minimized: Overlay minimized state (optional)
+            overlay_opacity: Overlay opacity 0.0-1.0 (optional)
         """
         # Determine .env file location
         # Try multiple locations, prioritizing the most appropriate one
@@ -213,6 +215,8 @@ class Config:
             existing_content['OVERLAY_HEIGHT'] = str(overlay_height)
         if overlay_minimized is not None:
             existing_content['OVERLAY_MINIMIZED'] = str(overlay_minimized).lower()
+        if overlay_opacity is not None:
+            existing_content['OVERLAY_OPACITY'] = str(overlay_opacity)
 
         # Write to .env file
         with open(env_path, 'w', encoding='utf-8') as f:
@@ -244,6 +248,7 @@ class Config:
                 f.write(f"OVERLAY_WIDTH={existing_content.get('OVERLAY_WIDTH', '900')}\n")
                 f.write(f"OVERLAY_HEIGHT={existing_content.get('OVERLAY_HEIGHT', '700')}\n")
                 f.write(f"OVERLAY_MINIMIZED={existing_content.get('OVERLAY_MINIMIZED', 'false')}\n")
+                f.write(f"OVERLAY_OPACITY={existing_content.get('OVERLAY_OPACITY', '0.95')}\n")
 
         return env_path
 
