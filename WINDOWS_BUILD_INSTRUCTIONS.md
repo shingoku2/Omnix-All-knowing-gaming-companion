@@ -94,10 +94,12 @@ python -m PyInstaller --name=GamingAIAssistant --windowed --onefile --clean --no
    - Zip the entire `dist\GamingAIAssistant` folder
    - Send the zip file
    - Recipients extract and run `GamingAIAssistant.exe`
+   - Setup Wizard will launch and they enter their own API key
 
 2. **For single-file build:**
    - Just send the `GamingAIAssistant.exe` file
-   - Recipients need to create a `.env` file with their API key
+   - Recipients run it and complete Setup Wizard with their API key
+   - No .env file needed!
 
 ---
 
@@ -105,19 +107,19 @@ python -m PyInstaller --name=GamingAIAssistant --windowed --onefile --clean --no
 
 After building, users need to:
 
-1. **Create .env file** (if using folder build):
-   - Copy `.env.example` to `.env`
-   - Edit `.env` and add Anthropic API key:
-     ```
-     ANTHROPIC_API_KEY=your_actual_key_here
-     AI_PROVIDER=anthropic
-     ```
+1. **Run GamingAIAssistant.exe**
+   - The Setup Wizard will launch automatically on first run
 
-2. **Run GamingAIAssistant.exe**
+2. **Complete Setup Wizard:**
+   - Select your AI provider (Anthropic Claude, OpenAI, or Gemini)
+   - Enter your API key (obtained from provider's website)
+   - Your key is securely stored by the application
 
 3. **Launch a game**
 
 4. **Press Ctrl+Shift+G** to open the assistant
+
+**Note:** API keys are no longer stored in .env files. They are encrypted and stored securely by the application.
 
 ---
 

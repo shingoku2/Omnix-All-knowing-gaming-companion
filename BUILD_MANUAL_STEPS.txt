@@ -107,17 +107,7 @@ You should see:
 - Other folders
 
 ================================================================================
-STEP 9: COPY YOUR API KEY
-================================================================================
-
-Type:
-
-    copy .env dist\GamingAIAssistant\.env
-
-Then edit dist\GamingAIAssistant\.env and add your Anthropic API key.
-
-================================================================================
-STEP 10: TEST THE EXECUTABLE
+STEP 9: TEST THE EXECUTABLE
 ================================================================================
 
 Navigate to the folder:
@@ -129,6 +119,22 @@ Run it:
     GamingAIAssistant.exe
 
 The application should start!
+
+================================================================================
+STEP 10: SETUP WIZARD (FIRST RUN)
+================================================================================
+
+On first launch, the Setup Wizard will appear automatically:
+
+1. Select your AI provider (Anthropic Claude, OpenAI, or Google Gemini)
+2. Enter your API key from:
+   - Anthropic: https://console.anthropic.com/
+   - OpenAI: https://platform.openai.com/api-keys
+   - Gemini: https://aistudio.google.com/app/apikey
+3. Your API key will be securely stored (encrypted in CredentialStore, NOT in .env)
+4. You're ready to go!
+
+NOTE: API keys are NO LONGER stored in .env files - they are encrypted for security!
 
 ================================================================================
 YOUR .EXE LOCATION
@@ -161,12 +167,18 @@ Solution: Make sure you're in the correct folder (Step 2-3)
 
 Problem: .exe doesn't start
 Solution:
-- Make sure .env file exists with API key
 - Try running from Command Prompt to see error messages
 - Check if antivirus is blocking it
+- The Setup Wizard will launch on first run to configure your API key
 
 Problem: "ModuleNotFoundError: No module named 'config'"
 Solution: Make sure you used the command in Step 7 with --paths=src
+
+Problem: "No API key found"
+Solution:
+- The Setup Wizard should launch automatically on first run
+- If not, go to Settings → Providers to enter your API key
+- Your key will be securely stored (not in .env)
 
 ================================================================================
 NEED MORE HELP?

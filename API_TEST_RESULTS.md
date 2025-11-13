@@ -153,33 +153,21 @@ The Gaming AI Assistant is **production-ready** with Anthropic Claude:
 
 ### Quick Start with Claude
 
-1. **Ensure .env is configured:**
-   ```bash
-   # .env file already contains:
-   ANTHROPIC_API_KEY=sk-ant-api03-0a0uIx...v3cFKwAA
-   AI_PROVIDER=anthropic
-   ```
-
-2. **Run the application:**
+1. **Run the application:**
    ```bash
    python main.py
    ```
+   or double-click `GamingAIAssistant.exe` if you have built the executable.
 
-3. **Or test manually:**
-   ```bash
-   python3 -c "
-   import sys; sys.path.insert(0, 'src')
-   from config import Config
-   from ai_assistant import AIAssistant
+2. **Setup Wizard will launch automatically:**
+   - The Setup Wizard appears on first launch
+   - Select "Anthropic Claude" as your AI provider
+   - Enter your Anthropic API key (from https://console.anthropic.com/)
+   - Your API key will be securely stored in encrypted CredentialStore (NOT in .env)
 
-   config = Config()
-   ai = AIAssistant(provider='anthropic', api_key=config.anthropic_api_key)
-   ai.set_current_game({'name': 'Your Game'})
-
-   response = ai.ask_question('Your question here')
-   print(response)
-   "
-   ```
+3. **Start gaming:**
+   - Press Ctrl+Shift+G while playing a supported game
+   - Ask Claude any gaming questions!
 
 ### Sample Questions to Try
 
@@ -209,8 +197,9 @@ Once you launch a game, you can ask Claude:
 
 ### To use OpenAI (Optional):
 1. Get a new API key from https://platform.openai.com/
-2. Update `.env` with the new key
-3. Change `AI_PROVIDER=openai` in `.env`
+2. Run the application and go to Settings → Providers
+3. Enter your OpenAI API key - it will be securely stored in CredentialStore
+4. Switch the default provider to OpenAI
 
 ### To expand game database:
 Add entries to `src/game_detector.py` in the `KNOWN_GAMES` dictionary:

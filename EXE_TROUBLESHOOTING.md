@@ -24,25 +24,22 @@ This creates: `dist\GamingAIAssistant_DEBUG\GamingAIAssistant_DEBUG.exe`
 
 ## Common Issues and Fixes
 
-### Issue 1: "No .env file found" or "API key not found"
+### Issue 1: "No API key found" or Setup Wizard Errors
 
-**Problem:** The .exe can't find your .env file with the API key.
+**Problem:** The application can't find your API key.
 
 **Fix:**
-1. Make sure `.env` file is in the same folder as the .exe
-2. Copy your .env file to the dist folder:
-   ```cmd
-   copy .env dist\GamingAIAssistant\.env
-   ```
+The Setup Wizard should launch automatically on first run:
+1. Select your AI provider (Anthropic Claude, OpenAI, or Google Gemini)
+2. Enter your API key securely
+3. Your key will be encrypted and stored in CredentialStore (NOT in .env)
 
-**For distribution:** Put .env next to GamingAIAssistant.exe:
-```
-GamingAIAssistant\
-├── GamingAIAssistant.exe
-├── .env                    ← Your API key file
-├── _internal\              ← Libraries
-└── other files...
-```
+If the Setup Wizard doesn't appear:
+1. Go to Settings → Providers
+2. Enter your API key there
+3. The application will save it securely
+
+**Note:** API keys are NO LONGER stored in .env files for security reasons!
 
 ---
 
@@ -117,14 +114,16 @@ Use the updated BUILD_WINDOWS.bat or BUILD_SIMPLE.bat
 
 **Fix:**
 
-1. **Check your API key in .env:**
-   ```
-   ANTHROPIC_API_KEY=sk-ant-api03-your-actual-key-here
-   AI_PROVIDER=anthropic
-   ```
+1. **Check your API key in Settings:**
+   - Go to Settings → Providers
+   - Make sure you've entered your API key
+   - Select it as the default provider
 
 2. **Make sure the API key is valid:**
-   - Visit: https://console.anthropic.com/
+   - Visit the appropriate provider:
+     - Anthropic: https://console.anthropic.com/
+     - OpenAI: https://platform.openai.com/api-keys
+     - Gemini: https://aistudio.google.com/app/apikey
    - Check if your key is still active
    - Check if you have credits
 
@@ -175,8 +174,6 @@ If the .exe doesn't work, try rebuilding with this checklist:
   rmdir /s /q build
   ```
 
-- [ ] Make sure .env file exists with valid API key
-
 - [ ] Run pre-build test:
   ```cmd
   python test_before_build.py
@@ -190,15 +187,14 @@ If the .exe doesn't work, try rebuilding with this checklist:
 
 - [ ] Wait for build to complete (3-5 minutes)
 
-- [ ] Copy .env to the dist folder:
-  ```cmd
-  copy .env dist\GamingAIAssistant\.env
-  ```
-
 - [ ] Test the .exe:
   ```cmd
   dist\GamingAIAssistant\GamingAIAssistant.exe
   ```
+
+- [ ] Setup Wizard will launch on first run - enter your API key there
+
+**Note:** API keys are no longer copied to dist folder - they're stored securely by the application!
 
 ---
 
@@ -262,11 +258,10 @@ Edward-s-Stuff/
 ├── dist/
 │   └── GamingAIAssistant/
 │       ├── GamingAIAssistant.exe    ← The application
-│       ├── .env                      ← Copy this here!
 │       ├── _internal/                ← Dependencies (auto-created)
 │       ├── README.md
 │       └── other files...
-├── .env                              ← Your original (DON'T distribute this)
+├── .env                              ← Your local config (NOT distributed)
 ├── .env.example                      ← Template
 ├── BUILD_WINDOWS.bat
 ├── BUILD_DEBUG.bat
@@ -275,4 +270,4 @@ Edward-s-Stuff/
 
 ---
 
-**Remember:** The .exe needs the .env file in the same directory to work!
+**Remember:** The .exe no longer needs the .env file! API keys are configured securely through the Setup Wizard on first run.

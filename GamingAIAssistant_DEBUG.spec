@@ -15,6 +15,9 @@ a = Analysis(
         'credential_store', 'provider_tester', 'providers', 'ai_router', 'setup_wizard',
         # Settings and UI
         'providers_tab', 'settings_dialog', 'settings_tabs', 'appearance_tabs', 'login_dialog',
+        # Game profiles and macros
+        'game_profile', 'game_profiles_tab', 'game_watcher', 'overlay_modes',
+        'macro_store', 'macro_runner', 'macro_ai_generator',
         # Managers
         'keybind_manager', 'macro_manager', 'theme_manager',
         # AI providers

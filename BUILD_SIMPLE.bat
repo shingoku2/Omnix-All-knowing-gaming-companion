@@ -107,6 +107,13 @@ python -m PyInstaller ^
     --hidden-import=keybind_manager ^
     --hidden-import=macro_manager ^
     --hidden-import=theme_manager ^
+    --hidden-import=game_profile ^
+    --hidden-import=game_profiles_tab ^
+    --hidden-import=game_watcher ^
+    --hidden-import=overlay_modes ^
+    --hidden-import=macro_store ^
+    --hidden-import=macro_runner ^
+    --hidden-import=macro_ai_generator ^
     --hidden-import=anthropic ^
     --hidden-import=openai ^
     --hidden-import=google.generativeai ^

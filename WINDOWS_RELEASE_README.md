@@ -13,18 +13,17 @@ Automatically detects your game and provides real-time AI assistance using Claud
 1. **Extract the zip file**
    - Extract `GamingAIAssistant.zip` to any folder
 
-2. **Setup API Key**
-   - Copy `.env.example` to `.env`
-   - Open `.env` in Notepad
-   - Get an API key from: https://console.anthropic.com/
-   - Paste your key:
-     ```
-     ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
-     ```
-
-3. **Run the application**
+2. **Run the application**
    - Double-click `GamingAIAssistant.exe`
-   - The app will start in the system tray
+   - The Setup Wizard will appear automatically on first run
+
+3. **Complete Setup Wizard**
+   - Select your AI provider:
+     - **Anthropic Claude** (recommended) - https://console.anthropic.com/
+     - **OpenAI GPT** - https://platform.openai.com/api-keys
+     - **Google Gemini** - https://aistudio.google.com/app/apikey
+   - Enter your API key
+   - Your key is securely stored (encrypted, not in .env)
 
 4. **Play your game**
    - Launch any supported game
@@ -109,13 +108,27 @@ Automatically detects your game and provides real-time AI assistance using Claud
 
 ### Getting an API Key:
 
+Choose your preferred AI provider:
+
+**Anthropic Claude (Recommended):**
 1. Visit: https://console.anthropic.com/
 2. Create a free account
 3. Navigate to API Keys section
 4. Click "Create Key"
-5. Copy your key to the `.env` file
+5. Copy your key and paste it into the Setup Wizard
 
-**Cost:** Claude Haiku is very affordable (~$0.25 per 1M input tokens)
+**OpenAI GPT:**
+1. Visit: https://platform.openai.com/api-keys
+2. Create account and add billing
+3. Create API key
+4. Paste into Setup Wizard
+
+**Google Gemini:**
+1. Visit: https://aistudio.google.com/app/apikey
+2. Click "Get API Key"
+3. Paste into Setup Wizard
+
+**Cost:** Most models have affordable pricing. Claude Haiku is ~$0.25 per 1M input tokens
 
 ---
 
@@ -124,12 +137,13 @@ Automatically detects your game and provides real-time AI assistance using Claud
 ```
 GamingAIAssistant/
 ├── GamingAIAssistant.exe    # Main application
-├── .env.example              # API key template
 ├── START_HERE.txt            # Quick start guide
 ├── README.md                 # Full documentation
 ├── SETUP.md                  # Detailed setup guide
 └── [library files]           # Python dependencies
 ```
+
+**Note:** API keys are stored securely by the application, not in separate files.
 
 ---
 
@@ -138,7 +152,11 @@ GamingAIAssistant/
 ### App won't start
 - Check if antivirus blocked it
 - Run as Administrator
-- Ensure .env file has valid API key
+- Check that Setup Wizard completed successfully
+
+### Setup Wizard doesn't appear
+- Check that you're running the first time
+- Go to Settings → Providers to enter your API key manually
 
 ### Game not detected
 - Check if game is in the supported list
@@ -146,8 +164,9 @@ GamingAIAssistant/
 - Try restarting the app
 
 ### AI not responding
-- Verify API key in .env file
+- Verify API key in Settings → Providers
 - Check internet connection
+- Try asking a different question
 - Ensure Anthropic account has credits
 
 ### Hotkey not working
