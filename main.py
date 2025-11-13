@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Gaming AI Assistant
 Main entry point for the application
@@ -12,6 +13,12 @@ import os
 import logging
 from pathlib import Path
 from datetime import datetime
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 # Setup logging FIRST - before any other imports
 log_file = f"gaming_ai_assistant_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"

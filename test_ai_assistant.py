@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Test AIAssistant Module
 Tests Bearer token authentication and endpoint fallback logic
@@ -8,6 +9,12 @@ import os
 import sys
 import json
 from unittest.mock import Mock, patch, MagicMock
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -208,7 +215,7 @@ def test_endpoint_fallback_logic():
             else:
                 print(f"    ✗ Made {mock_post.call_count} calls (expected 2)")
                 test2_pass = False
-        except:
+        except Exception:
             print(f"    ✗ Fallback failed")
             test2_pass = False
 
@@ -245,7 +252,7 @@ def test_endpoint_fallback_logic():
             else:
                 print(f"    ✗ Made {mock_post.call_count} calls (expected 3)")
                 test3_pass = False
-        except:
+        except Exception:
             print(f"    ✗ Third tier fallback failed")
             test3_pass = False
 
