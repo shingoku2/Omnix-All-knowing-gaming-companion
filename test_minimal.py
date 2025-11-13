@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Minimal test - no GUI, just test if modules work
 """
@@ -6,6 +7,12 @@ Minimal test - no GUI, just test if modules work
 import sys
 import os
 from pathlib import Path
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 print("Minimal Component Test")
 print("=" * 50)

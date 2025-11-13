@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Windows Executable Builder
 Creates a standalone .exe for Windows
@@ -8,6 +9,12 @@ import os
 import sys
 import subprocess
 import shutil
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 print("=" * 70)
 print("GAMING AI ASSISTANT - WINDOWS EXECUTABLE BUILDER")
