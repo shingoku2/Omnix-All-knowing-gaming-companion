@@ -98,44 +98,68 @@ brew install pyqt6
 
 ## API Key Setup
 
-### Option 1: Anthropic (Claude) - Recommended
+### Using Setup Wizard (Recommended)
 
-1. **Get API Key**
-   - Go to [console.anthropic.com](https://console.anthropic.com/)
-   - Sign up or log in
-   - Navigate to API Keys
-   - Create a new API key
-   - Copy the key
+The **Setup Wizard** handles API key configuration automatically:
 
-2. **Configure Application**
+1. Run `python main.py`
+2. Select your AI provider from the dropdown
+3. Paste your API key when prompted
+4. The wizard tests the connection to verify it works
+5. Configuration is saved automatically to `.env`
+
+### Manual Configuration (Optional)
+
+If you prefer to configure manually or skip the Setup Wizard:
+
+#### Get API Key
+
+**Anthropic (Claude) - Recommended**:
+- Go to [console.anthropic.com](https://console.anthropic.com/)
+- Sign up or log in
+- Navigate to API Keys
+- Create a new API key
+- Copy the key
+
+**OpenAI (GPT)**:
+- Go to [platform.openai.com](https://platform.openai.com/)
+- Sign up or log in
+- Navigate to API Keys
+- Create a new API key
+- Copy the key
+
+**Google Gemini**:
+- Go to [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+- Sign in with your Google account
+- Create a new API key
+- Copy the key
+
+#### Configure `.env` File
+
+1. Copy the example file:
    ```bash
-   # Copy example file
    cp .env.example .env
+   ```
 
-   # Edit .env file
+2. Edit `.env` file:
+   ```bash
    # Windows: notepad .env
    # macOS/Linux: nano .env
    ```
 
-3. **Add Your Key**
+3. Add your key:
    ```env
+   # For Anthropic:
    ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
    AI_PROVIDER=anthropic
-   ```
 
-### Option 2: OpenAI (GPT)
-
-1. **Get API Key**
-   - Go to [platform.openai.com](https://platform.openai.com/)
-   - Sign up or log in
-   - Navigate to API Keys
-   - Create a new API key
-   - Copy the key
-
-2. **Configure Application**
-   ```env
+   # OR for OpenAI:
    OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxx
    AI_PROVIDER=openai
+
+   # OR for Google Gemini:
+   GEMINI_API_KEY=AIzaSyDxxxxxxxxxxxxxxxxxxxxxxx
+   AI_PROVIDER=gemini
    ```
 
 ### Cost Considerations
@@ -147,7 +171,22 @@ brew install pyqt6
 
 ## First Run
 
-### Step 1: Verify Installation
+### Step 1: Launch the Application
+
+```bash
+python main.py
+```
+
+The **Setup Wizard** will automatically appear on your first run to guide you through configuration:
+
+1. **Select AI Provider** - Choose between Anthropic, OpenAI, or Google Gemini
+2. **Enter API Key** - Paste your API key securely
+3. **Test Connection** - The wizard tests your key to ensure it works
+4. **Save Configuration** - Your settings are automatically saved to `.env`
+
+### Step 2: Verify Installation (Optional)
+
+If you prefer manual verification:
 
 ```bash
 # Check Python version
@@ -155,11 +194,7 @@ python --version
 
 # Check pip installation
 pip list
-```
 
-### Step 2: Test Configuration
-
-```bash
 # Test config file
 python src/config.py
 ```
@@ -171,20 +206,17 @@ Config(provider=anthropic, hotkey=ctrl+shift+g)
 API Key present: Yes
 ```
 
-### Step 3: Test Game Detection
+### Step 3: Test Game Detection (Optional)
 
 ```bash
 # Run game detector test
 python src/game_detector.py
 ```
 
-### Step 4: Launch the Application
+### Step 4: Start Using the Assistant
 
-```bash
-python main.py
-```
+Once the Setup Wizard completes:
 
-You should see:
 ```
 ============================================================
 🎮 Gaming AI Assistant
@@ -203,6 +235,8 @@ Initializing AI assistant...
 
 Starting GUI...
 ```
+
+The application is ready to use! Launch a game and press `Ctrl+Shift+G` to open the assistant.
 
 ## Troubleshooting
 

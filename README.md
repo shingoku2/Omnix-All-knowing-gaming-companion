@@ -50,29 +50,38 @@ The assistant automatically:
    pip install -r requirements.txt
    ```
 
-3. **Configure API keys**
-   ```bash
-   # Copy the example environment file
-   cp .env.example .env
-
-   # Edit .env and add your API key
-   # For Anthropic (recommended):
-   ANTHROPIC_API_KEY=your_api_key_here
-   AI_PROVIDER=anthropic
-
-   # OR for OpenAI:
-   OPENAI_API_KEY=your_api_key_here
-   AI_PROVIDER=openai
-
-   # OR for Google Gemini:
-   GEMINI_API_KEY=your_api_key_here
-   AI_PROVIDER=gemini
-   ```
-
-4. **Run the application**
+3. **Run the application**
    ```bash
    python main.py
    ```
+
+   **The Setup Wizard will appear on first run** and guide you through:
+   - Selecting your AI provider (Anthropic, OpenAI, or Google Gemini)
+   - Entering your API key
+   - Testing the connection
+   - Saving your configuration
+
+### Manual Configuration (Optional)
+
+If you prefer to skip the Setup Wizard, configure `.env` manually:
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env and add your API key
+# For Anthropic (recommended):
+ANTHROPIC_API_KEY=your_api_key_here
+AI_PROVIDER=anthropic
+
+# OR for OpenAI:
+OPENAI_API_KEY=your_api_key_here
+AI_PROVIDER=openai
+
+# OR for Google Gemini:
+GEMINI_API_KEY=your_api_key_here
+AI_PROVIDER=gemini
+```
 
 ## 📖 Usage
 

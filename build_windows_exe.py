@@ -52,15 +52,34 @@ cmd = [
     "--add-data=.env.example:.",
     "--add-data=README.md:.",
     "--add-data=SETUP.md:.",
+    # PyQt6 modules
     "--hidden-import=PyQt6.QtCore",
     "--hidden-import=PyQt6.QtGui",
     "--hidden-import=PyQt6.QtWidgets",
+    "--hidden-import=PyQt6.QtCore.QTimer",
+    "--hidden-import=PyQt6.QtWidgets.QApplication",
+    # AI Provider modules
     "--hidden-import=anthropic",
     "--hidden-import=openai",
+    "--hidden-import=google.generativeai",
+    # System and utility modules
     "--hidden-import=psutil",
     "--hidden-import=requests",
     "--hidden-import=bs4",
     "--hidden-import=dotenv",
+    # Additional dependencies
+    "--hidden-import=urllib3",
+    "--hidden-import=certifi",
+    "--hidden-import=charset_normalizer",
+    "--hidden-import=idna",
+    "--hidden-import=pydantic",
+    "--hidden-import=pydantic_core",
+    "--hidden-import=win32api",
+    "--hidden-import=win32con",
+    "--hidden-import=win32gui",
+    "--hidden-import=win32process",
+    # Encoding support
+    "--hidden-import=encodings.utf_8",
     "main.py"
 ]
 
