@@ -1,129 +1,174 @@
-"""Credential storage and retrieval utilities."""
+"""Encrypted credential storage utilities for the Gaming AI Assistant."""
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
+
+from cryptography.fernet import Fernet, InvalidToken
+import keyring
+from keyring.errors import KeyringError
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_SERVICE_NAME = "gaming_ai_assistant"
+_DEFAULT_CREDENTIAL_FILE = "credentials.enc"
+_KEYRING_KEY = "encryption_key"
+_FALLBACK_KEY_FILE = "master.key"
+
+
+class CredentialStoreError(Exception):
+    """Base exception for credential store errors."""
+
+
+class CredentialDecryptionError(CredentialStoreError):
+    """Raised when stored credentials cannot be decrypted."""
+
 
 class CredentialStore:
-    """Manage encrypted session tokens for AI providers."""
-
-    DEFAULT_STORE = Path.home() / ".gaming_ai_assistant" / "credentials.json"
+    """Encrypted credential storage backed by the system keyring."""
 
     def __init__(
         self,
-        storage_path: Optional[str] = None,
-        encryption_key: Optional[str] = None,
+        base_dir: Optional[Union[Path, str]] = None,
+        service_name: str = _DEFAULT_SERVICE_NAME,
+        credential_filename: str = _DEFAULT_CREDENTIAL_FILE,
     ) -> None:
-        self.storage_path = Path(
-            storage_path
-            or os.getenv("CREDENTIAL_STORE_PATH", str(self.DEFAULT_STORE))
-        )
-        self.storage_path = self.storage_path.expanduser()
-        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+        self.service_name = service_name
+        self.base_dir = Path(base_dir) if base_dir else Path.home() / ".gaming_ai_assistant"
+        self.credential_path = self.base_dir / credential_filename
+        self._cipher: Optional[Fernet] = None
 
-        self.encryption_key = encryption_key or os.getenv("CREDENTIAL_SECRET_KEY")
-        self._derived_key: Optional[bytes] = None
-        self._cache: Optional[Dict[str, Dict[str, str]]] = None
+        self._ensure_directories()
 
-        if self.encryption_key:
-            self._derived_key = self._derive_key(self.encryption_key)
+    def save_credentials(self, values: Dict[str, Optional[str]]) -> None:
+        """Persist credentials securely."""
+        data = self._load_raw()
+        for key, value in values.items():
+            if value:
+                data[key] = value
+            elif key in data:
+                del data[key]
+
+        payload = json.dumps(data).encode("utf-8")
+        ciphertext = self._get_cipher().encrypt(payload)
+        with open(self.credential_path, "wb") as fh:
+            fh.write(ciphertext)
+        self._set_permissions(self.credential_path, 0o600)
+        logger.debug("Stored %d credential(s) in encrypted vault", len(values))
+
+    def load_credentials(self) -> Dict[str, str]:
+        """Load all credentials stored in the vault."""
+        return self._load_raw()
+
+    def get(self, key: str) -> Optional[str]:
+        """Fetch a single credential by key."""
+        return self._load_raw().get(key)
+
+    def delete(self, key: str) -> None:
+        """Remove a credential from the vault."""
+        data = self._load_raw()
+        if key in data:
+            del data[key]
+            payload = json.dumps(data).encode("utf-8")
+            ciphertext = self._get_cipher().encrypt(payload)
+            with open(self.credential_path, "wb") as fh:
+                fh.write(ciphertext)
+            self._set_permissions(self.credential_path, 0o600)
+            logger.debug("Removed credential %s from vault", key)
+
+    def _load_raw(self) -> Dict[str, str]:
+        if not self.credential_path.exists():
+            return {}
+
+        try:
+            blob = self.credential_path.read_bytes()
+        except FileNotFoundError:
+            return {}
+
+        if not blob:
+            return {}
+
+        try:
+            plaintext = self._get_cipher().decrypt(blob)
+        except InvalidToken as exc:
+            raise CredentialDecryptionError("Failed to decrypt credentials") from exc
+
+        try:
+            return json.loads(plaintext.decode("utf-8"))
+        except json.JSONDecodeError as exc:
+            raise CredentialStoreError("Credential store contains invalid JSON") from exc
+
+    def _ensure_directories(self) -> None:
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self._set_permissions(self.base_dir, 0o700)
+        if not self.credential_path.exists():
+            self.credential_path.touch()
+            self._set_permissions(self.credential_path, 0o600)
+
+    def _get_cipher(self) -> Fernet:
+        if self._cipher is None:
+            key = self._load_or_create_key()
+            self._cipher = Fernet(key)
+        return self._cipher
+
+    def _load_or_create_key(self) -> bytes:
+        key = self._read_keyring_key()
+        if key:
+            return key
+
+        key_bytes = Fernet.generate_key()
+        key_string = key_bytes.decode("utf-8")
+
+        try:
+            keyring.set_password(self.service_name, _KEYRING_KEY, key_string)
+            logger.debug("Generated new encryption key and stored it in keyring")
+            return key_bytes
+        except KeyringError as exc:
+            logger.warning("Keyring unavailable (%s); falling back to local key file", exc)
+            return self._fallback_store_key(key_bytes)
+
+    def _read_keyring_key(self) -> Optional[bytes]:
+        try:
+            value = keyring.get_password(self.service_name, _KEYRING_KEY)
+        except KeyringError as exc:
+            logger.warning("Unable to access keyring: %s", exc)
+            return self._load_fallback_key()
+
+        if value:
+            return value.encode("utf-8")
+
+        # key not in keyring; try fallback if present
+        fallback = self._load_fallback_key()
+        if fallback:
+            return fallback
+
+        return None
+
+    def _fallback_store_key(self, key_bytes: bytes) -> bytes:
+        fallback_path = self.base_dir / _FALLBACK_KEY_FILE
+        with open(fallback_path, "wb") as fh:
+            fh.write(key_bytes)
+        self._set_permissions(fallback_path, 0o600)
+        logger.debug("Stored encryption key in fallback key file %s", fallback_path)
+        return key_bytes
+
+    def _load_fallback_key(self) -> Optional[bytes]:
+        fallback_path = self.base_dir / _FALLBACK_KEY_FILE
+        if fallback_path.exists():
+            return fallback_path.read_bytes()
+        return None
 
     @staticmethod
-    def _derive_key(secret: str) -> bytes:
-        import hashlib
-
-        digest = hashlib.sha256(secret.encode("utf-8")).digest()
-        return digest
-
-    def _decrypt_value(self, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return None
-
-        if not isinstance(value, str):
-            return value
-
-        # Plain text
-        if not value.startswith("enc:") and not value.startswith("b64:"):
-            return value
-
-        # Base64 encoded plain text
-        if value.startswith("b64:"):
-            try:
-                decoded = base64.b64decode(value[4:].encode("utf-8"))
-                return decoded.decode("utf-8")
-            except Exception as exc:  # noqa: BLE001 - want to surface exact issue
-                logger.error("Failed to decode base64 credential: %s", exc, exc_info=True)
-                return None
-
-        if not self._derived_key:
-            logger.warning(
-                "Encrypted credential encountered but no encryption key is configured"
-            )
-            return None
-
+    def _set_permissions(path: Path, mode: int) -> None:
         try:
-            payload = base64.b64decode(value[4:].encode("utf-8"))
-            decrypted_bytes = bytes(
-                b ^ self._derived_key[i % len(self._derived_key)]
-                for i, b in enumerate(payload)
-            )
-            return decrypted_bytes.decode("utf-8")
-        except Exception as exc:  # noqa: BLE001 - log actual error
-            logger.error("Failed to decrypt credential: %s", exc, exc_info=True)
-            return None
-
-    def load_tokens(self, force: bool = False) -> Dict[str, Dict[str, str]]:
-        if self._cache is not None and not force:
-            return self._cache
-
-        if not self.storage_path.exists():
-            logger.info("Credential store not found at %s", self.storage_path)
-            self._cache = {}
-            return self._cache
-
-        try:
-            with self.storage_path.open("r", encoding="utf-8") as handle:
-                raw_data = json.load(handle)
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Failed to read credential store: %s", exc, exc_info=True)
-            self._cache = {}
-            return self._cache
-
-        decrypted: Dict[str, Dict[str, str]] = {}
-        for provider, provider_payload in raw_data.items():
-            if not isinstance(provider_payload, dict):
-                continue
-
-            lower_provider = provider.lower()
-            decrypted[lower_provider] = {}
-            for token_name, token_value in provider_payload.items():
-                decrypted_value = self._decrypt_value(token_value)
-                if decrypted_value:
-                    decrypted[lower_provider][token_name] = decrypted_value
-
-        self._cache = decrypted
-        return self._cache
-
-    def get_provider_tokens(self, provider: str) -> Dict[str, str]:
-        tokens = self.load_tokens()
-        return tokens.get(provider.lower(), {}).copy()
-
-    def cache_tokens(self, provider: str, tokens: Dict[str, str]) -> None:
-        provider_key = provider.lower()
-        cache = self.load_tokens(force=True)
-        cache[provider_key] = tokens
-        self._cache = cache
-
-    def clear_cache(self) -> None:
-        self._cache = None
-
-
-__all__ = ["CredentialStore"]
+            os.chmod(path, mode)
+        except PermissionError:
+            logger.debug("Insufficient permissions to set mode %o on %s", mode, path)
+        except NotImplementedError:
+            logger.debug("chmod not implemented on this platform for %s", path)
+        except OSError as exc:
+            logger.debug("Failed to set permissions on %s: %s", path, exc)

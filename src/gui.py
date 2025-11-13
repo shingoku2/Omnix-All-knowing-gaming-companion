@@ -17,6 +17,8 @@ from typing import Optional, Dict
 import os
 import webbrowser
 
+from credential_store import CredentialStore, CredentialStoreError
+from config import Config
 from login_dialog import LoginDialog
 
 # Configure logging
@@ -1646,23 +1648,22 @@ class MainWindow(QMainWindow):
         logger.info("Handling settings save...")
 
         try:
-            # Import config module to call save function
-            from config import Config
+            store = getattr(self.config, 'credential_store', None) or CredentialStore()
+            store.save_credentials({
+                'OPENAI_API_KEY': openai_key,
+                'ANTHROPIC_API_KEY': anthropic_key,
+                'GEMINI_API_KEY': gemini_key,
+            })
 
             # Save settings to .env file including overlay opacity
+            # Note: API keys are now stored in credential store, not in .env
             Config.save_to_env(
                 provider=provider,
-                openai_key=openai_key,
-                anthropic_key=anthropic_key,
-                gemini_key=gemini_key,
                 overlay_opacity=overlay_opacity
             )
 
             # Reload configuration
             self.config = Config()
-
-            # Persist the latest session tokens locally for runtime usage
-            self.config.session_tokens.update(session_tokens)
 
             # Reinitialize AI assistant with new settings
             from ai_assistant import AIAssistant
@@ -1702,6 +1703,9 @@ class MainWindow(QMainWindow):
 
             logger.info(f"Settings applied successfully: provider={provider}, overlay_opacity={overlay_opacity}")
 
+        except CredentialStoreError as e:
+            logger.error("Credential store error: %s", e, exc_info=True)
+            QMessageBox.critical(self, "Credential Error", f"Failed to store credentials securely: {str(e)}")
         except Exception as e:
             logger.error(f"Error applying settings: {e}", exc_info=True)
             self.chat_widget.add_message(
