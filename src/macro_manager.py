@@ -1,6 +1,7 @@
 """
 Macro Manager Module
-Handles macro creation, editing, and execution
+Handles macro creation, editing, and execution for gaming automation
+Supports keyboard/mouse input, delays with jitter, and AI-assisted macro generation
 """
 
 import logging
@@ -9,12 +10,23 @@ from typing import List, Dict, Optional, Callable, Any
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 import uuid
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
-class MacroActionType(Enum):
-    """Types of macro actions"""
+class MacroStepType(Enum):
+    """Types of macro steps for keyboard/mouse automation"""
+    KEY_PRESS = "key_press"          # Press and release a key
+    KEY_DOWN = "key_down"            # Press key without releasing
+    KEY_UP = "key_up"                # Release a pressed key
+    KEY_SEQUENCE = "key_sequence"    # Type a sequence of keys
+    MOUSE_MOVE = "mouse_move"        # Move mouse to position
+    MOUSE_CLICK = "mouse_click"      # Click mouse button
+    MOUSE_SCROLL = "mouse_scroll"    # Scroll mouse wheel
+    DELAY = "delay"                  # Pause execution
+
+    # Legacy UI actions (for backward compatibility)
     SHOW_TIPS = "show_tips"
     SHOW_OVERVIEW = "show_overview"
     CLEAR_CHAT = "clear_chat"
@@ -22,13 +34,75 @@ class MacroActionType(Enum):
     TOGGLE_OVERLAY = "toggle_overlay"
     CLOSE_OVERLAY = "close_overlay"
     OPEN_SETTINGS = "open_settings"
-    WAIT = "wait"  # Wait for specified milliseconds
-    CUSTOM_COMMAND = "custom_command"  # User-defined command
+    CUSTOM_COMMAND = "custom_command"
+
+
+@dataclass
+class MacroStep:
+    """Represents a single step in a macro"""
+    type: str                      # MacroStepType enum value
+
+    # Keyboard parameters
+    key: Optional[str] = None      # Key name or combination (e.g., "a", "ctrl+shift+e")
+    duration_ms: int = 0           # For key hold duration or delay duration
+
+    # Mouse parameters
+    button: Optional[str] = None   # "left", "right", "middle"
+    x: Optional[int] = None        # Mouse X coordinate
+    y: Optional[int] = None        # Mouse Y coordinate
+    scroll_amount: int = 0         # Scroll wheel amount
+
+    # General parameters
+    meta: Dict[str, Any] = field(default_factory=dict)  # Additional metadata
+    delay_jitter_ms: int = 0       # Random delay jitter (0 to this value)
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization"""
+        return {
+            'type': self.type,
+            'key': self.key,
+            'duration_ms': self.duration_ms,
+            'button': self.button,
+            'x': self.x,
+            'y': self.y,
+            'scroll_amount': self.scroll_amount,
+            'meta': self.meta,
+            'delay_jitter_ms': self.delay_jitter_ms
+        }
+
+    @staticmethod
+    def from_dict(data: dict) -> 'MacroStep':
+        """Create MacroStep from dictionary"""
+        return MacroStep(
+            type=data['type'],
+            key=data.get('key'),
+            duration_ms=data.get('duration_ms', 0),
+            button=data.get('button'),
+            x=data.get('x'),
+            y=data.get('y'),
+            scroll_amount=data.get('scroll_amount', 0),
+            meta=data.get('meta', {}),
+            delay_jitter_ms=data.get('delay_jitter_ms', 0)
+        )
+
+
+# Legacy action type for backward compatibility
+class MacroActionType(Enum):
+    """Types of macro actions (legacy - use MacroStepType instead)"""
+    SHOW_TIPS = "show_tips"
+    SHOW_OVERVIEW = "show_overview"
+    CLEAR_CHAT = "clear_chat"
+    SEND_MESSAGE = "send_message"
+    TOGGLE_OVERLAY = "toggle_overlay"
+    CLOSE_OVERLAY = "close_overlay"
+    OPEN_SETTINGS = "open_settings"
+    WAIT = "wait"
+    CUSTOM_COMMAND = "custom_command"
 
 
 @dataclass
 class MacroAction:
-    """Represents a single action in a macro"""
+    """Represents a single action in a macro (legacy - use MacroStep instead)"""
     action_type: str  # MacroActionType enum value
     parameters: Dict[str, Any] = field(default_factory=dict)
     delay_after: int = 0  # Delay in milliseconds after executing this action
@@ -45,14 +119,27 @@ class MacroAction:
 
 @dataclass
 class Macro:
-    """Represents a macro (sequence of actions)"""
+    """Represents a macro (sequence of steps for gaming automation)"""
     id: str
     name: str
     description: str
-    actions: List[MacroAction] = field(default_factory=list)
+    steps: List[MacroStep] = field(default_factory=list)
+
+    # Game profile association
+    game_profile_id: Optional[str] = None  # None = global macro
+
+    # Execution parameters
+    repeat: int = 1                        # Number of times to repeat macro
+    randomize_delay: bool = False          # Add random jitter to delays
+    delay_jitter_ms: int = 0               # Max random jitter in milliseconds
+
+    # Status
     enabled: bool = True
     created_at: float = field(default_factory=time.time)
-    modified_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
+
+    # Legacy support
+    actions: List[MacroAction] = field(default_factory=list)  # For backward compatibility
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization"""
@@ -60,56 +147,105 @@ class Macro:
             'id': self.id,
             'name': self.name,
             'description': self.description,
-            'actions': [action.to_dict() for action in self.actions],
+            'steps': [step.to_dict() for step in self.steps],
+            'game_profile_id': self.game_profile_id,
+            'repeat': self.repeat,
+            'randomize_delay': self.randomize_delay,
+            'delay_jitter_ms': self.delay_jitter_ms,
             'enabled': self.enabled,
             'created_at': self.created_at,
-            'modified_at': self.modified_at
+            'updated_at': self.updated_at,
+            # Legacy
+            'actions': [action.to_dict() for action in self.actions]
         }
 
     @staticmethod
     def from_dict(data: dict) -> 'Macro':
         """Create Macro from dictionary"""
-        actions = [MacroAction.from_dict(a) for a in data.get('actions', [])]
+        # Support both new 'steps' and legacy 'actions' format
+        steps = []
+        if 'steps' in data:
+            steps = [MacroStep.from_dict(s) for s in data.get('steps', [])]
+
+        actions = []
+        if 'actions' in data:
+            actions = [MacroAction.from_dict(a) for a in data.get('actions', [])]
+
         return Macro(
             id=data['id'],
             name=data['name'],
             description=data['description'],
-            actions=actions,
+            steps=steps,
+            game_profile_id=data.get('game_profile_id'),
+            repeat=data.get('repeat', 1),
+            randomize_delay=data.get('randomize_delay', False),
+            delay_jitter_ms=data.get('delay_jitter_ms', 0),
             enabled=data.get('enabled', True),
             created_at=data.get('created_at', time.time()),
-            modified_at=data.get('modified_at', time.time())
+            updated_at=data.get('updated_at', time.time()),
+            actions=actions
         )
 
-    def add_action(self, action: MacroAction):
-        """Add an action to the macro"""
-        self.actions.append(action)
-        self.modified_at = time.time()
+    def add_step(self, step: MacroStep):
+        """Add a step to the macro"""
+        self.steps.append(step)
+        self.updated_at = time.time()
 
-    def remove_action(self, index: int) -> bool:
-        """Remove an action by index"""
-        if 0 <= index < len(self.actions):
-            self.actions.pop(index)
-            self.modified_at = time.time()
+    def remove_step(self, index: int) -> bool:
+        """Remove a step by index"""
+        if 0 <= index < len(self.steps):
+            self.steps.pop(index)
+            self.updated_at = time.time()
             return True
         return False
 
-    def move_action(self, from_index: int, to_index: int) -> bool:
-        """Move an action from one position to another"""
-        if 0 <= from_index < len(self.actions) and 0 <= to_index < len(self.actions):
-            action = self.actions.pop(from_index)
-            self.actions.insert(to_index, action)
-            self.modified_at = time.time()
+    def move_step(self, from_index: int, to_index: int) -> bool:
+        """Move a step from one position to another"""
+        if 0 <= from_index < len(self.steps) and 0 <= to_index < len(self.steps):
+            step = self.steps.pop(from_index)
+            self.steps.insert(to_index, step)
+            self.updated_at = time.time()
             return True
         return False
 
     def get_total_duration(self) -> int:
-        """Get total duration of macro in milliseconds"""
+        """Get total duration of macro execution in milliseconds"""
         total = 0
-        for action in self.actions:
-            total += action.delay_after
-            if action.action_type == MacroActionType.WAIT.value:
-                total += action.parameters.get('duration', 0)
-        return total
+        for step in self.steps:
+            if step.type == MacroStepType.DELAY.value:
+                total += step.duration_ms
+            elif step.type == MacroStepType.KEY_DOWN.value or step.type == MacroStepType.KEY_PRESS.value:
+                if step.duration_ms > 0:
+                    total += step.duration_ms
+            # Add jitter
+            if step.delay_jitter_ms > 0:
+                total += step.delay_jitter_ms
+
+        # Account for repetitions
+        return total * self.repeat
+
+    # Legacy methods for backward compatibility
+    def add_action(self, action: MacroAction):
+        """Add an action to the macro (legacy method)"""
+        self.actions.append(action)
+        self.updated_at = time.time()
+
+    def remove_action(self, index: int) -> bool:
+        """Remove an action by index (legacy method)"""
+        if 0 <= index < len(self.actions):
+            self.actions.pop(index)
+            self.updated_at = time.time()
+            return True
+        return False
+
+    def move_action(self, from_index: int, to_index: int) -> bool:
+        """Move an action from one position to another (legacy method)"""
+        if 0 <= from_index < len(self.actions) and 0 <= to_index < len(self.actions):
+            action = self.actions.pop(from_index)
+            self.actions.insert(to_index, action)
+            self.updated_at = time.time()
+            return True
+        return False
 
 
 class MacroManager:
@@ -170,8 +306,13 @@ class MacroManager:
             id=str(uuid.uuid4()),
             name=f"{original.name} (Copy)",
             description=original.description,
-            actions=[MacroAction.from_dict(a.to_dict()) for a in original.actions],
-            enabled=original.enabled
+            steps=[MacroStep.from_dict(s.to_dict()) for s in original.steps],
+            game_profile_id=original.game_profile_id,
+            repeat=original.repeat,
+            randomize_delay=original.randomize_delay,
+            delay_jitter_ms=original.delay_jitter_ms,
+            enabled=original.enabled,
+            actions=[MacroAction.from_dict(a.to_dict()) for a in original.actions]
         )
         self.macros[new_macro.id] = new_macro
         logger.info(f"Duplicated macro: {original.name} -> {new_macro.name}")
@@ -393,24 +534,50 @@ class MacroManager:
         if not macro.name or not macro.name.strip():
             errors.append("Macro name cannot be empty")
 
-        if len(macro.actions) == 0:
-            errors.append("Macro must have at least one action")
+        if len(macro.steps) == 0:
+            errors.append("Macro must have at least one step")
 
-        # Validate each action
+        # Validate execution parameters
+        if macro.repeat < 1:
+            errors.append("Repeat count must be at least 1")
+
+        if macro.delay_jitter_ms < 0:
+            errors.append("Delay jitter cannot be negative")
+
+        # Validate each step
+        for i, step in enumerate(macro.steps):
+            valid_types = [e.value for e in MacroStepType]
+            if step.type not in valid_types:
+                errors.append(f"Step {i+1}: Invalid step type '{step.type}'")
+
+            # Validate step-specific parameters
+            if step.type == MacroStepType.KEY_PRESS.value or step.type == MacroStepType.KEY_DOWN.value:
+                if not step.key:
+                    errors.append(f"Step {i+1}: KEY step requires key parameter")
+
+            if step.type == MacroStepType.KEY_SEQUENCE.value:
+                if not step.key:
+                    errors.append(f"Step {i+1}: KEY_SEQUENCE requires key parameter")
+
+            if step.type == MacroStepType.MOUSE_CLICK.value:
+                if not step.button or step.button not in ["left", "right", "middle"]:
+                    errors.append(f"Step {i+1}: MOUSE_CLICK requires valid button (left/right/middle)")
+
+            if step.type == MacroStepType.MOUSE_MOVE.value:
+                if step.x is None or step.y is None:
+                    errors.append(f"Step {i+1}: MOUSE_MOVE requires x and y coordinates")
+
+            if step.type == MacroStepType.DELAY.value:
+                if step.duration_ms < 0:
+                    errors.append(f"Step {i+1}: DELAY duration cannot be negative")
+
+            if step.delay_jitter_ms < 0:
+                errors.append(f"Step {i+1}: Delay jitter cannot be negative")
+
+        # Validate legacy actions if present
         for i, action in enumerate(macro.actions):
             if action.action_type not in [e.value for e in MacroActionType]:
                 errors.append(f"Action {i+1}: Invalid action type '{action.action_type}'")
-
-            # Validate action-specific parameters
-            if action.action_type == MacroActionType.SEND_MESSAGE.value:
-                if 'message' not in action.parameters or not action.parameters['message']:
-                    errors.append(f"Action {i+1}: SEND_MESSAGE requires 'message' parameter")
-
-            if action.action_type == MacroActionType.WAIT.value:
-                if 'duration' not in action.parameters:
-                    errors.append(f"Action {i+1}: WAIT requires 'duration' parameter")
-                elif action.parameters['duration'] < 0:
-                    errors.append(f"Action {i+1}: WAIT duration cannot be negative")
 
         return len(errors) == 0, errors
 
