@@ -249,7 +249,7 @@ class ChatWidget(QWidget):
 class SettingsDialog(QDialog):
     """Settings dialog for managing API keys and AI provider selection"""
 
-    settings_saved = pyqtSignal(str, str, str, str, str, str)  # provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key
+    settings_saved = pyqtSignal(str, str, str, str)  # provider, openai_key, anthropic_key, gemini_key
 
     def __init__(self, parent, config):
         super().__init__(parent)
@@ -348,12 +348,10 @@ class SettingsDialog(QDialog):
         self.anthropic_radio = QRadioButton("Anthropic Claude")
         self.openai_radio = QRadioButton("OpenAI GPT")
         self.gemini_radio = QRadioButton("Google Gemini")
-        self.ollama_radio = QRadioButton("Ollama (Local)")
 
         self.provider_button_group.addButton(self.anthropic_radio, 0)
         self.provider_button_group.addButton(self.openai_radio, 1)
         self.provider_button_group.addButton(self.gemini_radio, 2)
-        self.provider_button_group.addButton(self.ollama_radio, 3)
 
         # Set current provider
         if self.config.ai_provider == "anthropic":
@@ -362,15 +360,12 @@ class SettingsDialog(QDialog):
             self.openai_radio.setChecked(True)
         elif self.config.ai_provider == "gemini":
             self.gemini_radio.setChecked(True)
-        elif self.config.ai_provider == "ollama":
-            self.ollama_radio.setChecked(True)
         else:
-            self.openai_radio.setChecked(True)
+            self.anthropic_radio.setChecked(True)  # Default to Anthropic
 
         provider_layout.addWidget(self.anthropic_radio)
         provider_layout.addWidget(self.openai_radio)
         provider_layout.addWidget(self.gemini_radio)
-        provider_layout.addWidget(self.ollama_radio)
         provider_group.setLayout(provider_layout)
         layout.addWidget(provider_group)
 
@@ -528,72 +523,6 @@ class SettingsDialog(QDialog):
 
         keys_layout.addSpacing(10)
 
-        # Ollama Endpoint
-        ollama_label = QLabel("Ollama Endpoint (for local models):")
-        keys_layout.addWidget(ollama_label)
-
-        self.ollama_endpoint_input = QLineEdit()
-        self.ollama_endpoint_input.setPlaceholderText("http://localhost:11434 or http://localhost:8080")
-        self.ollama_endpoint_input.setText(self.config.ollama_endpoint)
-        keys_layout.addWidget(self.ollama_endpoint_input)
-
-        # Open WebUI API Key
-        open_webui_key_label = QLabel("Open WebUI API Key (optional, for authentication):")
-        keys_layout.addWidget(open_webui_key_label)
-
-        self.open_webui_key_input = QLineEdit()
-        self.open_webui_key_input.setPlaceholderText("Get from Settings > Account in Open WebUI")
-        self.open_webui_key_input.setEchoMode(QLineEdit.EchoMode.Password)
-        if self.config.open_webui_api_key:
-            self.open_webui_key_input.setText(self.config.open_webui_api_key)
-        keys_layout.addWidget(self.open_webui_key_input)
-
-        self.open_webui_show_button = QPushButton("Show")
-        self.open_webui_show_button.clicked.connect(lambda: self.toggle_key_visibility(self.open_webui_key_input, self.open_webui_show_button))
-        keys_layout.addWidget(self.open_webui_show_button)
-
-        # Open Open WebUI button
-        open_webui_button = QPushButton("Open Open WebUI")
-        open_webui_button.setStyleSheet("""
-            QPushButton {
-                background-color: #6366f1;
-                color: #ffffff;
-                border: none;
-                border-radius: 3px;
-                padding: 5px 10px;
-                font-size: 9pt;
-            }
-            QPushButton:hover {
-                background-color: #4f46e5;
-            }
-        """)
-        open_webui_button.clicked.connect(self.open_webui_and_focus)
-        keys_layout.addWidget(open_webui_button)
-
-        keys_layout.addSpacing(10)
-
-        # Ollama help text
-        ollama_help = QLabel(
-            "💡 Ollama/Open WebUI Setup (No package needed - uses REST API!):\n"
-            "• Native Ollama: http://localhost:11434 (no API key needed)\n"
-            "• Open WebUI: http://localhost:8080 (requires API key from Settings > Account)\n"
-            "  → Click 'Open Open WebUI' button, get your key, then Ctrl+V to paste\n"
-            "• WSL: Use http://localhost:<port> (WSL2 auto-forwards)\n"
-            "• Supports both native Ollama and OpenAI-compatible APIs\n"
-            "• WSL: Ensure Ollama is running: ollama serve"
-        )
-        ollama_help.setStyleSheet("""
-            QLabel {
-                color: #9ca3af;
-                font-size: 9pt;
-                padding: 5px;
-                background-color: #1f2937;
-                border-radius: 3px;
-            }
-        """)
-        ollama_help.setWordWrap(True)
-        keys_layout.addWidget(ollama_help)
-
         keys_group.setLayout(keys_layout)
         layout.addWidget(keys_group)
 
@@ -661,31 +590,6 @@ class SettingsDialog(QDialog):
             logger.error(f"Failed to open URL: {e}")
             QMessageBox.warning(self, "Error", f"Failed to open browser: {str(e)}")
 
-    def open_webui_and_focus(self):
-        """Open Open WebUI in browser and focus the API key field for easy pasting"""
-        # Open the browser
-        endpoint = self.ollama_endpoint_input.text() or "http://localhost:8080"
-        self.open_api_key_page(endpoint)
-
-        # Focus the Open WebUI API key field and select all text
-        # This makes it easy for users to paste - they just need to press Ctrl+V
-        self.open_webui_key_input.setFocus()
-        self.open_webui_key_input.selectAll()
-
-        logger.info("Open WebUI API key field focused and ready for paste")
-
-        # Show a helpful message
-        QMessageBox.information(
-            self,
-            "Ready to Paste API Key",
-            "Open WebUI has been opened in your browser.\n\n"
-            "Once you get your API key from Settings > Account:\n"
-            "• The 'Open WebUI API Key' field is already focused\n"
-            "• Just press Ctrl+V to paste your key\n"
-            "• Then click 'Show' to verify it pasted correctly\n"
-            "• Click 'Save' to save your settings"
-        )
-
     def save_settings(self):
         """Save settings and emit signal"""
         # Get selected provider
@@ -695,23 +599,16 @@ class SettingsDialog(QDialog):
             provider = "openai"
         elif self.gemini_radio.isChecked():
             provider = "gemini"
-        elif self.ollama_radio.isChecked():
-            provider = "ollama"
         else:
-            provider = "openai"
+            provider = "anthropic"  # Default to Anthropic
 
-        # Get API keys and settings
+        # Get API keys
         openai_key = self.openai_key_input.text().strip()
         anthropic_key = self.anthropic_key_input.text().strip()
         gemini_key = self.gemini_key_input.text().strip()
-        ollama_endpoint = self.ollama_endpoint_input.text().strip() or "http://localhost:11434"
-        open_webui_api_key = self.open_webui_key_input.text().strip()
 
-        # Debug logging
-        logger.info(f"Saving settings - Open WebUI API key present: {bool(open_webui_api_key)}, length: {len(open_webui_api_key) if open_webui_api_key else 0}")
-
-        # Validate that at least one key is provided (or ollama is selected)
-        if not openai_key and not anthropic_key and not gemini_key and provider != "ollama":
+        # Validate that at least one key is provided
+        if not openai_key and not anthropic_key and not gemini_key:
             QMessageBox.warning(
                 self,
                 "Missing API Keys",
@@ -745,7 +642,7 @@ class SettingsDialog(QDialog):
             return
 
         # Emit signal with settings
-        self.settings_saved.emit(provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key)
+        self.settings_saved.emit(provider, openai_key, anthropic_key, gemini_key)
 
         logger.info(f"Settings saved: provider={provider}")
 
@@ -1190,7 +1087,7 @@ class MainWindow(QMainWindow):
         dialog.settings_saved.connect(self.handle_settings_saved)
         dialog.exec()
 
-    def handle_settings_saved(self, provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key):
+    def handle_settings_saved(self, provider, openai_key, anthropic_key, gemini_key):
         """Handle settings being saved"""
         logger.info("Handling settings save...")
 
@@ -1199,7 +1096,7 @@ class MainWindow(QMainWindow):
             from config import Config
 
             # Save settings to .env file
-            Config.save_to_env(provider, openai_key, anthropic_key, gemini_key, ollama_endpoint, open_webui_api_key)
+            Config.save_to_env(provider, openai_key, anthropic_key, gemini_key)
 
             # Reload configuration
             self.config = Config()
@@ -1210,9 +1107,7 @@ class MainWindow(QMainWindow):
             old_ai_assistant = self.ai_assistant
             self.ai_assistant = AIAssistant(
                 provider=self.config.ai_provider,
-                api_key=self.config.get_api_key(),
-                ollama_endpoint=self.config.ollama_endpoint,
-                open_webui_api_key=self.config.open_webui_api_key
+                api_key=self.config.get_api_key()
             )
 
             # Transfer current game context to new assistant
