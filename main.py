@@ -109,7 +109,7 @@ def main():
         print()
 
         credential_store = CredentialStore()
-        session_tokens = credential_store.get_provider_tokens(config.ai_provider)
+        session_tokens = config.session_tokens.get(config.ai_provider)
 
         if session_tokens:
             logger.info(
