@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Test script to verify all components work before building .exe
 Run this BEFORE building to catch issues early
@@ -7,6 +8,12 @@ Run this BEFORE building to catch issues early
 import sys
 import os
 from pathlib import Path
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 STRICT_ENV = os.getenv("STRICT_PREBUILD_CHECKS") == "1"
 HEADLESS_ENV = bool(

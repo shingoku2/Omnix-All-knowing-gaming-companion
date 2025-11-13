@@ -5,8 +5,6 @@ Handles AI queries using OpenAI or Anthropic APIs
 
 import os
 import logging
-import requests
-import json
 from typing import Optional, Dict, List
 
 # Configure logging
@@ -17,28 +15,22 @@ logger = logging.getLogger(__name__)
 class AIAssistant:
     """AI-powered gaming assistant"""
 
+    # Maximum conversation history to keep
     MAX_CONVERSATION_MESSAGES = 20
 
-    def __init__(self, provider: str = "anthropic", api_key: Optional[str] = None,
-                 ollama_endpoint: str = "http://localhost:11434",
-                 open_webui_api_key: Optional[str] = None):
+    def __init__(self, provider: str = "anthropic", api_key: Optional[str] = None):
         """
         Initialize AI Assistant
 
         Args:
-            provider: 'openai', 'anthropic', 'gemini', or 'ollama'
+            provider: 'openai', 'anthropic', or 'gemini'
             api_key: API key for the chosen provider
-            ollama_endpoint: Ollama endpoint URL
-            open_webui_api_key: API key for Open WebUI authentication
         """
         self.provider = provider.lower()
         self.api_key = api_key or self._get_api_key()
-        self.ollama_endpoint = ollama_endpoint
-        self.open_webui_api_key = open_webui_api_key or os.getenv("OPEN_WEBUI_API_KEY")
         self.conversation_history = []
         self.current_game = None
         self.client = None
-        self.default_ollama_model = "llama2"
 
         self._initialize_client()
 
@@ -50,13 +42,11 @@ class AIAssistant:
             return os.getenv("ANTHROPIC_API_KEY")
         elif self.provider == "gemini":
             return os.getenv("GEMINI_API_KEY")
-        elif self.provider == "ollama":
-            return None
         return None
 
     def _initialize_client(self):
         """Initialize the AI client"""
-        if not self.api_key and self.provider != "ollama":
+        if not self.api_key:
             raise ValueError(f"No API key provided for {self.provider}")
 
         try:
@@ -64,24 +54,17 @@ class AIAssistant:
                 import openai
                 self.client = openai.OpenAI(api_key=self.api_key)
                 logger.info("OpenAI client initialized")
-                
             elif self.provider == "anthropic":
                 import anthropic
                 self.client = anthropic.Anthropic(api_key=self.api_key)
                 logger.info("Anthropic client initialized")
-                
             elif self.provider == "gemini":
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
                 self.client = genai.GenerativeModel('gemini-pro')
                 logger.info("Gemini client initialized")
-                
-            elif self.provider == "ollama":
-                logger.info(f"Ollama client configured at {self.ollama_endpoint}")
-                
             else:
-                raise ValueError(f"Unknown provider: {self.provider}")
-                
+                raise ValueError(f"Unknown provider: {self.provider}. Must be 'openai', 'anthropic', or 'gemini'")
         except ImportError as e:
             raise ImportError(f"Required library not installed: {e}")
         except Exception as e:
@@ -93,15 +76,23 @@ class AIAssistant:
         self.current_game = game_info
         self.conversation_history = []
 
+        # Add system context
         game_name = game_info.get('name', 'Unknown Game')
         self._add_system_context(game_name)
         logger.info(f"Set current game context: {game_name}")
 
     def _add_system_context(self, game_name: str):
         """Add system context about the current game"""
-        system_message = f"""You are a specialized gaming assistant for {game_name}.
+        system_message = f"""You are a specialized gaming assistant ONLY for {game_name}.
 
-Help with:
+CRITICAL RULES:
+- You ONLY answer questions about {game_name}
+- You MUST refuse to answer any questions not related to {game_name}
+- Do NOT engage in general conversation, chitchat, or off-topic discussions
+- Do NOT answer questions about other games, programming, life advice, or any non-game topics
+- If asked something unrelated to {game_name}, politely remind the user you only help with {game_name}
+
+What you CAN help with for {game_name}:
 - Game strategies and tips
 - Character/weapon/item builds
 - Quest walkthroughs and missions
@@ -110,7 +101,7 @@ Help with:
 - Lore and story questions
 - Where to find items, NPCs, or locations
 
-Be concise, accurate, and helpful. Stay focused on {game_name}."""
+Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
 
         self.conversation_history.append({
             "role": "system",
@@ -119,10 +110,12 @@ Be concise, accurate, and helpful. Stay focused on {game_name}."""
 
     def _trim_conversation_history(self):
         """Trim conversation history to prevent token limit issues"""
+        # Keep system message + last N messages
         if len(self.conversation_history) > self.MAX_CONVERSATION_MESSAGES:
             system_messages = [msg for msg in self.conversation_history if msg["role"] == "system"]
             recent_messages = [msg for msg in self.conversation_history if msg["role"] != "system"]
 
+            # Keep system message and most recent messages
             recent_messages = recent_messages[-(self.MAX_CONVERSATION_MESSAGES - len(system_messages)):]
             self.conversation_history = system_messages + recent_messages
 
@@ -142,33 +135,37 @@ Be concise, accurate, and helpful. Stay focused on {game_name}."""
         if not question or not question.strip():
             return "Please provide a question."
 
+        # Check if a game is currently set
         if not self.current_game:
-            return "🎮 No game detected! Please start a game to get assistance."
+            return "🎮 No game detected!\n\nPlease start a game to get assistance. I'm here to help you with gaming questions once you're playing."
 
         try:
+            # Build the user message
             user_message = question.strip()
 
             if game_context:
-                user_message = f"{question}\n\nContext: {game_context}"
+                user_message = f"{user_message}\n\nAdditional context from game resources:\n{game_context}"
 
+            # Add to conversation history
             self.conversation_history.append({
                 "role": "user",
                 "content": user_message
             })
 
+            # Trim history if needed
             self._trim_conversation_history()
 
+            # Get response based on provider
             if self.provider == "openai":
                 response = self._ask_openai()
             elif self.provider == "anthropic":
                 response = self._ask_anthropic()
             elif self.provider == "gemini":
                 response = self._ask_gemini()
-            elif self.provider == "ollama":
-                response = self._ask_ollama()
             else:
                 response = "Error: Invalid AI provider"
 
+            # Add response to history
             self.conversation_history.append({
                 "role": "assistant",
                 "content": response
@@ -184,26 +181,35 @@ Be concise, accurate, and helpful. Stay focused on {game_name}."""
     def _ask_openai(self) -> str:
         """Get response from OpenAI"""
         try:
-            messages = [{"role": msg["role"], "content": msg["content"]} for msg in self.conversation_history]
+            # Convert history to OpenAI format
+            messages = []
+            for msg in self.conversation_history:
+                messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+
+            # Ensure we have messages
+            if not messages:
+                raise ValueError("No messages in conversation history")
 
             response = self.client.chat.completions.create(
-                model="gpt-4-turbo",
+                model="gpt-4-turbo",  # Updated model name
                 messages=messages,
                 max_tokens=1000,
                 temperature=0.7
             )
 
-            if response.choices and response.choices[0].message.content:
-                return response.choices[0].message.content
-            return "No response received from OpenAI"
+            return response.choices[0].message.content
 
         except Exception as e:
             logger.error(f"OpenAI API error: {e}", exc_info=True)
-            raise
+            raise Exception(f"OpenAI API error: {str(e)}")
 
     def _ask_anthropic(self) -> str:
         """Get response from Anthropic (Claude)"""
         try:
+            # Separate system message from conversation
             system_msg = ""
             messages = []
 
@@ -211,123 +217,82 @@ Be concise, accurate, and helpful. Stay focused on {game_name}."""
                 if msg["role"] == "system":
                     system_msg = msg["content"]
                 else:
-                    messages.append({"role": msg["role"], "content": msg["content"]})
+                    messages.append({
+                        "role": msg["role"],
+                        "content": msg["content"]
+                    })
+
+            # Ensure we have messages
+            if not messages:
+                # If no messages yet, create a default one
+                messages = [{
+                    "role": "user",
+                    "content": "Hello! I just started playing. What can you help me with?"
+                }]
+                logger.warning("No user messages in history, using default greeting")
 
             response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-haiku-20240307",
                 max_tokens=1000,
                 system=system_msg,
                 messages=messages
             )
 
-            if response.content and len(response.content) > 0:
-                return response.content[0].text
-            return "No response received from Anthropic"
+            return response.content[0].text
 
         except Exception as e:
             logger.error(f"Anthropic API error: {e}", exc_info=True)
-            raise
+            raise Exception(f"Anthropic API error: {str(e)}")
 
     def _ask_gemini(self) -> str:
         """Get response from Google Gemini"""
         try:
-            conversation_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.conversation_history])
-            response = self.client.generate_content(conversation_text)
-            
-            if response.text:
-                return response.text
-            return "No response received from Gemini"
+            # Build conversation context for Gemini
+            # Gemini uses a different format - we'll pass the full conversation
+            system_msg = ""
+            conversation_text = ""
+
+            for msg in self.conversation_history:
+                if msg["role"] == "system":
+                    system_msg = msg["content"]
+                elif msg["role"] == "user":
+                    conversation_text += f"User: {msg['content']}\n\n"
+                elif msg["role"] == "assistant":
+                    conversation_text += f"Assistant: {msg['content']}\n\n"
+
+            # Combine system message with conversation
+            full_prompt = f"{system_msg}\n\n{conversation_text}Assistant:"
+
+            response = self.client.generate_content(
+                full_prompt,
+                generation_config={
+                    'temperature': 0.7,
+                    'max_output_tokens': 1000,
+                }
+            )
+
+            return response.text
 
         except Exception as e:
             logger.error(f"Gemini API error: {e}", exc_info=True)
-            raise
-
-    def _ask_ollama(self) -> str:
-        """Get response from Ollama (local LLM)"""
-        try:
-            conversation_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.conversation_history])
-
-            headers = {}
-            if self.open_webui_api_key:
-                headers["Authorization"] = f"Bearer {self.open_webui_api_key}"
-
-            # Try native Ollama endpoint first
-            url_native = f"{self.ollama_endpoint.rstrip('/')}/api/generate"
-            payload_native = {
-                "model": self.default_ollama_model,
-                "prompt": conversation_text,
-                "stream": False,
-            }
-
-            try:
-                resp = requests.post(url_native, json=payload_native, headers=headers, timeout=30)
-                if resp.status_code == 404 or resp.status_code == 401:
-                    raise requests.HTTPError(f"Status {resp.status_code}")
-                resp.raise_for_status()
-                data = resp.json()
-                if isinstance(data, dict) and "response" in data:
-                    return data["response"]
-            except Exception:
-                # Fallback: OpenAI-compatible API (Open WebUI)
-                url_openai = f"{self.ollama_endpoint.rstrip('/')}/v1/chat/completions"
-                messages = []
-                system_msg = None
-                for m in self.conversation_history:
-                    if m["role"] == "system":
-                        system_msg = m["content"]
-                    else:
-                        messages.append({"role": m["role"], "content": m["content"]})
-                if system_msg:
-                    messages.insert(0, {"role": "system", "content": system_msg})
-
-                payload_openai = {
-                    "model": self.default_ollama_model,
-                    "messages": messages,
-                    "stream": False,
-                    "temperature": 0.7,
-                }
-                # Ensure Content-Type
-                headers_fallback = {**headers, "Content-Type": "application/json"}
-                resp2 = requests.post(url_openai, json=payload_openai, headers=headers_fallback, timeout=30)
-                resp2.raise_for_status()
-                data2 = resp2.json()
-                # Parse OpenAI-style
-                if isinstance(data2, dict):
-                    choices = data2.get("choices")
-                    if choices and isinstance(choices, list):
-                        msg = choices[0].get("message") if choices[0] else None
-                        if msg and isinstance(msg, dict):
-                            content = msg.get("content")
-                            if isinstance(content, str):
-                                return content
-                return "No response received from Ollama/Open WebUI"
-
-        except requests.exceptions.ConnectionError as e:
-            logger.error(f"Ollama connection error: {e}")
-            raise Exception("Cannot connect to Ollama. Make sure it's running at " + self.ollama_endpoint)
-        except requests.exceptions.Timeout as e:
-            logger.error(f"Ollama timeout: {e}")
-            raise Exception("Ollama request timed out")
-        except Exception as e:
-            logger.error(f"Ollama error: {e}", exc_info=True)
-            raise
+            raise Exception(f"Gemini API error: {str(e)}")
 
     def get_game_overview(self, game_name: str) -> str:
         """Get a general overview of the game"""
-        question = f"Give me a brief overview of {game_name}, including genre, mechanics, and beginner tips."
+        question = f"Give me a brief overview of {game_name}, including its genre, main gameplay mechanics, and key tips for beginners."
         return self.ask_question(question)
 
     def get_tips_and_strategies(self, specific_topic: Optional[str] = None) -> str:
         """Get tips and strategies for the current game"""
         if not self.current_game:
-            return "No game currently detected."
+            return "🎮 No game detected!\n\nPlease start a game to get tips and strategies. I'm here to help you once you're playing."
 
         game_name = self.current_game.get('name', 'the current game')
 
         if specific_topic:
             question = f"Give me tips and strategies for {specific_topic} in {game_name}."
         else:
-            question = f"Give me some general tips for playing {game_name} effectively."
+            question = f"Give me some general tips and strategies for playing {game_name} effectively."
 
         return self.ask_question(question)
 
@@ -344,19 +309,28 @@ Be concise, accurate, and helpful. Stay focused on {game_name}."""
 
 
 if __name__ == "__main__":
+    # Test the AI assistant
+    import sys
+
+    # Test with environment variables
     provider = os.getenv("AI_PROVIDER", "anthropic")
 
     try:
         assistant = AIAssistant(provider=provider)
+
+        # Set a test game
         assistant.set_current_game({"name": "League of Legends"})
 
+        # Ask a test question
         print("Testing AI Assistant...")
         print("\nQuestion: What are some tips for playing ADC?")
 
         response = assistant.ask_question("What are some tips for playing ADC?")
         print(f"\nResponse:\n{response}")
 
-    except ValueError as ve:
-        print(f"Configuration Error: {ve}")
     except Exception as e:
         print(f"Error: {e}")
+        print("\nMake sure to:")
+        print("1. Copy .env.example to .env")
+        print("2. Add your API key to .env")
+        print("3. Set AI_PROVIDER in .env")

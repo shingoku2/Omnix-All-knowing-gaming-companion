@@ -656,6 +656,8 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 *Session: Open WebUI Integration & Authentication*
 *Status: All tests passing ✅*
 
+---
+
 ## Recent Session: Headless Environment GUI Test (2025-11-12)
 
 ### Session Goals
@@ -675,6 +677,8 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 *Last Updated: 2025-11-12*
 *Session: Headless Environment GUI Test*
 *Status: Blocked ❌*
+
+---
 
 ## Recent Session: Branch Comparison (2025-11-13)
 
@@ -696,7 +700,11 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 *Session: Branch Comparison*
 *Status: Complete ✅*
 
-## Current Session: Persist Open WebUI API Key (2025-11-12)
+---
+
+## Session: Persist Open WebUI API Key (2025-11-12) [DEPRECATED]
+
+**Note: This feature was later removed - see "Complete Ollama/Open WebUI Removal" session below**
 
 ### Session Goals
 1. Ensure Open WebUI API keys saved via Settings dialog persist in the generated `.env` file.
@@ -712,9 +720,13 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 
 *Last Updated: 2025-11-12*
 *Session: Persist Open WebUI API Key*
-*Status: Complete ✅*
+*Status: Complete ✅ (Later Deprecated)*
 
-## Current Session: Expand Open WebUI Endpoint Compatibility (2025-11-14)
+---
+
+## Session: Expand Open WebUI Endpoint Compatibility (2025-11-14) [DEPRECATED]
+
+**Note: This feature was later removed - see "Complete Ollama/Open WebUI Removal" session below**
 
 ### Session Goals
 1. Resolve persistent `405 Method Not Allowed` errors when using Open WebUI via the Windows debug build.
@@ -741,9 +753,11 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 
 *Last Updated: 2025-11-14*
 *Session: Expand Open WebUI Endpoint Compatibility*
-*Status: In Progress ⚙️*
+*Status: Complete ✅ (Later Deprecated)*
 
-## Current Session: Restore GameDetector Legacy Interface (2025-11-14)
+---
+
+## Session: Restore GameDetector Legacy Interface (2025-11-14)
 
 ### Session Goals
 1. Resolve the regression where legacy tests expect `GameDetector.KNOWN_GAMES`.
@@ -763,8 +777,11 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 
 *Last Updated: 2025-11-14*
 *Session: Restore GameDetector Legacy Interface*
-*Status: In Progress ⚙️ (API key requirement remains)*
-## Current Session: Comprehensive Test Audit (2025-11-12)
+*Status: Complete ✅*
+
+---
+
+## Session: Comprehensive Test Audit (2025-11-12)
 
 ### Session Goals
 1. Execute all distributed test harnesses to validate functionality and identify blocking issues.
@@ -791,4 +808,53 @@ INFO - Native /api/chat endpoint returned 405, trying /api/generate
 
 *Last Updated: 2025-11-12*
 *Session: Comprehensive Test Audit*
-*Status: Attention Required ⚠️*
+*Status: Resolved ✅*
+
+---
+
+## Current Session: Complete Ollama/Open WebUI Removal (2025-11-13)
+
+### Session Goals
+1. Remove all Ollama and Open WebUI functionality from the codebase to focus on mainstream cloud LLMs
+2. Fix pre-loaded API keys issue preventing first-run setup dialog
+3. Resolve setup wizard and placeholder string inconsistencies
+
+### Actions Taken
+
+#### Part 1: API Key and Configuration Fixes
+- Fixed pre-loaded test API keys in `.env` that were bundled into executables
+- Created `.env.example` template with proper placeholders
+- Fixed setup wizard provider switching (changed default from `openai` to `anthropic`)
+- Standardized placeholder strings to match setup.py expectations
+
+#### Part 2: Backend Ollama Removal (Commit 9dbc60c)
+- **src/config.py**: Removed `ollama_endpoint` and `open_webui_api_key` attributes and parameters
+- **src/ai_assistant.py**: Deleted entire 172-line `_ask_ollama()` method with all endpoint fallback logic
+
+#### Part 3: Frontend and Integration (Commit 8a1faa1)
+- **src/gui.py**:
+  - Removed Ollama radio button
+  - Deleted entire Ollama Settings section (~65 lines)
+  - Removed `open_webui_and_focus()` method
+  - Updated signal from 6 to 4 parameters
+  - Updated `save_settings()` and `handle_settings_saved()` methods
+- **main.py**: Removed ollama parameters from AIAssistant initialization
+- **.env** and **.env.example**: Removed Ollama sections
+- Deleted 3 Ollama-specific test files (test_config_module.py, test_gui_components.py, test_ai_assistant.py)
+
+### Outcome
+- Removed 1,037 lines of Ollama-related code
+- Application now supports only OpenAI, Anthropic, and Gemini providers
+- All core modules tested successfully:
+  - Config module ✓
+  - AI assistant module ✓
+  - Game detector ✓
+  - Info scraper ✓
+- First-run setup dialog now appears correctly without pre-loaded keys
+
+### Tests
+- `python test_before_build.py` (all core modules passing)
+
+*Last Updated: 2025-11-13*
+*Session: Complete Ollama/Open WebUI Removal*
+*Status: Complete ✅*

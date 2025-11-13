@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Test Script for Gaming AI Assistant
 Demonstrates the core functionality without requiring a full GUI
@@ -6,6 +7,12 @@ Demonstrates the core functionality without requiring a full GUI
 
 import sys
 from pathlib import Path
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 # Add src directory to path
 src_path = Path(__file__).parent / 'src'
@@ -67,7 +74,7 @@ def test_game_detector():
                 count += 1
                 if count >= 5:
                     break
-        except:
+        except Exception:
             pass
 
     return detector
