@@ -47,6 +47,13 @@ def test_imports():
         return False
 
     try:
+        from src.ai_router import AIRouter
+        print("✓ AIRouter module imported successfully")
+    except Exception as e:
+        print(f"✗ AIRouter import failed: {e}")
+        return False
+
+    try:
         from src.ai_assistant import AIAssistant
         print("✓ AIAssistant module imported successfully")
     except Exception as e:
@@ -205,58 +212,70 @@ def test_info_scraper():
 
 
 def test_ai_assistant():
-    """Test AIAssistant module functionality"""
+    """Test AIRouter and AIAssistant module functionality"""
     print("\n" + "="*60)
-    print("TEST 5: AIAssistant Module")
+    print("TEST 5: AIRouter & AIAssistant Modules")
     print("="*60)
-    
+
     try:
+        from src.config import Config
+        from src.ai_router import AIRouter, reset_router
         from src.ai_assistant import AIAssistant
         import os
-        
-        # Check if API key is available
-        provider = os.getenv("AI_PROVIDER", "anthropic")
-        api_key = None
-        
-        if provider == "openai":
-            api_key = os.getenv("OPENAI_API_KEY")
-        elif provider == "anthropic":
-            api_key = os.getenv("ANTHROPIC_API_KEY")
-        elif provider == "gemini":
-            api_key = os.getenv("GEMINI_API_KEY")
-        
-        if not api_key:
-            print(f"⚠ No API key found for {provider}, skipping AI tests")
-            print("  Set AI_PROVIDER and corresponding API key environment variables")
-            return True
-        
-        # Create assistant instance
-        assistant = AIAssistant(provider=provider, api_key=api_key)
-        print(f"✓ AIAssistant instance created with provider: {provider}")
-        
-        # Test set_current_game
-        game_info = {"name": "Test Game", "id": "test123"}
-        assistant.set_current_game(game_info)
-        print(f"✓ set_current_game() works: {assistant.current_game['name']}")
-        
-        # Test conversation history
-        history = assistant.get_conversation_summary()
-        print(f"✓ get_conversation_summary() returned {len(history)} messages")
-        
-        # Test clear_history
-        assistant.clear_history()
-        print("✓ clear_history() works")
-        
-        # Note: Full API testing requires valid keys, so we skip actual queries
-        print("\n✓ AIAssistant module tests passed!")
+
+        # Initialize AIRouter through Config
+        config = Config()
+        router = AIRouter(config)
+        print("✓ AIRouter instance created successfully")
+
+        # Test list_configured_providers
+        providers = router.list_configured_providers()
+        print(f"✓ list_configured_providers() returned: {providers}")
+
+        # Test get_default_provider
+        default_provider = router.get_default_provider()
+        if default_provider:
+            print(f"✓ get_default_provider() returned: {default_provider.__class__.__name__}")
+        else:
+            print("⚠ No default provider configured (expected if no API keys set)")
+
+        # Test provider status
+        for provider_name in ["anthropic", "openai", "gemini"]:
+            status = router.get_provider_status(provider_name)
+            if status.get("configured"):
+                print(f"✓ {provider_name} provider status: {status}")
+
+        # Test AIAssistant (high-level wrapper using AIRouter)
+        try:
+            assistant = AIAssistant()
+            print(f"✓ AIAssistant instance created with router")
+
+            # Test set_current_game
+            game_info = {"name": "Test Game", "id": "test123"}
+            assistant.set_current_game(game_info)
+            print(f"✓ set_current_game() works: {assistant.current_game['name']}")
+
+            # Test conversation history
+            history = assistant.get_conversation_summary()
+            print(f"✓ get_conversation_summary() returned {len(history)} messages")
+
+            # Test clear_history
+            assistant.clear_history()
+            print("✓ clear_history() works")
+
+        except ValueError as ve:
+            print(f"⚠ AIAssistant initialization skipped: {ve}")
+            print("  This is expected if no API key is configured")
+
+        # Clean up router singleton for testing
+        reset_router()
+        print("✓ Router reset for test cleanup")
+
+        print("\n✓ AIRouter & AIAssistant module tests passed!")
         return True
-        
-    except ValueError as ve:
-        print(f"⚠ AIAssistant initialization skipped: {ve}")
-        print("  This is expected if no API key is configured")
-        return True
+
     except Exception as e:
-        print(f"✗ AIAssistant test failed: {e}")
+        print(f"✗ AI module test failed: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -267,22 +286,25 @@ def test_gui_components():
     print("\n" + "="*60)
     print("TEST 6: GUI Module Components")
     print("="*60)
-    
+
     try:
         from src.gui import ChatWidget, GameDetectionThread
+        from src.ai_router import AIRouter
         from src.ai_assistant import AIAssistant
         import os
-        
+
         print("✓ GUI components imported successfully")
-        
+        print("✓ AIRouter imported successfully")
+
         # Test that classes can be instantiated (without showing GUI)
         print("✓ ChatWidget and GameDetectionThread classes are available")
-        
+        print("✓ AIRouter and AIAssistant classes are available for GUI integration")
+
         # Note: Full GUI testing requires a display and QApplication,
         # which may not be available in all environments
         print("\n✓ GUI module components validated!")
         return True
-        
+
     except Exception as e:
         print(f"✗ GUI test failed: {e}")
         import traceback
@@ -295,33 +317,37 @@ def test_integration():
     print("\n" + "="*60)
     print("TEST 7: Module Integration")
     print("="*60)
-    
+
     try:
         from src.config import Config
         from src.game_detector import GameDetector
         from src.info_scraper import InfoScraper
+        from src.ai_router import AIRouter
         from src.ai_assistant import AIAssistant
         import os
-        
+
         # Initialize all components
         config = Config()
         print("✓ Config initialized")
-        
+
         detector = GameDetector()
         print("✓ GameDetector initialized")
-        
+
         scraper = InfoScraper()
         print("✓ InfoScraper initialized")
-        
-        # Try to initialize AI assistant
-        provider = config.get("ai_provider", "anthropic")
+
+        # Initialize AIRouter
+        router = AIRouter(config)
+        print("✓ AIRouter initialized")
+
+        # Try to initialize AI assistant with router support
         try:
-            assistant = AIAssistant(provider=provider)
-            print(f"✓ AIAssistant initialized with {provider}")
+            assistant = AIAssistant()
+            print(f"✓ AIAssistant initialized (using AIRouter)")
         except ValueError:
-            print(f"⚠ AIAssistant skipped (no API key for {provider})")
+            print(f"⚠ AIAssistant skipped (no API keys configured)")
             assistant = None
-        
+
         # Test workflow
         game = detector.detect_running_game()
         if game:
@@ -331,13 +357,13 @@ def test_integration():
                 print(f"✓ Set game context in AI assistant")
         else:
             print("✓ No running game (expected in test environment)")
-        
+
         scraper.close()
         print("✓ Scraper closed")
-        
+
         print("\n✓ Integration tests passed!")
         return True
-        
+
     except Exception as e:
         print(f"✗ Integration test failed: {e}")
         import traceback

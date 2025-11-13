@@ -50,8 +50,15 @@ pip install pyinstaller
 ```
 
 ### Step 2: Build the Executable
+
+You can use the Python build script for best results:
 ```cmd
-python -m PyInstaller --name=GamingAIAssistant --windowed --onedir --clean --noconfirm --paths=src --add-data=".env.example;." --add-data="README.md;." --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=config --hidden-import=game_detector --hidden-import=ai_assistant --hidden-import=info_scraper --hidden-import=gui --hidden-import=anthropic --hidden-import=openai --hidden-import=psutil --hidden-import=requests --hidden-import=bs4 --hidden-import=dotenv main.py
+python build_windows_exe.py
+```
+
+Or build manually with this command:
+```cmd
+python -m PyInstaller --name=GamingAIAssistant --windowed --onedir --clean --noconfirm --add-data=".env.example;." --add-data="README.md;." --add-data="SETUP.md;." --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=PyQt6.QtCore.QTimer --hidden-import=PyQt6.QtWidgets.QApplication --hidden-import=anthropic --hidden-import=openai --hidden-import=google.generativeai --hidden-import=psutil --hidden-import=requests --hidden-import=bs4 --hidden-import=dotenv --hidden-import=urllib3 --hidden-import=certifi --hidden-import=charset_normalizer --hidden-import=idna --hidden-import=pydantic --hidden-import=pydantic_core --hidden-import=win32api --hidden-import=win32con --hidden-import=win32gui --hidden-import=win32process --hidden-import=encodings.utf_8 main.py
 ```
 
 ### Step 3: Copy Additional Files
