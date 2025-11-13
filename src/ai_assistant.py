@@ -18,6 +18,10 @@ from providers import ProviderError, ProviderAuthError, ProviderQuotaError, Prov
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Avoid circular imports
+if TYPE_CHECKING:
+    from game_profile import GameProfile
+
 
 class AIAssistant:
     """AI-powered gaming assistant with conversation context management"""
@@ -117,6 +121,53 @@ class AIAssistant:
         game_name = game_info.get('name', 'Unknown Game')
         self._add_system_context(game_name)
         logger.info(f"Set current game context: {game_name}")
+
+    def set_game_profile(self, profile: "GameProfile", override_provider: bool = True):
+        """
+        Set a game profile with its custom system prompt and preferences.
+
+        Args:
+            profile: GameProfile instance with game-specific AI configuration
+            override_provider: If True, switch to profile's preferred provider
+        """
+        self.current_profile = profile
+        self.conversation_history = []
+
+        # Update model from profile
+        self.current_model = profile.default_model
+
+        # Switch provider if profile specifies one and override is enabled
+        if override_provider and profile.default_provider != self.provider:
+            logger.info(
+                f"Switching provider from {self.provider} to {profile.default_provider} "
+                f"for profile {profile.id}"
+            )
+            self.provider = profile.default_provider
+            # Get the API key for the new provider
+            self.api_key = self._get_api_key()
+            try:
+                self._initialize_client(force=True)
+            except Exception as e:
+                logger.error(
+                    f"Failed to initialize client for provider {profile.default_provider}: {e}. "
+                    f"Continuing with existing provider."
+                )
+                # Keep the old provider if initialization fails
+
+        # Add profile's system prompt as context
+        self.conversation_history.append({
+            "role": "system",
+            "content": profile.system_prompt
+        })
+
+        logger.info(f"Set game profile: {profile.display_name} (id={profile.id})")
+
+    def clear_game_profile(self):
+        """Clear the current game profile"""
+        self.current_profile = None
+        self.current_model = None
+        self.conversation_history = []
+        logger.info("Cleared game profile")
 
     def _add_system_context(self, game_name: str):
         """Add system context about the current game"""
