@@ -800,7 +800,7 @@ class MainWindow(QMainWindow):
                 "Session Expired",
                 message or "Session expired. Please sign in again.",
             ))
-            QTimer.singleShot(250, self.open_settings)
+            QTimer.singleShot(250, self.open_advanced_settings)
 
     def init_ui(self):
         """Initialize the main window UI components and styling"""
@@ -1481,7 +1481,7 @@ class MainWindow(QMainWindow):
                 )
 
                 # Schedule settings dialog to open after a short delay (so window is fully shown)
-                QTimer.singleShot(500, self.open_settings)
+                QTimer.singleShot(500, self.open_advanced_settings)
 
     def closeEvent(self, event):
         """
