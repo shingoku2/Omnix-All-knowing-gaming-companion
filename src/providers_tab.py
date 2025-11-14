@@ -574,19 +574,25 @@ class ProvidersTab(QWidget):
         try:
             default_provider, credentials = self.get_provider_config()
 
-            # Save credentials to secure storage if any were modified
-            if credentials:
-                self.credential_store.save_credentials(credentials)
-                logger.info(f"Saved {len(credentials)} modified credentials")
-
-                # Update current keys
+            # Save credentials using config.set_api_key() which updates both
+            # the config object AND the credential store
+            if self.modified_keys:
+                saved_count = 0
                 for provider_id, new_key in self.modified_keys.items():
                     if new_key:
+                        # Update config object and credential store
+                        self.config.set_api_key(provider_id, new_key)
+
+                        # Update local tracking
                         self.current_keys[provider_id] = new_key
                         self.modified_keys[provider_id] = None
+                        saved_count += 1
 
-                # Reload UI to show new masked keys
-                self.load_current_config()
+                if saved_count > 0:
+                    logger.info(f"Saved {saved_count} modified credentials")
+
+                    # Reload UI to show new masked keys
+                    self.load_current_config()
 
             # Emit signal
             self.provider_config_changed.emit(default_provider, credentials)

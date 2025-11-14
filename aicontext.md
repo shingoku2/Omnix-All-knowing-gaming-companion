@@ -23,6 +23,117 @@ This file provides complete context for AI assistants working on this project.
 
 ---
 
+## Recent Session: API Key Persistence Fix (2025-11-14)
+
+### Session Goals
+1. Fix bug where API keys are not persisting in the settings menu after clicking "Save All"
+
+### Problem Description
+Users reported that after entering an API key in the settings dialog and clicking "Save All", the key would be saved successfully (visible in logs). However, when they reopened the settings dialog, the API key field would be empty again, showing "Not configured" status.
+
+**User Report:**
+> "API key is not being saved in the menu after hitting save all"
+
+**Observed Behavior:**
+- Logs showed credentials were being saved to encrypted vault: `credential_store - DEBUG - Stored 1 credential(s) in encrypted vault`
+- Connection tests succeeded after saving
+- But reopening settings dialog showed empty fields and "Not configured" status
+
+### Root Cause
+In `src/providers_tab.py`, the `save_provider_config()` method had a critical omission:
+
+1. When saving, it correctly saved credentials to the credential store
+2. It updated `self.current_keys` (local tracking dictionary)
+3. **BUT** it did NOT update `self.config.openai_api_key`, `self.config.anthropic_api_key`, etc.
+
+When the settings dialog was reopened:
+1. A new `ProvidersTab` instance was created
+2. The `__init__` method initialized `self.current_keys` from `self.config.openai_api_key` (line 63-67)
+3. Since `self.config.openai_api_key` was never updated, it still contained the old value (None)
+4. UI showed "Not configured" because `self.current_keys` was empty
+
+**Data Flow:**
+```
+User enters key → Save → credential_store ✓
+                      → self.current_keys ✓
+                      → self.config.openai_api_key ✗ (MISSING!)
+
+Dialog reopened → new ProvidersTab → reads self.config.openai_api_key (still None)
+                                  → self.current_keys initialized with None
+                                  → UI shows "Not configured"
+```
+
+### Solution
+Modified `save_provider_config()` in `src/providers_tab.py` to use `self.config.set_api_key()` instead of directly calling the credential store. This method both:
+1. Updates the Config object's in-memory API key values
+2. Saves to the encrypted credential store
+
+**Files Modified:**
+- `src/providers_tab.py:567-609` - Refactored `save_provider_config()` to update Config object
+
+**Code Changes:**
+
+```python
+# Before (lines 578-592):
+if credentials:
+    self.credential_store.save_credentials(credentials)
+    logger.info(f"Saved {len(credentials)} modified credentials")
+
+    # Update current keys
+    for provider_id, new_key in self.modified_keys.items():
+        if new_key:
+            self.current_keys[provider_id] = new_key
+            self.modified_keys[provider_id] = None
+
+    # Reload UI to show new masked keys
+    self.load_current_config()
+
+# After (lines 577-595):
+if self.modified_keys:
+    saved_count = 0
+    for provider_id, new_key in self.modified_keys.items():
+        if new_key:
+            # Update config object and credential store
+            self.config.set_api_key(provider_id, new_key)
+
+            # Update local tracking
+            self.current_keys[provider_id] = new_key
+            self.modified_keys[provider_id] = None
+            saved_count += 1
+
+    if saved_count > 0:
+        logger.info(f"Saved {saved_count} modified credentials")
+
+        # Reload UI to show new masked keys
+        self.load_current_config()
+```
+
+### Benefits
+1. **More efficient**: Uses `config.set_api_key()` which handles both config update and credential storage, avoiding redundant credential store calls
+2. **Fixes persistence**: Config object is updated, so reopening the dialog shows saved keys
+3. **Cleaner code**: Single responsibility - `config.set_api_key()` handles all API key updates
+
+### Verification
+- ✅ API keys saved to encrypted credential store
+- ✅ Config object updated with new API key values
+- ✅ Reopening settings dialog shows saved keys with masked values
+- ✅ No double-saves to credential store
+
+### Impact
+
+**Before Fix:**
+- ❌ API keys appear to save but are not shown when reopening settings
+- ❌ Users have to re-enter API keys every time they open settings
+- ❌ Confusing user experience - unclear if keys are actually saved
+
+**After Fix:**
+- ✅ API keys persist in the settings UI between dialog opens
+- ✅ Keys shown as masked (e.g., "sk-ant-...xyz") when dialog is reopened
+- ✅ Users can verify their keys are saved without re-entering them
+- ✅ Clear "✅ Configured" status shown for saved keys
+
+---
+
 ## Recent Session: Game Detection Crash Fix (2025-11-14)
 
 ### Session Goals
