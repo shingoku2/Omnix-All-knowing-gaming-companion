@@ -11,6 +11,7 @@ from .cards import OmnixCard, OmnixPanel, OmnixInfoCard
 from .layouts import OmnixVBox, OmnixHBox, OmnixGrid, OmnixFormLayout
 from .navigation import OmnixSidebar, OmnixSidebarButton, OmnixHeaderBar
 from .modals import OmnixDialog, OmnixConfirmDialog, OmnixMessageDialog, OmnixInputDialog
+from .dashboard_button import OmnixDashboardButton
 
 __all__ = [
     "OmnixButton",
@@ -32,4 +33,5 @@ __all__ = [
     "OmnixConfirmDialog",
     "OmnixMessageDialog",
     "OmnixInputDialog",
+    "OmnixDashboardButton",
 ]
