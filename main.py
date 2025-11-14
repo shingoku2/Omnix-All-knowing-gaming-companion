@@ -65,6 +65,9 @@ try:
 
     from gui import run_gui
     logger.info("  [OK] gui imported")
+
+    from ui.design_system import design_system
+    logger.info("  [OK] design_system imported")
     logger.info("")
 
 except Exception as e:
@@ -196,7 +199,7 @@ def main():
 
         # Run the GUI
         logger.info("Calling run_gui()...")
-        run_gui(game_detector, ai_assistant, info_scraper, config, credential_store)
+        run_gui(game_detector, ai_assistant, info_scraper, config, credential_store, design_system)
 
         logger.info("GUI exited normally")
 
