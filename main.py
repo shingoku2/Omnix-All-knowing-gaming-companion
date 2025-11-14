@@ -140,7 +140,7 @@ def main():
 
             ai_assistant = AIAssistant(
                 provider=config.ai_provider,
-                api_key=config.get_api_key(),
+                config=config,
                 session_tokens=session_tokens,
             )
 
