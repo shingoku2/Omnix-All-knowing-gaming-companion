@@ -1,25 +1,168 @@
-# Gaming AI Assistant - AI Context
+# Omnix - All-knowing Gaming Companion - AI Context
 
 This file provides complete context for AI assistants working on this project.
 
 ## Project Overview
 
-**Gaming AI Assistant** - A PyQt6 desktop application that detects running games and provides real-time AI assistance for gameplay.
+**Omnix - All-knowing Gaming Companion** - A sophisticated PyQt6 desktop application (~14,700 LOC) that automatically detects running games and provides AI-powered assistance, knowledge integration, macro automation, and session coaching.
 
 ### Key Features
-- Automatic game detection from running processes
-- AI-powered chat assistance for gameplay tips and strategies
-- Support for multiple AI providers (OpenAI, Anthropic, Gemini, Ollama, Open WebUI)
-- System tray integration with hotkey toggle
-- Web scraping for game information
-- Strictly gaming-focused AI responses
-- **NEW:** Comprehensive macro & keybind engine with keyboard/mouse automation
+- **Automatic Game Detection** - Monitors 50+ pre-configured games with custom profile support
+- **Multi-Provider AI** - Seamlessly switch between OpenAI, Anthropic, and Google Gemini
+- **Knowledge System** - Per-game knowledge packs with semantic search (TF-IDF)
+- **Macro & Automation** - Record and execute keyboard/mouse macros with hotkey support
+- **Session Coaching** - AI-powered gameplay insights and improvement tips
+- **Secure Credentials** - Encrypted API key storage in system keyring (AES-256)
+- **Design System** - Consistent UI with design tokens and reusable components
+- **Advanced Overlay** - Movable, resizable, minimizable with auto-save
+- **Game Profiles** - Per-game AI customization with system prompts
+- **Global Hotkeys** - Customizable keybindings system
 
 ### Tech Stack
-- **Language**: Python 3.14
-- **GUI**: PyQt6
-- **AI Providers**: OpenAI GPT, Anthropic Claude, Google Gemini, Ollama, Open WebUI
-- **Dependencies**: requests, beautifulsoup4, python-dotenv, psutil, keyboard, pynput
+- **Language**: Python 3.8+ (3.10+ recommended)
+- **GUI**: PyQt6 + PyQt6-WebEngine
+- **AI Providers**: OpenAI GPT, Anthropic Claude, Google Gemini
+- **Key Libraries**: psutil, pynput, keyring, cryptography, beautifulsoup4, lxml, scikit-learn
+- **Security**: System keyring integration (Windows Credential Manager, macOS Keychain, Linux SecretService)
+- **Platform Support**: Windows 10/11 (Primary), macOS, Linux
+
+### Architecture
+**~14,700 lines of Python code** organized into modular layers:
+- **Core Application** - config.py, credential_store.py
+- **Game Detection** - game_detector.py, game_watcher.py, game_profile.py
+- **AI Integration** - ai_assistant.py, ai_router.py, providers.py
+- **Knowledge System** - knowledge_pack.py, knowledge_store.py, knowledge_index.py, knowledge_integration.py, knowledge_ingestion.py
+- **Macro & Automation** - macro_manager.py, macro_runner.py, keybind_manager.py
+- **Session Management** - session_logger.py, session_coaching.py
+- **GUI Layer** - gui.py, settings_dialog.py, settings_tabs.py
+- **UI Design System** - ui/design_system.py, ui/tokens.py, ui/components/
+
+For detailed architecture documentation, see [CLAUDE.md](CLAUDE.md).
+
+---
+
+## Recent Session: README Documentation Update (2025-11-15)
+
+### Session Goals
+1. Update README.md to comprehensively reflect current project state
+2. Align documentation with actual codebase features and architecture
+
+### Changes Made
+
+**README.md** - Complete rewrite with comprehensive feature documentation:
+
+1. **Project Branding**
+   - Changed title from "Gaming AI Assistant" to "Omnix - All-knowing Gaming Companion"
+   - Updated description to reflect sophisticated feature set
+   - Fixed repository URLs to `shingoku2/Omnix-All-knowing-gaming-companion`
+
+2. **Features Section Reorganization**
+   - Split into three categories: Core Features, User Interface, Intelligence Features
+   - Added detailed descriptions for Knowledge Packs, Macros, Session Coaching
+   - Highlighted Design System and Secure Credentials
+   - Emphasized ~14,700 LOC codebase scale
+
+3. **New Advanced Features Section**
+   - **Knowledge Packs**: Detailed explanation with use cases
+   - **Macro System**: Comprehensive feature breakdown
+   - **Session Coaching**: AI-powered insights explanation
+   - **Game Profiles**: Customization capabilities
+
+4. **Project Structure Update**
+   - Reflects actual ~14,700 LOC architecture
+   - Shows complete modular organization
+   - Links to CLAUDE.md for detailed documentation
+   - Organized by architectural layers
+
+5. **Security & Privacy Enhancement**
+   - AES-256 encryption details
+   - System keyring integration explanation
+   - Platform-specific security features
+   - Clear data transmission policy
+
+6. **Configuration Section Expansion**
+   - Secure API key storage explanation
+   - Basic configuration options
+   - Extended configuration file locations
+   - User data directory structure
+
+7. **Customization Section**
+   - GUI-based game profile creation
+   - Code-based customization options
+   - Easy onboarding for new games
+
+8. **Development Section**
+   - Comprehensive test suite documentation
+   - Build process with PyInstaller
+   - Development setup instructions
+   - Contributing guidelines with reference to CLAUDE.md
+
+9. **Requirements Breakdown**
+   - Organized by category (Core, AI Providers, System Integration, Data Processing)
+   - Version requirements specified
+   - Platform support clearly stated
+
+10. **Enhanced Troubleshooting**
+    - API key and authentication errors
+    - Game detection issues
+    - Knowledge pack problems
+    - Macro execution troubleshooting
+    - GUI performance issues
+    - Build and installation errors
+
+11. **Version History Update**
+    - Version 1.2+ (2025-11-15): Major feature additions
+    - Infrastructure improvements documented
+    - Historical versions preserved
+
+12. **Expanded Roadmap**
+    - "Planned Features" section
+    - "Under Consideration" section
+    - Clear prioritization
+
+13. **New Sections Added**
+    - Quick Links (Repository, Documentation, Issues)
+    - Technology Stack showcase
+    - Star History encouragement
+    - AI-assisted development acknowledgment
+
+### Impact
+
+**Before Update:**
+- ❌ README described outdated feature set
+- ❌ Missing documentation for Knowledge Packs, Macros, Session Coaching
+- ❌ No mention of Design System or advanced architecture
+- ❌ Limited troubleshooting guidance
+- ❌ Generic project structure
+
+**After Update:**
+- ✅ Comprehensive feature documentation (~94 → 382 insertions)
+- ✅ Accurate reflection of ~14,700 LOC codebase
+- ✅ Detailed architecture overview
+- ✅ Enhanced troubleshooting guide
+- ✅ Clear security and privacy documentation
+- ✅ Professional presentation suitable for GitHub showcase
+- ✅ Aligned with CLAUDE.md developer documentation
+
+### Files Modified
+- `README.md` - Complete rewrite (+288 net lines, 382 insertions, 94 deletions)
+
+### Commit
+```
+commit b2529aa
+Update README with comprehensive feature documentation
+
+- Change title to "Omnix - All-knowing Gaming Companion"
+- Add detailed feature sections (Knowledge Packs, Macros, Session Coaching)
+- Update project structure to reflect ~14,700 LOC architecture
+- Fix repository URLs (shingoku2/Omnix-All-knowing-gaming-companion)
+- Add comprehensive security and privacy section
+- Update requirements with full technology stack
+- Expand troubleshooting guide
+- Update version history with major feature additions
+- Add technology stack and quick links sections
+- Reorganize content for better user navigation
+```
 
 ---
 
