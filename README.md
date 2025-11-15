@@ -1,3 +1,5 @@
+This is a passion project of mine. I am using AI to fully help me code the entire app. So I guess it's also an experiment, to see if it's possible.
+
 # 🎮 Gaming AI Assistant
 
 An intelligent, real-time gaming companion that automatically detects what game you're playing and provides AI-powered tips, strategies, and answers to your questions while you play.
