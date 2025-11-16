@@ -8,6 +8,7 @@ from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -162,3 +163,12 @@ class RetrievedChunk:
     def from_dict(cls, data: Dict) -> "RetrievedChunk":
         """Create from dictionary"""
         return cls(**data)
+
+
+# Ensure this module is accessible via both `knowledge_pack` and `src.knowledge_pack`
+# so that mixed import styles (used by the legacy build scripts and newer tests)
+# always resolve to the same module instance. This prevents duplicated class
+# definitions that can break isinstance checks and serialization logic.
+_module = sys.modules[__name__]
+sys.modules["knowledge_pack"] = _module
+sys.modules["src.knowledge_pack"] = _module

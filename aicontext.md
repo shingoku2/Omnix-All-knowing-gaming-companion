@@ -4247,3 +4247,30 @@ All three critical bugs are now fixed:
 *Session: Critical Bug Fixes*
 *Status: All Critical Bugs Fixed ✅*
 
+
+## Session: Crash Investigation (2025-11-16)
+
+### Actions
+- Ran `pytest test_minimal.py` to ensure baseline unit tests still discover correctly (0 tests collected, expected placeholder state).
+- Executed `python main.py` in Linux container; launch failed immediately due to missing system dependency `libGL.so.1` when importing PyQt6 modules (see console log in session 24f1c6). Environment requires OpenGL runtime libraries for Qt GUI initialization.
+
+### Next Steps
+- Identify root cause of crash reported post-GUI launch on Windows environment (logs indicate crash occurs after game watcher initialization despite clean startup sequence).
+- Investigate potential GUI thread exceptions or missing defensive checks after initialization completes.
+
+
+### Additional Testing (2025-11-16)
+- Ran `pytest test_modules.py` to ensure core modules import successfully; 7 tests passed with expected PytestReturnNotNone warnings (legacy tests return bools).
+
+
+### Full Test Run (2025-11-16)
+- Ran `pytest` across repository: 5 failures surfaced (design system import path issues, missing libGL dependency in icon test, custom profile resolution assertion mismatch, RetrievedChunk type check). Captured console chunk 28355a for details.
+
+
+### Targeted Tests (2025-11-16)
+- Ran `pytest test_knowledge_system.py::TestKnowledgeIndex::test_add_and_query_pack` to verify unified module imports and knowledge chunk typing; test now passes. 【6b62de†L1-L9】
+
+- Attempted `pytest src/ui/test_design_system.py::test_imports`; still blocked by missing system dependency `libGL.so.1` when PyQt6 widgets import (see chunk e8e826). Documented as environment limitation.
+
+- Ran `pytest test_game_profiles.py::TestProfileIntegration::test_custom_profile_resolution` to confirm duplicate custom profiles now overwrite gracefully (pass). 【eb56f4†L1-L9】
+
