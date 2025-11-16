@@ -7,7 +7,11 @@ component styling utilities based on the Omnix design tokens.
 """
 
 from typing import Dict, Optional
-from .tokens import tokens, COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS
+
+try:
+    from .tokens import tokens, COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS
+except ImportError:  # Allow importing as top-level `design_system`
+    from tokens import tokens, COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS
 
 
 class OmnixDesignSystem:

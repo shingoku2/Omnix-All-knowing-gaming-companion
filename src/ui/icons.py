@@ -6,11 +6,25 @@ Icon system for the Omnix UI design system.
 Provides access to SVG-based icons and icon utilities.
 """
 
-from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtSvg import QSvgRenderer
 from typing import Optional
-from .tokens import COLORS
+
+try:
+    from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
+    from PyQt6.QtCore import Qt, QSize
+    from PyQt6.QtSvg import QSvgRenderer
+    _PYQT_AVAILABLE = True
+    _PYQT_IMPORT_ERROR = None
+except ImportError as exc:  # pragma: no cover - exercised in headless CI
+    QIcon = QPixmap = QPainter = QColor = None  # type: ignore[assignment]
+    Qt = QSize = None  # type: ignore[assignment]
+    QSvgRenderer = None  # type: ignore[assignment]
+    _PYQT_AVAILABLE = False
+    _PYQT_IMPORT_ERROR = exc
+
+try:
+    from .tokens import COLORS
+except ImportError:  # Support importing module as top-level `icons`
+    from tokens import COLORS
 
 
 class OmnixIcons:
@@ -180,6 +194,12 @@ class OmnixIcons:
         Returns:
             QIcon object
         """
+        if not _PYQT_AVAILABLE:
+            raise RuntimeError(
+                "PyQt6 is required to render icons. Install PyQt6 or run the app "
+                "in an environment with GUI support."
+            ) from _PYQT_IMPORT_ERROR
+
         if color is None:
             color = COLORS.accent_primary
 
