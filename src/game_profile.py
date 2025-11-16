@@ -262,16 +262,14 @@ class GameProfileStore:
             True if created successfully, False if ID already exists
         """
         if profile.id in self.profiles:
-            # Allow overwriting previously created custom profiles so tests and
-            # user flows can update definitions without requiring a separate
-            # update call. Built-in profiles remain protected.
-            if profile.id in self._custom_profile_ids:
-                self.profiles[profile.id] = profile
-                self._save_to_disk()
-                logger.info(f"Updated existing custom profile: {profile.id}")
-                return True
-
-            logger.warning(f"Profile ID '{profile.id}' already exists")
+            # Preserve the original contract: creation must be an insert-only
+            # operation so accidental overwrites are prevented. Callers that
+            # need to mutate an existing custom profile should use
+            # ``update_profile``.
+            logger.warning(
+                "Profile ID '%s' already exists; creation is idempotent but will not overwrite",
+                profile.id,
+            )
             return False
 
         self.profiles[profile.id] = profile
