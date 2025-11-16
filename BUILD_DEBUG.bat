@@ -96,6 +96,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Copy example configuration
+if exist ".env.example" (
+    copy ".env.example" "dist\GamingAIAssistant_DEBUG\.env.example" >nul 2>&1
+    echo Copied .env.example
+)
+
 echo.
 echo ====================================
 echo DEBUG BUILD COMPLETE!
@@ -104,10 +110,12 @@ echo.
 echo Your DEBUG .exe is at:
 echo dist\GamingAIAssistant_DEBUG\GamingAIAssistant_DEBUG.exe
 echo.
-echo IMPORTANT: Copy your .env file to the same folder:
-echo copy .env dist\GamingAIAssistant_DEBUG\.env
+echo FIRST RUN SETUP:
+echo 1. Run GamingAIAssistant_DEBUG.exe
+echo 2. The Setup Wizard will guide you through configuration
+echo 3. Your API keys will be stored securely (encrypted)
 echo.
-echo This version shows a console window with error messages.
-echo Run it to see what's wrong!
+echo This debug version shows a console window with detailed error messages.
+echo Use it to diagnose issues or see what's happening under the hood.
 echo.
 pause

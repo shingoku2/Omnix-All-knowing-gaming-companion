@@ -302,9 +302,61 @@ class KnowledgeIndex:
 
         return dot_product / (mag1 * mag2)
 
-    def add_pack(self, pack: KnowledgePack) -> None:
+    def rebuild_index_for_game(self, game_profile_id: str) -> None:
         """
-        Add a knowledge pack to the index
+        Rebuild the entire index for a game profile.
+        This ensures TF-IDF is calculated correctly across ALL packs for the game.
+
+        Args:
+            game_profile_id: Game profile ID to rebuild index for
+        """
+        logger.info(f"Rebuilding index for game profile: {game_profile_id}")
+
+        # Get all packs for this game
+        from knowledge_store import get_knowledge_pack_store
+        pack_store = get_knowledge_pack_store()
+        all_packs = pack_store.get_packs_for_game(game_profile_id)
+
+        if not all_packs:
+            logger.warning(f"No packs found for game profile: {game_profile_id}")
+            return
+
+        # Clear existing index for this game
+        if game_profile_id in self.index:
+            del self.index[game_profile_id]
+        self.index[game_profile_id] = {}
+
+        # Collect all texts from all packs for corpus-wide TF-IDF
+        all_texts = []
+        for pack in all_packs:
+            if not pack.enabled:
+                continue
+            for source in pack.sources:
+                if source.content:
+                    # Chunk the text for TF-IDF fitting
+                    chunks = self._chunk_text(source.content)
+                    all_texts.extend(chunks)
+
+        # Fit TF-IDF on entire corpus for this game
+        if isinstance(self.embedding_provider, SimpleTFIDFEmbedding) and all_texts:
+            logger.info(f"Fitting TF-IDF model on {len(all_texts)} chunks from {len(all_packs)} packs")
+            self.embedding_provider.fit(all_texts)
+
+        # Now index each pack
+        for pack in all_packs:
+            if not pack.enabled:
+                logger.info(f"Skipping disabled pack: {pack.name}")
+                continue
+            self._index_pack_with_existing_vocabulary(pack)
+
+        # Save index
+        self._save_index()
+        logger.info(f"Rebuilt index for game '{game_profile_id}' with {len(all_packs)} packs")
+
+    def _index_pack_with_existing_vocabulary(self, pack: KnowledgePack) -> None:
+        """
+        Index a pack using the already-fitted TF-IDF vocabulary.
+        This is called by rebuild_index_for_game after fitting the model.
 
         Args:
             pack: KnowledgePack to index
@@ -313,20 +365,6 @@ class KnowledgeIndex:
 
         if game_profile_id not in self.index:
             self.index[game_profile_id] = {}
-
-        logger.info(f"Indexing knowledge pack: {pack.name}")
-
-        # Process each source
-        all_texts = []
-        for source in pack.sources:
-            # Extract text based on source type
-            # This will be populated by the ingestion pipeline
-            if source.content:
-                all_texts.append(source.content)
-
-        # Fit TF-IDF if using that provider
-        if isinstance(self.embedding_provider, SimpleTFIDFEmbedding) and all_texts:
-            self.embedding_provider.fit(all_texts)
 
         # Index each source
         for source in pack.sources:
@@ -341,7 +379,7 @@ class KnowledgeIndex:
             for idx, chunk in enumerate(chunks):
                 chunk_id = f"{pack.id}_{source.id}_{idx}"
 
-                # Generate embedding
+                # Generate embedding using existing vocabulary
                 embedding = self.embedding_provider.generate_embedding(chunk)
 
                 # Store in index
@@ -361,34 +399,56 @@ class KnowledgeIndex:
                     meta
                 )
 
-        # Save index
-        self._save_index()
-        logger.info(f"Indexed {len(pack.sources)} sources from pack '{pack.name}'")
-
-    def remove_pack(self, pack_id: str) -> None:
+    def add_pack(self, pack: KnowledgePack) -> None:
         """
-        Remove a knowledge pack from the index
+        Add a knowledge pack to the index.
+
+        IMPORTANT: This method now rebuilds the entire index for the game
+        to ensure TF-IDF is calculated correctly across ALL packs.
+
+        Args:
+            pack: KnowledgePack to index
+        """
+        logger.info(f"Adding knowledge pack: {pack.name}")
+
+        # Rebuild entire index for this game to ensure correct TF-IDF
+        self.rebuild_index_for_game(pack.game_profile_id)
+
+    def remove_pack(self, pack_id: str, game_profile_id: Optional[str] = None) -> None:
+        """
+        Remove a knowledge pack from the index and rebuild to recalculate TF-IDF
 
         Args:
             pack_id: ID of pack to remove
+            game_profile_id: Optional game profile ID to rebuild. If None, searches all games.
         """
         removed_count = 0
+        affected_games = set()
 
-        for game_profile_id in self.index:
+        # Find and remove chunks from this pack
+        for gp_id in list(self.index.keys()):
             # Remove all chunks from this pack
             chunks_to_remove = [
                 chunk_id
-                for chunk_id, (_, _, pid, _, _) in self.index[game_profile_id].items()
+                for chunk_id, (_, _, pid, _, _) in self.index[gp_id].items()
                 if pid == pack_id
             ]
 
-            for chunk_id in chunks_to_remove:
-                del self.index[game_profile_id][chunk_id]
-                removed_count += 1
+            if chunks_to_remove:
+                for chunk_id in chunks_to_remove:
+                    del self.index[gp_id][chunk_id]
+                    removed_count += 1
+                affected_games.add(gp_id)
+
+        logger.info(f"Removed {removed_count} chunks for pack '{pack_id}'")
+
+        # Rebuild index for affected games to recalculate TF-IDF
+        for gp_id in affected_games:
+            logger.info(f"Rebuilding index for game '{gp_id}' after pack removal")
+            self.rebuild_index_for_game(gp_id)
 
         # Save index
         self._save_index()
-        logger.info(f"Removed {removed_count} chunks for pack '{pack_id}'")
 
     def query(self, game_profile_id: str, question: str, top_k: int = 5) -> List[RetrievedChunk]:
         """

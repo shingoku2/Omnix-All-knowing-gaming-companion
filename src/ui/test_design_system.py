@@ -3,29 +3,29 @@ Omnix UI Design System - Test Suite
 ====================================
 
 Quick test to verify all components import correctly and basic functionality works.
+
+Run with:
+    python -m pytest src/ui/test_design_system.py
+    or
+    python -m src.ui.test_design_system
 """
 
 import sys
-import os
-
-# Add ui directory to path to import directly
-ui_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, ui_dir)
 
 
 def test_imports():
     """Test that all modules import correctly."""
     print("Testing imports...")
 
-    # Core modules (import directly from ui package)
-    import tokens
-    import design_system
-    from tokens import COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, ANIMATION, Z_INDEX
-    from design_system import OmnixDesignSystem
-    from icons import OmnixIcons, icons
+    # Core modules (use relative imports)
+    from . import tokens
+    from . import design_system
+    from .tokens import COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, ANIMATION, Z_INDEX
+    from .design_system import OmnixDesignSystem
+    from .icons import OmnixIcons, icons
 
     # Components
-    from components import (
+    from .components import (
         OmnixButton,
         OmnixIconButton,
         OmnixLineEdit,
@@ -48,7 +48,7 @@ def test_imports():
     )
 
     # Overlay components
-    from components.overlay import (
+    from .components.overlay import (
         OmnixOverlayPanel,
         OmnixOverlayChatWidget,
         OmnixOverlayTip,
@@ -62,7 +62,7 @@ def test_tokens():
     """Test design tokens."""
     print("\nTesting design tokens...")
 
-    from tokens import tokens, COLORS
+    from .tokens import tokens, COLORS
 
     # Test color palette
     assert COLORS.bg_primary == "#1A1A2E"
@@ -85,7 +85,7 @@ def test_stylesheet_generation():
     """Test stylesheet generation."""
     print("\nTesting stylesheet generation...")
 
-    from design_system import design_system
+    from .design_system import design_system
 
     # Generate complete stylesheet
     stylesheet = design_system.generate_complete_stylesheet()
@@ -107,7 +107,7 @@ def test_icons():
     """Test icon system."""
     print("\nTesting icon system...")
 
-    from icons import icons
+    from .icons import icons
 
     # Get available icons
     available = icons.available_icons()
@@ -131,15 +131,9 @@ def test_theme_bridge():
     print("\nTesting theme bridge...")
 
     try:
-        # Add parent src directory for theme_manager import
-        import sys
-        import os
-        src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if src_dir not in sys.path:
-            sys.path.insert(0, src_dir)
-
-        from theme_bridge import OmnixThemeBridge, migrate_to_omnix_design_system
-        from theme_manager import Theme
+        # Use relative imports from parent package
+        from .theme_bridge import OmnixThemeBridge, migrate_to_omnix_design_system
+        from ..theme_manager import Theme
 
         # Create bridge
         bridge = OmnixThemeBridge()
@@ -166,7 +160,7 @@ def test_component_creation():
 
     try:
         from PyQt6.QtWidgets import QApplication
-        from components import OmnixButton, OmnixCard, OmnixPanel
+        from .components import OmnixButton, OmnixCard, OmnixPanel
 
         # Create minimal app
         app = QApplication.instance() or QApplication([])

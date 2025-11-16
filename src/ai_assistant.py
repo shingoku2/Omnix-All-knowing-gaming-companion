@@ -160,11 +160,19 @@ class AIAssistant:
         logger.info(f"Set game profile: {profile.display_name} (id={profile.id})")
 
     def clear_game_profile(self):
-        """Clear the current game profile"""
+        """Clear the current game profile and reset to global default provider"""
         self.current_profile = None
         self.current_model = None
         self.conversation_history = []
-        logger.info("Cleared game profile")
+
+        # Reset provider to global default
+        # This prevents the provider from staying "stuck" on a game-specific provider
+        # after the game is closed
+        if self.provider != self.config.ai_provider:
+            logger.info(f"Resetting provider from {self.provider} to global default {self.config.ai_provider}")
+            self.provider = self.config.ai_provider
+
+        logger.info("Cleared game profile and reverted to default provider")
 
     def _add_system_context(self, game_name: str):
         """Add system context about the current game"""
