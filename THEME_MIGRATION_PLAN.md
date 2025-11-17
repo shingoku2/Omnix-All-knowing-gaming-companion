@@ -62,17 +62,20 @@ Omnix currently has **two separate theming systems** that are not fully integrat
 - [x] Document current state and dependencies
 - [x] Create migration plan
 
-### Phase 2: Extend New Design System
-- [ ] Add dynamic token updates to `ui/tokens.py`
-- [ ] Create `OmnixThemeManager` class to replace legacy `ThemeManager`
-- [ ] Add persistence layer for user theme customizations
-- [ ] Ensure backward compatibility for loading old `theme.json` files
+### Phase 2: Extend New Design System ✅
+- [x] Add dynamic token updates to `ui/tokens.py`
+- [x] Create `OmnixThemeManager` class to replace legacy `ThemeManager`
+- [x] Add persistence layer for user theme customizations
+- [x] Ensure backward compatibility for loading old `theme.json` files
+- [x] Modified `design_system.py` to accept custom token instances (219 references updated)
 
-### Phase 3: Refactor Appearance Settings
-- [ ] Update `appearance_tabs.py` to directly modify design tokens
-- [ ] Replace legacy `Theme` references with new token system
-- [ ] Add live preview capability
-- [ ] Ensure all UI elements update in real-time
+### Phase 3: Refactor Appearance Settings ✅
+- [x] Update `appearance_tabs.py` to directly modify design tokens
+- [x] Replace legacy `Theme` references with new token system
+- [x] Simplified UI (removed dark/light/auto modes)
+- [x] Added per-token reset buttons
+- [x] Added customization indicators
+- [x] Reduced from 566 lines to 467 lines (-99 LOC, -17.5%)
 
 ### Phase 4: Update Main Application
 - [ ] Refactor `gui.py` to use new design system
