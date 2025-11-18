@@ -89,7 +89,7 @@ class TestProviderInitialization:
         mock_config_class.return_value = mock_config
 
         router = AIRouter(config=mock_config)
-        router._init_providers()
+        router._initialize_providers()
 
         # Should not crash
         assert True
@@ -102,7 +102,7 @@ class TestProviderInitialization:
         mock_config_class.return_value = mock_config
 
         router = AIRouter(config=mock_config)
-        router._init_providers()
+        router._initialize_providers()
 
         # Should handle gracefully
         assert True
