@@ -4,10 +4,11 @@ Detects running games on the system
 """
 
 import logging
-from typing import Optional, Dict
+import os
+from typing import Optional, Dict, List, Set
 import psutil
 
-from src.types import GameInfo
+from src.type_definitions import GameInfo
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
