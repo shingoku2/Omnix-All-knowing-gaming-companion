@@ -1904,6 +1904,7 @@ dist/GamingAIAssistant/GamingAIAssistant.exe
 - Inconsistent import prefixes (`from module import X` vs `from src.module import X`)
 - Modules importing from `src/__init__.py` while also being imported by it
 - Circular dependencies between modules
+- **Module names conflicting with Python standard library** (e.g., `types.py`, `collections.py`)
 
 **Solution:**
 ```python
@@ -1912,6 +1913,12 @@ from knowledge_integration import get_knowledge_integration
 
 # GOOD: Consistent with other src/ modules
 from src.knowledge_integration import get_knowledge_integration
+
+# BAD: Module name conflicts with Python stdlib
+src/types.py  # Shadows built-in 'types' module
+
+# GOOD: Use descriptive, non-conflicting names
+src/type_definitions.py  # No conflict with stdlib
 ```
 
 **Prevention:**
@@ -1927,6 +1934,7 @@ python test_circular_import.py
 
 **Resolution History:**
 - **2025-11-18:** Fixed circular import in `ai_assistant.py` by adding `src.` prefix to `knowledge_integration` import
+- **2025-11-18:** Fixed critical circular import caused by `src/types.py` shadowing Python's built-in `types` module; renamed to `src/type_definitions.py` and updated all references
 
 ### Debugging Tips
 
