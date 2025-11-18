@@ -72,6 +72,7 @@ jobs:
       env:
         QT_QPA_PLATFORM: offscreen
         DISPLAY: ':99'
+        OMNIX_MASTER_PASSWORD: 'test-master-password-for-ci'
       run: |
         # Start virtual display for GUI tests
         Xvfb :99 -screen 0 1920x1080x24 &
@@ -84,6 +85,7 @@ jobs:
       if: runner.os != 'Linux'
       env:
         QT_QPA_PLATFORM: offscreen
+        OMNIX_MASTER_PASSWORD: 'test-master-password-for-ci'
       run: |
         pytest --cov=src --cov-report=xml --cov-report=term-missing --verbose
 
@@ -136,31 +138,37 @@ jobs:
     - name: Run module import tests
       env:
         QT_QPA_PLATFORM: offscreen
+        OMNIX_MASTER_PASSWORD: 'test-master-password-for-ci'
       run: python test_modules.py
 
     - name: Run macro system tests
       env:
         QT_QPA_PLATFORM: offscreen
+        OMNIX_MASTER_PASSWORD: 'test-master-password-for-ci'
       run: python test_macro_system.py
 
     - name: Run knowledge system tests
       env:
         QT_QPA_PLATFORM: offscreen
+        OMNIX_MASTER_PASSWORD: 'test-master-password-for-ci'
       run: python test_knowledge_system.py
 
     - name: Run game profile tests
       env:
         QT_QPA_PLATFORM: offscreen
+        OMNIX_MASTER_PASSWORD: 'test-master-password-for-ci'
       run: python test_game_profiles.py
 
     - name: Run edge case tests
       env:
         QT_QPA_PLATFORM: offscreen
+        OMNIX_MASTER_PASSWORD: 'test-master-password-for-ci'
       run: python test_edge_cases.py
 
     - name: Run GUI minimal tests
       env:
         QT_QPA_PLATFORM: offscreen
+        OMNIX_MASTER_PASSWORD: 'test-master-password-for-ci'
       run: python test_gui_minimal.py
 
   # Build validation job

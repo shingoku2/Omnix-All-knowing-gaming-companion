@@ -12,6 +12,10 @@ from pathlib import Path
 # Ensure QT_QPA_PLATFORM is set before any Qt imports
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
+# Set master password for credential store in test environments
+# This allows tests to run in CI where system keyring is unavailable
+os.environ.setdefault('OMNIX_MASTER_PASSWORD', 'test-master-password-for-ci')
+
 # Add src to path
 src_path = Path(__file__).parent.parent / 'src'
 sys.path.insert(0, str(src_path))
