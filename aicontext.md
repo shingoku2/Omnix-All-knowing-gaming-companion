@@ -41,6 +41,45 @@ For detailed architecture documentation, see [CLAUDE.md](CLAUDE.md).
 
 ---
 
+## Recent Session: Circular Import Fix (2025-11-18)
+
+### Session Goals
+1. Resolve circular import error preventing application startup
+2. Ensure consistent import patterns across the codebase
+3. Add regression testing for import issues
+
+### Issue Identified
+**Error:** `ImportError: cannot import name 'get_knowledge_integration' from partially initialized module 'knowledge_integration' (most likely due to a circular import)`
+
+**Root Cause:**
+- Circular dependency chain: `src/ai_assistant.py` → `knowledge_integration` → `src/__init__.py` → `ai_assistant.py`
+- Inconsistent import pattern in `ai_assistant.py` (missing `src.` prefix)
+
+### Changes Made
+
+**File: `src/ai_assistant.py`**
+- **Line 17:** Changed import statement to use consistent `src.` prefix
+  - **Before:** `from knowledge_integration import get_knowledge_integration, KnowledgeIntegration`
+  - **After:** `from src.knowledge_integration import get_knowledge_integration, KnowledgeIntegration`
+
+**File: `test_circular_import.py`** (NEW)
+- Created automated test to detect circular imports
+- Analyzes import patterns across core modules
+- Prevents future regressions
+
+### Impact
+- ✅ Application now starts successfully without circular import errors
+- ✅ All imports use consistent `src.` prefix pattern
+- ✅ Import dependency chain is properly structured
+- ✅ Regression test added to prevent future circular import issues
+
+### Technical Notes
+- The fix aligns `ai_assistant.py` import pattern with `knowledge_integration.py`
+- All `src/` modules now consistently use `src.` prefix for intra-package imports
+- Legacy absolute imports (e.g., `import config`) still work due to sys.path setup in `src/__init__.py`
+
+---
+
 ## Recent Session: README Documentation Update (2025-11-15)
 
 ### Session Goals
@@ -1050,6 +1089,14 @@ CHECK_INTERVAL=5
 **Impact:** Cannot select different models without code change
 **Status:** Known limitation, future enhancement needed
 **Location:** `src/ai_assistant.py:358, 390, 435`
+
+### 4. Circular Import (RESOLVED - 2025-11-18)
+**Issue:** Circular import error preventing application startup
+**Error:** `ImportError: cannot import name 'get_knowledge_integration' from partially initialized module 'knowledge_integration'`
+**Root Cause:** Inconsistent import patterns - `ai_assistant.py` used `from knowledge_integration import...` while other modules used `from src.knowledge_integration import...`
+**Resolution:** Updated `src/ai_assistant.py:17` to use `from src.knowledge_integration import...` for consistency
+**Prevention:** Added `test_circular_import.py` to detect import pattern inconsistencies
+**Status:** ✅ RESOLVED
 
 ---
 
