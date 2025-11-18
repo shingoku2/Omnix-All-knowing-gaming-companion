@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Set
 
 import psutil
 
-from .types import GameInfo
+from src.types import GameInfo
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
