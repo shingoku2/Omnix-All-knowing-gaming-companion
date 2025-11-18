@@ -4497,3 +4497,8 @@ Update 2025-11-18 (follow-up):
 - Removed src/ui/assets/hero_banner.png to keep the dashboard hero binary-free and replaced it with a painted gradient/circuit canvas inside OmnixAvatarDisplay.
 - Resolved compile errors from unescaped stylesheet braces and a duplicated docstring introduced during the refactor; component now relies solely on design tokens and Qt painting primitives.
 - Validation: python -m compileall src (initial failure on avatar_display.py due to stylesheet braces/docstring; corrected and passing after fixes).
+
+Update 2025-05-21:
+- Added src/utils.py providing centralized logging configuration, an error_handler decorator, and SafeExecutor utilities with retry-aware logging.
+- Logging now writes to ~/.gaming_ai_assistant/logs with console mirroring for consistent diagnostics.
+- Validation: python -m compileall src (pass).
