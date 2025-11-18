@@ -4498,6 +4498,6 @@ Update 2025-11-18 (follow-up):
 - Resolved compile errors from unescaped stylesheet braces and a duplicated docstring introduced during the refactor; component now relies solely on design tokens and Qt painting primitives.
 - Validation: python -m compileall src (initial failure on avatar_display.py due to stylesheet braces/docstring; corrected and passing after fixes).
 
-Update 2025-11-18 (config initialization fix):
-- Resolved TypeError in main startup by calling `Config.load(require_keys=False)` instead of instantiating `Config` with an unsupported parameter.
-- No automated tests were executed for this small configuration-loading fix.
+Update 2025-11-19:
+- Removed `javaw.exe` from Minecraft detection and added `MinecraftLauncher.exe` to reduce false positives.
+- Validation: `python -m compileall src` (pass, no errors).
