@@ -4501,3 +4501,8 @@ Update 2025-11-18 (follow-up):
 Update 2025-11-18 (config initialization fix):
 - Resolved TypeError in main startup by calling `Config.load(require_keys=False)` instead of instantiating `Config` with an unsupported parameter.
 - No automated tests were executed for this small configuration-loading fix.
+
+Update 2025-11-18 (error recovery module):
+- Added `src/error_recovery.py` with fallback utilities (`with_fallback`, `graceful_degrade`, `safe_api_call`) and an `error_boundary` decorator for resilient execution paths.
+- Validated the codebase with `python -m compileall src` (pass) to ensure syntax safety across modules.
+- No runtime errors encountered; no additional troubleshooting required beyond initial syntax verification.
