@@ -158,7 +158,7 @@ class TestGameProfileStore(unittest.TestCase):
         test_id = "test_custom_game_001"
 
         # Clean up if it exists from a previous test
-        if store.get_profile(test_id):
+        if store.get_profile_by_id(test_id):
             store.delete_profile(test_id)
 
         profile = GameProfile(
@@ -180,6 +180,11 @@ class TestGameProfileStore(unittest.TestCase):
     def test_create_duplicate_profile_fails(self):
         """Test that creating duplicate profile fails"""
         store = GameProfileStore()
+
+        # Clean up if profile exists from previous run
+        if store.get_profile_by_id("dup_test"):
+            store.delete_profile("dup_test")
+
         profile1 = GameProfile(
             id="dup_test",
             display_name="Duplicate Test",
@@ -189,6 +194,9 @@ class TestGameProfileStore(unittest.TestCase):
         self.assertTrue(store.create_profile(profile1))
         # Try to create another with same ID
         self.assertFalse(store.create_profile(profile1))
+
+        # Clean up after test
+        store.delete_profile("dup_test")
 
     def test_update_profile(self):
         """Test updating a custom profile"""
@@ -247,6 +255,11 @@ class TestGameProfileStore(unittest.TestCase):
     def test_duplicate_profile(self):
         """Test duplicating a profile"""
         store = GameProfileStore()
+
+        # Clean up if profile exists from previous run
+        if store.get_profile_by_id("elden_ring_custom"):
+            store.delete_profile("elden_ring_custom")
+
         original = store.get_profile_by_id("elden_ring")
         success = store.duplicate_profile(
             "elden_ring",
@@ -258,6 +271,9 @@ class TestGameProfileStore(unittest.TestCase):
         self.assertIsNotNone(duplicate)
         self.assertEqual(duplicate.display_name, "Elden Ring Custom")
         self.assertEqual(duplicate.system_prompt, original.system_prompt)
+
+        # Clean up after test
+        store.delete_profile("elden_ring_custom")
 
     def test_list_custom_profiles(self):
         """Test listing only custom profiles"""
@@ -397,13 +413,13 @@ class TestProfileIntegration(unittest.TestCase):
         """Set up test fixtures"""
         self.store = GameProfileStore()
         # Clean up any existing test profile
-        if self.store.get_profile("my_game_test"):
+        if self.store.get_profile_by_id("my_game_test"):
             self.store.delete_profile("my_game_test")
 
     def tearDown(self):
         """Clean up after tests"""
         # Remove test profile if it exists
-        if self.store.get_profile("my_game_test"):
+        if self.store.get_profile_by_id("my_game_test"):
             self.store.delete_profile("my_game_test")
 
     def test_profile_to_game_integration(self):
