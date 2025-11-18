@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Omnix Gaming Companion
 
-**Last Updated:** 2025-11-15
+**Last Updated:** 2025-11-18
 **Codebase Version:** 1.2+
 **Total LOC:** ~14,700
 
@@ -1891,6 +1891,43 @@ pyinstaller GamingAIAssistant_DEBUG.spec
 dist/GamingAIAssistant/GamingAIAssistant.exe
 ```
 
+#### Circular Import Errors
+
+**Symptoms:** Application fails to start with `ImportError: cannot import name 'X' from partially initialized module 'Y' (most likely due to a circular import)`
+
+**Diagnosis:**
+1. Identify the circular dependency chain in the error traceback
+2. Check for inconsistent import patterns (some using `src.` prefix, others not)
+3. Verify import order in `src/__init__.py`
+
+**Common Causes:**
+- Inconsistent import prefixes (`from module import X` vs `from src.module import X`)
+- Modules importing from `src/__init__.py` while also being imported by it
+- Circular dependencies between modules
+
+**Solution:**
+```python
+# BAD: Inconsistent import pattern in src/ai_assistant.py
+from knowledge_integration import get_knowledge_integration
+
+# GOOD: Consistent with other src/ modules
+from src.knowledge_integration import get_knowledge_integration
+```
+
+**Prevention:**
+```bash
+# Run the circular import test
+python test_circular_import.py
+
+# This test checks for:
+# 1. Consistent use of 'src.' prefix in imports
+# 2. Import pattern analysis across core modules
+# 3. Circular dependency detection
+```
+
+**Resolution History:**
+- **2025-11-18:** Fixed circular import in `ai_assistant.py` by adding `src.` prefix to `knowledge_integration` import
+
 ### Debugging Tips
 
 #### Enable Debug Logging
@@ -1994,6 +2031,29 @@ theme_mgr = ThemeManager()
 ```
 
 **Migration Details:** See `THEME_MIGRATION_PLAN.md`
+
+#### ✅ Recent Fixes
+
+**Status:** Completed in 2025-11-18
+
+**Circular Import Resolution:**
+The application was experiencing a circular import error that prevented startup. The issue was resolved by ensuring consistent import patterns across all `src/` modules.
+
+- **Issue:** `ImportError: cannot import name 'get_knowledge_integration' from partially initialized module 'knowledge_integration'`
+- **Root Cause:** `src/ai_assistant.py` was importing `knowledge_integration` without the `src.` prefix, while all other modules used `from src.X import Y`
+- **Fix:** Updated `src/ai_assistant.py:17` to use `from src.knowledge_integration import...`
+- **Prevention:** Added `test_circular_import.py` to detect import pattern inconsistencies
+- **Impact:** Application now starts successfully without import errors
+
+**Testing:**
+```bash
+# Verify no circular imports
+python test_circular_import.py
+```
+
+See [Troubleshooting Guide - Circular Import Errors](#circular-import-errors) for more details.
+
+---
 
 #### ✅ Recently Removed Features
 
