@@ -4501,3 +4501,11 @@ Update 2025-11-18 (follow-up):
 Update 2025-11-19:
 - Removed `javaw.exe` from Minecraft detection and added `MinecraftLauncher.exe` to reduce false positives.
 - Validation: `python -m compileall src` (pass, no errors).
+
+Update 2025-11-18 (QA run):
+- Installed dependencies via pip install -r requirements.txt (already satisfied).
+- Attempted apt-get update to install libGL but proxy returned 403; libGL remains unavailable.
+- Pytest run: initial `pytest` failed during collection at test_gui_minimal.py due to missing libGL.so.1.
+- Pytest rerun with --ignore test_gui_minimal.py: 2 failures (PyQt6 import in src/ui/test_design_system.py::test_imports requiring libGL, custom profile resolution mismatch expecting "Custom AI behavior" vs stored "Custom prompt"); 84 tests passed, warnings about tests returning non-None values.
+- Environment limitation: GUI/Qt tests blocked until libGL can be installed or PyQt6 dependency mocked for CI.
+
