@@ -7,7 +7,6 @@ import getpass
 import json
 import logging
 import os
-import tempfile
 import threading
 from pathlib import Path
 from typing import Dict, Optional, Union
@@ -47,6 +46,8 @@ class CredentialStore:
     The fallback is secure but requires user to enter a master password.
     """
 
+    _lock = threading.Lock()
+
     def __init__(
         self,
         config_dir: Optional[Union[Path, str]] = None,
@@ -80,20 +81,20 @@ class CredentialStore:
     # Public API
     # ------------------------------------------------------------------
     def save_credentials(self, values: Dict[str, Optional[str]]) -> None:
-        """Persist credentials for the default service."""
-
+        """Persist credentials securely."""
         with self._lock:
             data = self._load_raw()
-            service_data = data.get(self.service_name, {})
-
             for key, value in values.items():
-                if value is not None:
-                    service_data[key] = value
-                elif key in service_data:
-                    del service_data[key]
+                if value:
+                    data[key] = value
+                elif key in data:
+                    del data[key]
 
-            data[self.service_name] = service_data
-            self._save_raw(data)
+            payload = json.dumps(data).encode("utf-8")
+            ciphertext = self._get_cipher().encrypt(payload)
+            with open(self.credential_path, "wb") as fh:
+                fh.write(ciphertext)
+            self._set_permissions(self.credential_path, 0o600)
             logger.debug("Stored %d credential(s) in encrypted vault", len(values))
 
     def load_credentials(self) -> Dict[str, str]:
@@ -109,58 +110,51 @@ class CredentialStore:
         with self._lock:
             return self.load_credentials().get(key)
 
-    def delete(self, key: str) -> None:
-        """Remove a credential from the vault for the default service."""
-
-        with self._lock:
-            data = self._load_raw()
-            service_data = data.get(self.service_name, {})
-
-            if key in service_data:
-                del service_data[key]
-                if service_data:
-                    data[self.service_name] = service_data
-                elif self.service_name in data:
-                    del data[self.service_name]
-                self._save_raw(data)
-                logger.debug("Removed credential %s from vault", key)
-
     def set_credential(self, service: str, key: str, value: Optional[str]) -> None:
-        """Set or update a credential for a specific service."""
-
-        with self._lock:
-            data = self._load_raw()
-            service_data = data.get(service, {})
-
-            if value is None:
-                if key in service_data:
-                    del service_data[key]
-            else:
-                service_data[key] = value
-
-            if service_data:
-                data[service] = service_data
-            elif service in data:
-                del data[service]
-
-            self._save_raw(data)
+        """Convenience wrapper to store a namespaced credential."""
+        namespaced_key = f"{service}:{key}" if service else key
+        self.save_credentials({namespaced_key: value})
 
     def get_credential(self, service: str, key: str) -> Optional[str]:
-        """Retrieve a credential for a specific service."""
+        """Retrieve a namespaced credential."""
+        namespaced_key = f"{service}:{key}" if service else key
+        return self.get(namespaced_key)
 
+    def delete(self, key: str) -> None:
+        """Remove a credential from the vault."""
         with self._lock:
             data = self._load_raw()
-            return data.get(service, {}).get(key)
+            if key in data:
+                del data[key]
+                payload = json.dumps(data).encode("utf-8")
+                ciphertext = self._get_cipher().encrypt(payload)
+                with open(self.credential_path, "wb") as fh:
+                    fh.write(ciphertext)
+                self._set_permissions(self.credential_path, 0o600)
+                logger.debug("Removed credential %s from vault", key)
 
     def delete_credential(self, service: str, key: str) -> None:
-        """Delete a credential for a specific service."""
+        """Delete a namespaced credential."""
+        namespaced_key = f"{service}:{key}" if service else key
+        self.delete(namespaced_key)
 
-        self.set_credential(service, key, None)
+    # Legacy API wrappers for backward compatibility with tests
+    def set_credential(self, service: str, key: str, value: str) -> None:
+        """Store a single credential (legacy API wrapper)."""
+        full_key = f"{service}:{key}"
+        self.save_credentials({full_key: value})
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-    def _load_raw(self) -> Dict[str, Dict[str, str]]:
+    def get_credential(self, service: str, key: str) -> Optional[str]:
+        """Retrieve a single credential (legacy API wrapper)."""
+        full_key = f"{service}:{key}"
+        return self.get(full_key)
+
+    def delete_credential(self, service: str, key: str) -> None:
+        """Delete a single credential (legacy API wrapper)."""
+        full_key = f"{service}:{key}"
+        self.delete(full_key)
+
+    def _load_raw(self) -> Dict[str, str]:
         if not self.credential_path.exists():
             return {}
 
@@ -176,10 +170,9 @@ class CredentialStore:
             return {}
 
         try:
-            envelope = json.loads(raw_content)
-        except json.JSONDecodeError as exc:
-            logger.warning("Credential file is not valid JSON: %s", exc)
-            self._quarantine_file(".corrupted")
+            plaintext = self._get_cipher().decrypt(blob)
+        except (InvalidToken, CredentialDecryptionError) as exc:
+            logger.error("Failed to decrypt credentials: %s", exc)
             return {}
 
         try:
