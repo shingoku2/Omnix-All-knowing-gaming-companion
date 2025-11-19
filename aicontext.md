@@ -4509,3 +4509,8 @@ Update 2025-11-18 (QA run):
 - Pytest rerun with --ignore test_gui_minimal.py: 2 failures (PyQt6 import in src/ui/test_design_system.py::test_imports requiring libGL, custom profile resolution mismatch expecting "Custom AI behavior" vs stored "Custom prompt"); 84 tests passed, warnings about tests returning non-None values.
 - Environment limitation: GUI/Qt tests blocked until libGL can be installed or PyQt6 dependency mocked for CI.
 
+
+Update 2025-??-?? (credential store hardening):
+- Ran `pytest test_credential_store.py -q` and hit import failure: missing `filelock` module due to unavailable dependency (ModuleNotFoundError).
+- Attempted `pip install filelock` but proxy blocked download (403), leaving dependency uninstalled; introduced vendored minimal `FileLock` implementation under `src/filelock.py` to unblock work.
+- Second attempt to run `pytest test_credential_store.py -q` aborted because pytest could not recognize `asyncio_mode` (pytest-asyncio plugin missing in environment), so no tests executed in this run.

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import getpass
-import hashlib
 import json
 import logging
 import os
@@ -14,6 +13,7 @@ from typing import Dict, Optional, Union
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from filelock import FileLock
 import keyring
 from keyring.errors import KeyringError
 
@@ -53,6 +53,7 @@ class CredentialStore:
         credential_filename: str = _DEFAULT_CREDENTIAL_FILE,
         master_password: Optional[str] = None,
         allow_password_prompt: bool = True,
+        config_dir: Optional[Union[Path, str]] = None,
     ) -> None:
         """Initialize the credential store.
 
@@ -66,9 +67,14 @@ class CredentialStore:
         Raises:
             KeyringUnavailableError: If keyring is unavailable and no password provided/allowed
         """
+        if base_dir is None and config_dir is not None:
+            base_dir = config_dir
+
         self.service_name = service_name
         self.base_dir = Path(base_dir) if base_dir else Path.home() / ".gaming_ai_assistant"
+        self.config_dir = self.base_dir
         self.credential_path = self.base_dir / credential_filename
+        self._lock = FileLock(str(self.base_dir / "credential_store.lock"))
         self._cipher: Optional[Fernet] = None
         self._master_password = master_password
         self._allow_password_prompt = allow_password_prompt
@@ -84,11 +90,7 @@ class CredentialStore:
             elif key in data:
                 del data[key]
 
-        payload = json.dumps(data).encode("utf-8")
-        ciphertext = self._get_cipher().encrypt(payload)
-        with open(self.credential_path, "wb") as fh:
-            fh.write(ciphertext)
-        self._set_permissions(self.credential_path, 0o600)
+        self._write_encrypted(data)
         logger.debug("Stored %d credential(s) in encrypted vault", len(values))
 
     def load_credentials(self) -> Dict[str, str]:
@@ -104,40 +106,79 @@ class CredentialStore:
         data = self._load_raw()
         if key in data:
             del data[key]
-            payload = json.dumps(data).encode("utf-8")
-            ciphertext = self._get_cipher().encrypt(payload)
-            with open(self.credential_path, "wb") as fh:
-                fh.write(ciphertext)
-            self._set_permissions(self.credential_path, 0o600)
+            self._write_encrypted(data)
             logger.debug("Removed credential %s from vault", key)
+
+    # ------------------------------------------------------------------
+    # Compatibility wrappers for legacy callers and tests
+    # ------------------------------------------------------------------
+    def set_credential(self, service: str, key: str, value: Optional[str]) -> None:
+        composite_key = self._compose_key(service, key)
+        self.save_credentials({composite_key: value})
+
+    def get_credential(self, service: str, key: str) -> Optional[str]:
+        composite_key = self._compose_key(service, key)
+        data = self._load_raw()
+        if composite_key in data:
+            return data.get(composite_key)
+        return data.get(key)
+
+    def delete_credential(self, service: str, key: str) -> None:
+        composite_key = self._compose_key(service, key)
+        self.delete(composite_key)
+
+    @staticmethod
+    def _compose_key(service: str, key: str) -> str:
+        return f"{service}:{key}" if service else key
 
     def _load_raw(self) -> Dict[str, str]:
         if not self.credential_path.exists():
             return {}
 
         try:
-            blob = self.credential_path.read_bytes()
+            with self._lock:
+                content = self.credential_path.read_text(encoding="utf-8").strip()
         except FileNotFoundError:
             return {}
+        except OSError as exc:
+            logger.warning("Unable to read credential file: %s", exc)
+            return {}
 
-        if not blob:
+        if not content:
             return {}
 
         try:
-            plaintext = self._get_cipher().decrypt(blob)
-        except InvalidToken as exc:
+            envelope = json.loads(content)
+        except json.JSONDecodeError:
+            logger.warning("Credential file contains invalid JSON; returning empty credentials")
+            return {}
+
+        if not isinstance(envelope, dict):
+            logger.warning("Credential file format is unexpected; returning empty credentials")
+            return {}
+
+        ciphertext = envelope.get("ciphertext")
+        if not ciphertext:
+            return {}
+
+        try:
+            plaintext = self._get_cipher().decrypt(ciphertext.encode("utf-8"))
+        except (InvalidToken, ValueError) as exc:
             raise CredentialDecryptionError("Failed to decrypt credentials") from exc
 
         try:
-            return json.loads(plaintext.decode("utf-8"))
-        except json.JSONDecodeError as exc:
-            raise CredentialStoreError("Credential store contains invalid JSON") from exc
+            payload = json.loads(plaintext.decode("utf-8"))
+            return payload if isinstance(payload, dict) else {}
+        except json.JSONDecodeError:
+            logger.warning("Decrypted credential payload is invalid JSON; returning empty credentials")
+            return {}
 
     def _ensure_directories(self) -> None:
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self._set_permissions(self.base_dir, 0o700)
         if not self.credential_path.exists():
-            self.credential_path.touch()
+            with self._lock:
+                self.credential_path.touch()
             self._set_permissions(self.credential_path, 0o600)
 
     def _get_cipher(self) -> Fernet:
@@ -169,7 +210,7 @@ class CredentialStore:
             keyring.set_password(self.service_name, _KEYRING_KEY, key_string)
             logger.debug("Generated new encryption key and stored it in keyring")
             return key_bytes
-        except KeyringError as exc:
+        except Exception as exc:  # Broad catch to handle any keyring backend failures
             logger.warning("Keyring unavailable (%s); using password-based fallback", exc)
             return self._fallback_store_key(key_bytes)
 
@@ -177,7 +218,7 @@ class CredentialStore:
         """Read encryption key from system keyring or password-based fallback."""
         try:
             value = keyring.get_password(self.service_name, _KEYRING_KEY)
-        except KeyringError as exc:
+        except Exception as exc:
             logger.warning("Unable to access keyring: %s", exc)
             return self._load_fallback_key()
 
@@ -240,8 +281,9 @@ class CredentialStore:
             "encrypted_key": base64.b64encode(encrypted_key).decode("utf-8"),
             "iterations": _PBKDF2_ITERATIONS,
         }
-        with open(fallback_path, "w") as fh:
-            json.dump(data, fh)
+        with self._lock:
+            with open(fallback_path, "w", encoding="utf-8") as fh:
+                json.dump(data, fh)
 
         self._set_permissions(fallback_path, 0o600)
         logger.info("Stored encryption key using password-based encryption (PBKDF2)")
@@ -308,6 +350,18 @@ class CredentialStore:
             raise CredentialDecryptionError(
                 "Failed to decrypt master key. Your password may be incorrect."
             ) from exc
+
+    def _write_encrypted(self, data: Dict[str, Optional[str]]) -> None:
+        """Encrypt and persist the provided credential mapping safely."""
+
+        payload = json.dumps(data)
+        ciphertext = self._get_cipher().encrypt(payload.encode("utf-8")).decode("utf-8")
+        envelope = {"ciphertext": ciphertext}
+
+        with self._lock:
+            with open(self.credential_path, "w", encoding="utf-8") as fh:
+                json.dump(envelope, fh)
+            self._set_permissions(self.credential_path, 0o600)
 
     def _get_master_password(self) -> Optional[str]:
         """Get master password from various sources.

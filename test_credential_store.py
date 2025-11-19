@@ -11,6 +11,7 @@ import shutil
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 import pytest
+from keyring.errors import KeyringError
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -186,8 +187,8 @@ class TestKeyringIntegration:
 
     def test_fallback_when_keyring_unavailable(self, temp_config_dir):
         """Test fallback to file-based encryption when keyring unavailable"""
-        with patch('keyring.get_password', side_effect=Exception("Keyring unavailable")), \
-             patch('keyring.set_password', side_effect=Exception("Keyring unavailable")):
+        with patch('keyring.get_password', side_effect=KeyringError("Keyring unavailable")), \
+             patch('keyring.set_password', side_effect=KeyringError("Keyring unavailable")):
 
             # Should still work with file-based fallback
             store = CredentialStore(
@@ -202,8 +203,8 @@ class TestKeyringIntegration:
 
     def test_master_password_required_without_keyring(self, temp_config_dir):
         """Test that master password is required when keyring unavailable"""
-        with patch('keyring.get_password', side_effect=Exception("Keyring unavailable")), \
-             patch('keyring.set_password', side_effect=Exception("Keyring unavailable")):
+        with patch('keyring.get_password', side_effect=KeyringError("Keyring unavailable")), \
+             patch('keyring.set_password', side_effect=KeyringError("Keyring unavailable")):
 
             # Without master password, should raise error
             try:
