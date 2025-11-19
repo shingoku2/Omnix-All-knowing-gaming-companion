@@ -4509,3 +4509,8 @@ Update 2025-11-18 (QA run):
 - Pytest rerun with --ignore test_gui_minimal.py: 2 failures (PyQt6 import in src/ui/test_design_system.py::test_imports requiring libGL, custom profile resolution mismatch expecting "Custom AI behavior" vs stored "Custom prompt"); 84 tests passed, warnings about tests returning non-None values.
 - Environment limitation: GUI/Qt tests blocked until libGL can be installed or PyQt6 dependency mocked for CI.
 
+
+Update 2026-02-12:
+- Job failure: `F821 undefined name 'COLORS'` in `src/ui/components/layouts.py` during linting (missing token import).
+- Fix: Added `COLORS` import alongside `SPACING` to provide color tokens for layout label stylesheet.
+- Validation: `ruff check --select F821 src` (pass).
