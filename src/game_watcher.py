@@ -30,7 +30,7 @@ class GameWatcher(QObject):
     game_detected = pyqtSignal(str)  # game_name
     game_closed = pyqtSignal()  # No args
 
-    def __init__(self, check_interval: int = 5):
+    def __init__(self, detector: Optional[GameDetector] = None, profile_store: Optional[object] = None, check_interval: int = 5):
         """
         Initialize game watcher.
 
@@ -38,8 +38,9 @@ class GameWatcher(QObject):
             check_interval: How often to check for active game (seconds)
         """
         super().__init__()
-        self.detector = GameDetector()
-        self.profile_store = get_profile_store()
+        # Allow dependency injection for easier testing
+        self.detector = detector if detector is not None else GameDetector()
+        self.profile_store = profile_store if profile_store is not None else get_profile_store()
         self.check_interval = check_interval
         self.active_game: Optional[str] = None
         self.active_game_exe: Optional[str] = None
@@ -244,6 +245,43 @@ class GameWatcher(QObject):
         self.game_changed.connect(
             lambda game_name, profile: callback(game_name, profile)
         )
+
+    # Backwards-compatible API for tests and older callers
+    def start(self) -> None:
+        """Backward-compatible alias for `start_watching`"""
+        self.start_watching()
+
+    def stop(self) -> None:
+        """Backward-compatible alias for `stop_watching`"""
+        self.stop_watching()
+
+    def isRunning(self) -> bool:
+        """Backward-compatible alias to check if watcher is running"""
+        return bool(self._watching)
+
+    def wait(self, timeout: int = 0) -> bool:
+        """Wait for the watcher thread to finish.
+
+        Args:
+            timeout: Time in milliseconds to wait (QThread-like API)
+
+        Returns:
+            True if the thread has finished (or was not running), False if still alive after timeout.
+        """
+        if not self._watcher_thread:
+            return True
+
+        # Convert milliseconds to seconds for threading.join
+        wait_seconds = (timeout or 0) / 1000.0
+
+        try:
+            if self._watcher_thread.is_alive():
+                self._watcher_thread.join(timeout=wait_seconds if wait_seconds > 0 else None)
+        except RuntimeError:
+            # Thread already stopped or cannot join
+            pass
+
+        return not (self._watcher_thread and self._watcher_thread.is_alive())
 
 
 # Global game watcher instance

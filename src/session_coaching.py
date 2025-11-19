@@ -291,6 +291,76 @@ Keep it encouraging and constructive."""
             logger.error(f"Failed to generate progress summary: {e}", exc_info=True)
             return f"Failed to generate progress summary: {str(e)}"
 
+    async def generate_recap(self, game_profile_id: str, events: List[SessionEvent]) -> str:
+        """Generate a session recap from events (async for tests)."""
+        if not events:
+            return "No events to recap."
+
+        # Format events for AI
+        events_text = self._format_events_for_recap(events)
+
+        prompt = f"""Generate a concise session recap from these events:
+
+{events_text}
+
+Include:
+1. Summary of what was worked on
+2. Key insights or patterns
+3. Suggestions for next steps
+
+Keep it brief and actionable."""
+
+        try:
+            # Use the router's chat method which handles provider selection
+            response = self.router.chat(
+                messages=[{"role": "user", "content": prompt}],
+                provider=self.config.ai_provider
+            )
+            return response["content"]
+        except Exception as e:
+            return f"Recap unavailable: {str(e)}"
+
+    async def generate_insights(self, game_profile_id: str) -> str:
+        """Generate coaching insights for a game (async for tests)."""
+        events = self.session_logger.get_current_session_events(game_profile_id)
+        if not events:
+            return "No session data available for insights."
+
+        events_text = self._format_events_for_recap(events)
+
+        prompt = f"""Analyze this session and provide coaching insights:
+
+{events_text}
+
+Focus on:
+- Progress made
+- Areas for improvement
+- Recommended next steps
+
+Be specific and actionable."""
+
+        try:
+            response = await self.router.chat(
+                messages=[{"role": "user", "content": prompt}],
+                provider=self.config.ai_provider
+            )
+            return response["content"]
+        except Exception as e:
+            return f"Insights unavailable: {str(e)}"
+
+    async def get_coaching_tips(self, game_profile_id: str) -> str:
+        """Get coaching tips for a game (async for tests)."""
+        prompt = f"Provide general coaching tips for {game_profile_id}."
+
+        try:
+            response = await self.router.chat(
+                messages=[{"role": "user", "content": prompt}],
+                provider=self.config.ai_provider
+            )
+            return response["content"]
+        except Exception as e:
+            return f"Coaching tips unavailable: {str(e)}"
+
 
 # Global session coach instance
 _session_coach: Optional[SessionCoach] = None

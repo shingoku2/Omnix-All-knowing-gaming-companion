@@ -132,6 +132,9 @@ class Macro:
     repeat: int = 1                        # Number of times to repeat macro
     randomize_delay: bool = False          # Add random jitter to delays
     delay_jitter_ms: int = 0               # Max random jitter in milliseconds
+    # Optional per-macro safety overrides
+    max_repeat: Optional[int] = None      # Optional per-macro maximum repeat override
+    execution_timeout: Optional[int] = None  # Optional per-macro execution timeout (seconds)
 
     # Status
     enabled: bool = True
