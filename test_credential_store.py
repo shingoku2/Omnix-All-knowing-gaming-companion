@@ -112,7 +112,7 @@ class TestCredentialEncryption:
 
     def test_encryption_key_not_in_credential_file(self, temp_base_dir, mock_keyring):
         """Test that encryption key is not stored in credential file"""
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
 
         store.save_credentials({"test_key": "test_value"})
 
@@ -174,7 +174,7 @@ class TestKeyringIntegration:
             mock_get.side_effect = get_password
 
             # Create store and set credential
-            store = CredentialStore(base_dir=str(temp_config_dir))
+            store = CredentialStore(config_dir=str(temp_base_dir))
             store.set_credential("test", "key", "value")
 
             # Verify keyring was called
@@ -187,7 +187,7 @@ class TestKeyringIntegration:
 
             # Should still work with file-based fallback
             store = CredentialStore(
-                base_dir=str(temp_config_dir),
+                config_dir=str(temp_base_dir),
                 master_password="test_password_123"
             )
 
@@ -204,7 +204,7 @@ class TestKeyringIntegration:
 
             with pytest.raises((KeyringUnavailableError, CredentialStoreError)):
                 store = CredentialStore(
-                    base_dir=str(temp_config_dir),
+                    config_dir=str(temp_base_dir),
                     master_password=None
                 )
                 store.set_credential("service", "key", "value")
@@ -216,7 +216,7 @@ class TestErrorHandling:
 
     def test_corrupted_credential_file_handling(self, temp_base_dir, mock_keyring):
         """Test handling of corrupted credential file"""
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
 
         # Create valid credential first
         store.save_credentials({"key": "value"})
@@ -231,7 +231,7 @@ class TestErrorHandling:
 
     def test_empty_service_name(self, temp_base_dir, mock_keyring):
         """Test handling of empty service name"""
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
 
         # Empty service name should be handled
         store.set_credential("", "key", "value")
@@ -242,7 +242,7 @@ class TestErrorHandling:
 
     def test_empty_key_name(self, temp_base_dir, mock_keyring):
         """Test handling of empty key name"""
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
 
         # Empty key name should be handled
         store.save_credentials({"": "value"})
@@ -253,7 +253,7 @@ class TestErrorHandling:
 
     def test_none_value(self, temp_base_dir, mock_keyring):
         """Test storing None value"""
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
 
         # Setting None should delete the key
         store.save_credentials({"key": None})
@@ -263,7 +263,7 @@ class TestErrorHandling:
 
     def test_very_long_credential_value(self, temp_base_dir, mock_keyring):
         """Test storing very long credential"""
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
 
         # Very long API key (10KB)
         long_value = "x" * 10000
@@ -275,7 +275,7 @@ class TestErrorHandling:
 
     def test_special_characters_in_value(self, temp_base_dir, mock_keyring):
         """Test storing credentials with special characters"""
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
 
         special_values = [
             "key-with-dashes",
@@ -305,7 +305,7 @@ class TestConcurrency:
         """Test multiple concurrent reads"""
         import threading
 
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
         store.set_credential("service", "key", "value")
 
         results = []
@@ -336,7 +336,7 @@ class TestConcurrency:
         """Test multiple concurrent writes"""
         import threading
 
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
 
         errors = []
         lock = threading.Lock()
@@ -376,11 +376,11 @@ class TestPersistence:
     def test_persistence_across_instances(self, temp_base_dir, mock_keyring):
         """Test that credentials persist across store instances"""
         # Create first store and set credential
-        store1 = CredentialStore(base_dir=str(temp_config_dir))
+        store1 = CredentialStore(config_dir=str(temp_base_dir))
         store1.set_credential("service", "key", "persistent_value")
 
         # Create second store instance
-        store2 = CredentialStore(base_dir=str(temp_config_dir))
+        store2 = CredentialStore(config_dir=str(temp_base_dir))
         value = store2.get_credential("service", "key")
 
         assert value == "persistent_value"
@@ -402,7 +402,7 @@ class TestPersistence:
             mock_get.side_effect = get_password
 
             # Store credential
-            store1 = CredentialStore(base_dir=str(temp_config_dir))
+            store1 = CredentialStore(config_dir=str(temp_base_dir))
             store1.set_credential("service", "key", "value")
 
             # Delete credential file
@@ -411,7 +411,7 @@ class TestPersistence:
                 cred_file.unlink()
 
             # Create new store - should still work with keyring
-            store2 = CredentialStore(base_dir=str(temp_config_dir))
+            store2 = CredentialStore(config_dir=str(temp_base_dir))
             # May return None since file is gone and keyring might not have the actual credential
             # This tests that it doesn't crash
             value = store2.get("key")
@@ -424,7 +424,7 @@ class TestSecurityProperties:
 
     def test_no_plaintext_keys_in_memory_dumps(self, temp_base_dir, mock_keyring):
         """Test that keys are not easily accessible in memory"""
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
         secret = "very_secret_api_key_12345"
 
         store.save_credentials({"key": secret})
@@ -441,7 +441,7 @@ class TestSecurityProperties:
         """Test that credential file has restrictive permissions (Unix only)"""
         import stat
 
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
         store.set_credential("service", "key", "value")
 
         cred_file = Path(temp_base_dir) / "credentials.enc"
@@ -456,7 +456,7 @@ class TestSecurityProperties:
 
     def test_no_credential_leakage_on_exception(self, temp_base_dir, mock_keyring):
         """Test that credentials don't leak in exception messages"""
-        store = CredentialStore(base_dir=str(temp_config_dir))
+        store = CredentialStore(config_dir=str(temp_base_dir))
         secret = "secret_api_key_12345"
 
         store.save_credentials({"key": secret})
@@ -473,7 +473,7 @@ class TestSecurityProperties:
 
 def test_integration_with_config(temp_base_dir, mock_keyring):
     """Integration test with typical usage pattern"""
-    store = CredentialStore(base_dir=str(temp_config_dir))
+    store = CredentialStore(config_dir=str(temp_base_dir))
 
     # Simulate storing API keys
     api_keys = {

@@ -26,50 +26,27 @@ class TestConnectionThread(QThread):
     """Background thread for testing API connections"""
     test_complete = pyqtSignal(bool, str)  # success, message
 
-    def __init__(
-        self,
-        provider: str,
-        api_key: str,
-        base_url: Optional[str] = None,
-        timeout: float = 30.0,
-    ):
+    def __init__(self, provider: str, api_key: str, base_url: Optional[str] = None, timeout: float = 15.0):
         super().__init__()
         self.provider = provider
         self.api_key = api_key
         self.base_url = base_url
         self.timeout = timeout
-        self._cancel_event = threading.Event()
-
-    def cancel(self) -> None:
-        self._cancel_event.set()
-
-    def _execute_test(self) -> Tuple[bool, str]:
-        if self._cancel_event.is_set():
-            return False, "Test cancelled"
-
-        if self.provider == "openai":
-            return ProviderTester.test_openai(self.api_key, self.base_url)
-        if self.provider == "anthropic":
-            return ProviderTester.test_anthropic(self.api_key)
-        if self.provider == "gemini":
-            return ProviderTester.test_gemini(self.api_key)
-        return False, f"Unknown provider: {self.provider}"
 
     def run(self):
         """Run connection test in background with timeout and cancellation support."""
         try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(self._execute_test)
-                try:
-                    success, message = future.result(timeout=self.timeout)
-                except concurrent.futures.TimeoutError:
-                    self.test_complete.emit(
-                        False, f"Test timed out after {int(self.timeout)} seconds"
-                    )
-                    return
-
-            if self._cancel_event.is_set():
+            if self.isInterruptionRequested():
                 return
+
+            if self.provider == "openai":
+                success, message = ProviderTester.test_openai(self.api_key, self.base_url, timeout=self.timeout)
+            elif self.provider == "anthropic":
+                success, message = ProviderTester.test_anthropic(self.api_key, timeout=self.timeout)
+            elif self.provider == "gemini":
+                success, message = ProviderTester.test_gemini(self.api_key, timeout=self.timeout)
+            else:
+                success, message = False, f"Unknown provider: {self.provider}"
 
             self.test_complete.emit(success, message)
         except Exception as e:
@@ -88,6 +65,7 @@ class SetupWizard(QDialog):
         super().__init__(parent)
         self.credential_store = CredentialStore()
         self.test_thread = None
+        self.connection_timeout = ProviderTester.DEFAULT_TIMEOUT
 
         # Track which providers are enabled and their keys
         self.provider_enabled = {
@@ -608,6 +586,8 @@ class SetupWizard(QDialog):
             QMessageBox.warning(self, "Missing API Key", "Please enter an API key first.")
             return
 
+        self._stop_test_thread()
+
         # Get UI elements
         section = self.key_input_sections.get(provider_id)
         if not section:
@@ -625,14 +605,16 @@ class SetupWizard(QDialog):
         base_url = self.provider_base_urls.get(provider_id, '')
 
         # Start test thread
-        self._cancel_test_thread()
         self.test_thread = TestConnectionThread(
-            provider_id, api_key, base_url, timeout=30.0
+            provider_id,
+            api_key,
+            base_url,
+            timeout=self.connection_timeout,
         )
         self.test_thread.test_complete.connect(
             lambda success, message, p=provider_id: self.on_test_complete(p, success, message)
         )
-        self.test_thread.finished.connect(self._on_test_thread_finished)
+        self.test_thread.finished.connect(self._clear_test_thread)
         self.test_thread.start()
 
     def on_test_complete(self, provider_id: str, success: bool, message: str):
@@ -660,6 +642,17 @@ class SetupWizard(QDialog):
             QMessageBox.warning(self, "Connection Test Failed", message)
 
         self.update_navigation()
+
+    def _clear_test_thread(self):
+        """Clear references to the completed test thread"""
+        self.test_thread = None
+
+    def _stop_test_thread(self):
+        """Request any running test thread to stop and wait briefly"""
+        if self.test_thread and self.test_thread.isRunning():
+            self.test_thread.requestInterruption()
+            self.test_thread.wait(2000)
+        self.test_thread = None
 
     def update_key_input_page(self):
         """Update the key input page based on selected providers"""
@@ -839,6 +832,11 @@ class SetupWizard(QDialog):
                 "No Credentials",
                 "No API keys were configured. Please go back and enter at least one API key."
             )
+
+    def closeEvent(self, event):
+        """Ensure background threads are cleaned up when the dialog closes"""
+        self._stop_test_thread()
+        super().closeEvent(event)
 
     def apply_theme(self):
         """Apply dark theme to the wizard"""
