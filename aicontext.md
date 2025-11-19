@@ -4509,3 +4509,8 @@ Update 2025-11-18 (QA run):
 - Pytest rerun with --ignore test_gui_minimal.py: 2 failures (PyQt6 import in src/ui/test_design_system.py::test_imports requiring libGL, custom profile resolution mismatch expecting "Custom AI behavior" vs stored "Custom prompt"); 84 tests passed, warnings about tests returning non-None values.
 - Environment limitation: GUI/Qt tests blocked until libGL can be installed or PyQt6 dependency mocked for CI.
 
+
+Update 2025-11-19:
+- Added config_path and config_dir compatibility parameters to Config initialization and stored on the instance.
+- Implemented Config.set for dynamic attribute assignment to satisfy tests.
+- Validation: python -m compileall src (pass).
