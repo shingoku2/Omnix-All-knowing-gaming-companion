@@ -4509,3 +4509,9 @@ Update 2025-11-18 (QA run):
 - Pytest rerun with --ignore test_gui_minimal.py: 2 failures (PyQt6 import in src/ui/test_design_system.py::test_imports requiring libGL, custom profile resolution mismatch expecting "Custom AI behavior" vs stored "Custom prompt"); 84 tests passed, warnings about tests returning non-None values.
 - Environment limitation: GUI/Qt tests blocked until libGL can be installed or PyQt6 dependency mocked for CI.
 
+
+Update 2026-02-18:
+- CI install failures on python-3.8 because google-generativeai>=0.3.0 and ipython>=8.14.0 require newer Python; package resolution produced "No matching distribution" errors.
+- Updated .github/workflows/tests.yml to run the test matrix on Python 3.10 and 3.11 only, removing 3.8/3.9 and keeping consistent coverage across ubuntu/windows/macos.
+- Ensured all workflow jobs upgrade pip/setuptools/wheel before installing dependencies to avoid resolver issues.
+- Local tests not rerun in this environment; changes target CI configuration.
