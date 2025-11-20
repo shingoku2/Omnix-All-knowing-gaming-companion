@@ -22,6 +22,63 @@ class FileIngestor:
     """Handles text extraction from files"""
 
     @staticmethod
+    def _validate_file_path(file_path: str) -> str:
+        """
+        Validate and sanitize file path to prevent path traversal attacks
+
+        Args:
+            file_path: User-provided file path
+
+        Returns:
+            Validated absolute path
+
+        Raises:
+            IngestionError: If path is invalid or outside allowed directories
+        """
+        try:
+            # Convert to absolute path and resolve symlinks
+            abs_path = Path(file_path).resolve()
+
+            # Define allowed base directories
+            allowed_bases = [
+                Path.home(),  # User's home directory
+                Path.home() / "Documents",  # Common documents folder
+                Path.home() / "Downloads",  # Common downloads folder
+            ]
+
+            # Check if the path is within any allowed base directory
+            is_allowed = False
+            for base in allowed_bases:
+                try:
+                    # This will raise ValueError if abs_path is not relative to base
+                    abs_path.relative_to(base)
+                    is_allowed = True
+                    break
+                except ValueError:
+                    continue
+
+            if not is_allowed:
+                raise IngestionError(
+                    f"Access denied: File must be within user directories (Home, Documents, or Downloads). "
+                    f"Path provided: {abs_path}"
+                )
+
+            # Verify file exists and is actually a file (not a directory)
+            if not abs_path.exists():
+                raise IngestionError(f"File not found: {abs_path}")
+
+            if not abs_path.is_file():
+                raise IngestionError(f"Path is not a file: {abs_path}")
+
+            return str(abs_path)
+
+        except IngestionError:
+            raise
+        except Exception as e:
+            logger.error(f"Path validation failed for {file_path}: {e}")
+            raise IngestionError(f"Invalid file path: {e}")
+
+    @staticmethod
     def ingest_text_file(file_path: str) -> str:
         """
         Extract text from plain text file
@@ -32,13 +89,16 @@ class FileIngestor:
         Returns:
             Extracted text content
         """
+        # Validate path first
+        validated_path = FileIngestor._validate_file_path(file_path)
+
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(validated_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
-            logger.info(f"Extracted text from file: {file_path}")
+            logger.info(f"Extracted text from file: {validated_path}")
             return content
         except Exception as e:
-            logger.error(f"Failed to read text file {file_path}: {e}")
+            logger.error(f"Failed to read text file {validated_path}: {e}")
             raise IngestionError(f"Failed to read text file: {e}")
 
     @staticmethod
@@ -52,8 +112,11 @@ class FileIngestor:
         Returns:
             Extracted text content
         """
+        # Validate path first
+        validated_path = FileIngestor._validate_file_path(file_path)
+
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(validated_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
 
             # Simple markdown stripping (keep text, remove formatting)
@@ -74,11 +137,11 @@ class FileIngestor:
             # Remove images
             content = re.sub(r'!\[([^\]]*)\]\([^\)]+\)', '', content)
 
-            logger.info(f"Extracted text from markdown: {file_path}")
+            logger.info(f"Extracted text from markdown: {validated_path}")
             return content.strip()
 
         except Exception as e:
-            logger.error(f"Failed to read markdown file {file_path}: {e}")
+            logger.error(f"Failed to read markdown file {validated_path}: {e}")
             raise IngestionError(f"Failed to read markdown file: {e}")
 
     @staticmethod
@@ -92,13 +155,16 @@ class FileIngestor:
         Returns:
             Extracted text content
         """
+        # Validate path first
+        validated_path = FileIngestor._validate_file_path(file_path)
+
         try:
             # Try using PyPDF2 if available
             try:
                 import PyPDF2
 
                 text_parts = []
-                with open(file_path, 'rb') as f:
+                with open(validated_path, 'rb') as f:
                     pdf_reader = PyPDF2.PdfReader(f)
                     for page in pdf_reader.pages:
                         text = page.extract_text()
@@ -106,7 +172,7 @@ class FileIngestor:
                             text_parts.append(text)
 
                 content = '\n\n'.join(text_parts)
-                logger.info(f"Extracted text from PDF (PyPDF2): {file_path}")
+                logger.info(f"Extracted text from PDF (PyPDF2): {validated_path}")
                 return content
 
             except ImportError:
@@ -117,14 +183,14 @@ class FileIngestor:
                     import pdfplumber
 
                     text_parts = []
-                    with pdfplumber.open(file_path) as pdf:
+                    with pdfplumber.open(validated_path) as pdf:
                         for page in pdf.pages:
                             text = page.extract_text()
                             if text:
                                 text_parts.append(text)
 
                     content = '\n\n'.join(text_parts)
-                    logger.info(f"Extracted text from PDF (pdfplumber): {file_path}")
+                    logger.info(f"Extracted text from PDF (pdfplumber): {validated_path}")
                     return content
 
                 except ImportError:
@@ -136,7 +202,7 @@ class FileIngestor:
         except IngestionError:
             raise
         except Exception as e:
-            logger.error(f"Failed to read PDF file {file_path}: {e}")
+            logger.error(f"Failed to read PDF file {validated_path}: {e}")
             raise IngestionError(f"Failed to read PDF file: {e}")
 
     @staticmethod
@@ -150,22 +216,22 @@ class FileIngestor:
         Returns:
             Extracted text content
         """
-        if not os.path.exists(file_path):
-            raise IngestionError(f"File not found: {file_path}")
+        # Validate path first (this also checks existence)
+        validated_path = FileIngestor._validate_file_path(file_path)
 
         # Detect file type by extension
-        ext = Path(file_path).suffix.lower()
+        ext = Path(validated_path).suffix.lower()
 
         if ext in ['.txt', '.log']:
-            return FileIngestor.ingest_text_file(file_path)
+            return FileIngestor.ingest_text_file(validated_path)
         elif ext in ['.md', '.markdown']:
-            return FileIngestor.ingest_markdown_file(file_path)
+            return FileIngestor.ingest_markdown_file(validated_path)
         elif ext == '.pdf':
-            return FileIngestor.ingest_pdf_file(file_path)
+            return FileIngestor.ingest_pdf_file(validated_path)
         else:
             # Try as text file
             logger.warning(f"Unknown file type {ext}, attempting text extraction")
-            return FileIngestor.ingest_text_file(file_path)
+            return FileIngestor.ingest_text_file(validated_path)
 
 
 class URLIngestor:

@@ -183,12 +183,12 @@ class MacroRunner:
                 timeout_seconds = macro.execution_timeout
 
             # Track start time for timeout enforcement
-            start_time = time.time()
+            start_time = time.monotonic()
 
             # Execute macro 'repeat' times
             for repeat_count in range(macro.repeat):
                 # Check for timeout
-                elapsed_time = time.time() - start_time
+                elapsed_time = time.monotonic() - start_time
                 if elapsed_time > timeout_seconds:
                     error_msg = f"Macro exceeded {timeout_seconds}s timeout (elapsed: {elapsed_time:.1f}s)"
                     logger.error(error_msg)
@@ -206,7 +206,7 @@ class MacroRunner:
                 # Execute each step
                 for step_idx, step in enumerate(macro.steps):
                     # Check for timeout in inner loop too
-                    elapsed_time = time.time() - start_time
+                    elapsed_time = time.monotonic() - start_time
                     if elapsed_time > timeout_seconds:
                         error_msg = f"Macro exceeded {timeout_seconds}s timeout (elapsed: {elapsed_time:.1f}s)"
                         logger.error(error_msg)
@@ -252,12 +252,12 @@ class MacroRunner:
         Args:
             duration_sec: Duration to sleep in seconds
         """
-        end_time = time.time() + duration_sec
-        while time.time() < end_time:
+        end_time = time.monotonic() + duration_sec
+        while time.monotonic() < end_time:
             if self.state == MacroExecutionState.STOPPED:
                 return
             # Sleep in small increments to remain responsive
-            sleep_chunk = min(0.1, end_time - time.time())
+            sleep_chunk = min(0.1, end_time - time.monotonic())
             if sleep_chunk > 0:
                 time.sleep(sleep_chunk)
 
