@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QLabel, QSystemTrayIcon,
     QMenu, QFrame, QDialog, QRadioButton, QButtonGroup, QMessageBox,
-    QGroupBox, QGraphicsOpacityEffect, QScrollArea, QSizePolicy
+    QGroupBox, QGraphicsOpacityEffect, QScrollArea, QSizePolicy, QGraphicsDropShadowEffect
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QObject, QTimer, qInstallMessageHandler, QtMsgType, QPropertyAnimation, QEasingCurve, QPointF
 from PyQt6.QtGui import QAction, QIcon, QPixmap, QPainter, QColor, QLinearGradient
@@ -160,6 +160,12 @@ class NeonCard(QFrame):
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
+        glow = QGraphicsDropShadowEffect(self)
+        glow.setBlurRadius(36)
+        glow.setColor(QColor(24, 195, 255, 70))
+        glow.setOffset(0, 0)
+        self.setGraphicsEffect(glow)
+
 
 class HexStatusWidget(QWidget):
     """Custom-drawn hexagon container for game status display."""
@@ -167,6 +173,10 @@ class HexStatusWidget(QWidget):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setMinimumSize(240, 240)
+        self.setObjectName("HexWidget")
+        self.icon_label = QLabel("◎", self)
+        self.icon_label.setObjectName("HexIcon")
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.game_label = QLabel("CSGO", self)
         self.game_label.setObjectName("HexGameLabel")
         self.game_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -181,9 +191,11 @@ class HexStatusWidget(QWidget):
 
     def _position_labels(self):
         center = self.rect().center()
+        self.icon_label.resize(int(self.width() * 0.35), int(self.height() * 0.35))
+        self.icon_label.move(center.x() - self.icon_label.width() // 2, center.y() - self.icon_label.height())
         self.game_label.resize(int(self.width() * 0.5), int(self.height() * 0.2))
-        self.game_label.move(center.x() - self.game_label.width() // 2, center.y() - self.game_label.height() // 2)
-        self.status_label.resize(int(self.width() * 0.4), 24)
+        self.game_label.move(center.x() - self.game_label.width() // 2, center.y() - self.game_label.height() // 4)
+        self.status_label.resize(int(self.width() * 0.45), 26)
         self.status_label.move(center.x() - self.status_label.width() // 2, center.y() + self.game_label.height() // 2)
 
     def paintEvent(self, event):
@@ -199,11 +211,24 @@ class HexStatusWidget(QWidget):
             points.append(QPointF(x, y))
 
         gradient = QLinearGradient(QPointF(rect.topLeft()), QPointF(rect.bottomRight()))
-        gradient.setColorAt(0, QColor(10, 225, 255, 40))
-        gradient.setColorAt(1, QColor(129, 140, 248, 60))
+        gradient.setColorAt(0, QColor(5, 189, 255, 60))
+        gradient.setColorAt(1, QColor(75, 88, 210, 90))
         painter.setBrush(gradient)
-        painter.setPen(QColor(20, 227, 255, 180))
+        painter.setPen(QColor(12, 209, 255, 210))
         painter.drawPolygon(points)
+
+        inner_rect = rect.adjusted(12, 12, -12, -12)
+        inner_points = []
+        for i in range(6):
+            angle_deg = 60 * i - 30
+            angle_rad = math.radians(angle_deg)
+            x = inner_rect.center().x() + inner_rect.width() / 2 * 0.86 * math.cos(angle_rad)
+            y = inner_rect.center().y() + inner_rect.height() / 2 * 0.86 * math.sin(angle_rad)
+            inner_points.append(QPointF(x, y))
+
+        painter.setBrush(QColor(7, 18, 45, 180))
+        painter.setPen(QColor(255, 66, 66, 180))
+        painter.drawPolygon(inner_points)
 
 
 class ChatWidget(NeonCard):
@@ -219,19 +244,27 @@ class ChatWidget(NeonCard):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(SPACING.lg, SPACING.lg, SPACING.lg, SPACING.lg)
-        layout.setSpacing(SPACING.base)
+        layout.setContentsMargins(SPACING.xl, SPACING.lg, SPACING.xl, SPACING.lg)
+        layout.setSpacing(SPACING.lg)
         self.setObjectName("ChatWidget")
 
         if self.title:
-            header = QHBoxLayout()
+            header = QVBoxLayout()
+            header.setSpacing(4)
+            top_row = QHBoxLayout()
             title_label = QLabel(self.title)
             title_label.setObjectName("ChatTitle")
             subtitle = QLabel("Ready to assist")
             subtitle.setObjectName("ChatSubtitle")
-            header.addWidget(title_label)
-            header.addStretch()
-            header.addWidget(subtitle)
+            top_row.addWidget(title_label)
+            top_row.addStretch()
+            top_row.addWidget(subtitle)
+            header.addLayout(top_row)
+
+            accent = QFrame()
+            accent.setObjectName("ChatDivider")
+            accent.setFixedHeight(1)
+            header.addWidget(accent)
             layout.addLayout(header)
 
         # Chat area
@@ -393,8 +426,8 @@ class GameStatusPanel(NeonCard):
         super().__init__()
         self.setObjectName("GameStatusPanel")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(SPACING.lg, SPACING.lg, SPACING.lg, SPACING.lg)
-        layout.setSpacing(SPACING.base)
+        layout.setContentsMargins(SPACING.xl, SPACING.xl, SPACING.xl, SPACING.xl)
+        layout.setSpacing(SPACING.lg)
 
         title = QLabel("GAME DETECTED")
         title.setObjectName("SectionTitle")
@@ -408,7 +441,7 @@ class GameStatusPanel(NeonCard):
         status_row.setSpacing(SPACING.sm)
         indicator = QFrame()
         indicator.setObjectName("StatusIndicator")
-        indicator.setFixedSize(12, 12)
+        indicator.setFixedSize(14, 14)
         status_label = QLabel("ONLINE")
         status_label.setObjectName("StatusText")
         status_row.addStretch()
@@ -447,8 +480,8 @@ class SettingsPanel(NeonCard):
         super().__init__()
         self.setObjectName("SettingsPanel")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(SPACING.lg, SPACING.lg, SPACING.lg, SPACING.lg)
-        layout.setSpacing(SPACING.sm)
+        layout.setContentsMargins(SPACING.xl, SPACING.xl, SPACING.xl, SPACING.xl)
+        layout.setSpacing(SPACING.md)
 
         title = QLabel("SETTINGS")
         title.setObjectName("SectionTitle")
@@ -470,15 +503,15 @@ class AIProviderPanel(NeonCard):
         super().__init__()
         self.setObjectName("AIProviderPanel")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(SPACING.lg, SPACING.lg, SPACING.lg, SPACING.lg)
-        layout.setSpacing(SPACING.base)
+        layout.setContentsMargins(SPACING.xl, SPACING.xl, SPACING.xl, SPACING.xl)
+        layout.setSpacing(SPACING.lg)
 
         title = QLabel("AI PROVIDER")
         title.setObjectName("SectionTitle")
         layout.addWidget(title)
 
         buttons_layout = QVBoxLayout()
-        buttons_layout.setSpacing(SPACING.sm)
+        buttons_layout.setSpacing(SPACING.md)
 
         self.synapse_btn = NeonButton("SYNAPSE")
         self.synapse_btn.setProperty("variant", "provider")
@@ -507,18 +540,23 @@ class AIProviderPanel(NeonCard):
 class BottomBar(QFrame):
     """Bottom overlay bar."""
 
-    def __init__(self, overlay_handler):
+    def __init__(self, overlay_handler, settings_handler):
         super().__init__()
         self.setObjectName("BottomBar")
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(SPACING.lg, SPACING.sm, SPACING.lg, SPACING.sm)
-        layout.setSpacing(SPACING.base)
+        layout.setContentsMargins(SPACING.xl, SPACING.md, SPACING.xl, SPACING.md)
+        layout.setSpacing(SPACING.lg)
 
         self.overlay_button = NeonButton("OVERLAY")
         self.overlay_button.setObjectName("OverlayButton")
         self.overlay_button.clicked.connect(overlay_handler)
         layout.addWidget(self.overlay_button)
         layout.addStretch()
+
+        self.settings_button = NeonButton("SETTINGS")
+        self.settings_button.setObjectName("FooterSettingsButton")
+        self.settings_button.clicked.connect(settings_handler)
+        layout.addWidget(self.settings_button)
 
 
 class OverlayWindow(QWidget):
@@ -1048,14 +1086,14 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(24, 24, 24, 24)
-        main_layout.setSpacing(16)
+        main_layout.setContentsMargins(28, 24, 28, 20)
+        main_layout.setSpacing(18)
 
         # Header / branding
         self.header = QFrame()
         self.header.setObjectName("HeaderBar")
         header_layout = QHBoxLayout(self.header)
-        header_layout.setContentsMargins(16, 8, 16, 8)
+        header_layout.setContentsMargins(18, 10, 18, 10)
         brand = QLabel("OMNIX")
         brand.setObjectName("BrandTitle")
         subtitle = QLabel("ALL KNOWING AI COMPANION")
@@ -1067,7 +1105,7 @@ class MainWindow(QMainWindow):
 
         # Content row
         content_layout = QHBoxLayout()
-        content_layout.setSpacing(16)
+        content_layout.setSpacing(18)
 
         self.chat_panel = ChatPanel(self.ai_assistant)
         content_layout.addWidget(self.chat_panel, 2)
@@ -1092,7 +1130,7 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(content_layout)
 
         # Bottom bar
-        self.bottom_bar = BottomBar(self.toggle_overlay_visibility)
+        self.bottom_bar = BottomBar(self.toggle_overlay_visibility, self.open_advanced_settings)
         main_layout.addWidget(self.bottom_bar)
 
         central_widget.setLayout(main_layout)

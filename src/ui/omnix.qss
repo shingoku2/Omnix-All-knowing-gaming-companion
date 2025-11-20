@@ -1,186 +1,217 @@
 /* Global baseline */
 #MainContainer {
-    background-color: #050814;
-    border: 1px solid #0c2d52;
-    border-radius: 18px;
+    background: qradialgradient(cx:0.25, cy:0.15, radius:1.2, fx:0.25, fy:0.15, stop:0 #0c1b33, stop:1 #040915);
+    border: 1px solid #0d2f4f;
+    border-radius: 20px;
 }
 
 #HeaderBar {
-    background: rgba(8, 12, 26, 0.85);
-    border: 1px solid #0d365d;
-    border-radius: 14px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(12, 26, 56, 0.95), stop:1 rgba(8, 16, 34, 0.9));
+    border: 1px solid #0e426d;
+    border-radius: 16px;
+    padding: 4px 10px;
+    color: #9be6ff;
 }
 
 #BrandTitle {
-    color: #6ee0ff;
-    font-size: 32px;
-    font-family: "Orbitron", "Montserrat", "Segoe UI";
+    color: #86e5ff;
+    font-size: 34px;
+    font-family: "Orbitron", "Montserrat", "Eurostile", "Segoe UI";
     font-weight: 800;
     letter-spacing: 3px;
+    text-transform: uppercase;
 }
 
 #BrandSubtitle {
-    color: #5fc3ff;
+    color: #73c8ff;
     font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 2px;
+    font-weight: 700;
+    letter-spacing: 3px;
 }
 
 NeonCard {
-    background: rgba(7, 12, 28, 0.7);
-    border: 1px solid #0a4d7a;
-    border-radius: 16px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(8, 14, 32, 0.92), stop:1 rgba(5, 11, 26, 0.9));
+    border: 1px solid #0e4e7d;
+    border-radius: 18px;
 }
 
 #ChatWidget {
-    background: rgba(5, 10, 24, 0.8);
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(6, 10, 24, 0.92), stop:1 rgba(7, 16, 36, 0.9));
+}
+
+#ChatDivider {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0af5ff, stop:1 #5f78ff);
+    border: none;
 }
 
 #ChatTitle {
-    color: #6ee0ff;
+    color: #7de9ff;
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 800;
     letter-spacing: 2px;
+    text-transform: uppercase;
 }
 
 #ChatSubtitle {
-    color: #4ac2ff;
+    color: #4ec8ff;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 1px;
 }
 
 #ChatScroll {
-    border: 1px solid #0e3d63;
-    border-radius: 12px;
-    background: rgba(6, 12, 28, 0.6);
+    border: 1px solid #0f3f66;
+    border-radius: 14px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(7, 12, 28, 0.7), stop:1 rgba(7, 16, 32, 0.65));
 }
 
 #ChatSender {
-    color: #8be7ff;
+    color: #8ff2ff;
     font-weight: 700;
     letter-spacing: 1px;
 }
 
 #ChatText {
-    color: #e5f4ff;
+    color: #eaf6ff;
     font-size: 13px;
     line-height: 1.4;
 }
 
 #ChatBubbleUser {
-    background: rgba(20, 184, 166, 0.1);
-    border: 1px solid #14b8a6;
-    border-radius: 12px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(18, 227, 201, 0.12), stop:1 rgba(12, 124, 255, 0.12));
+    border: 1px solid #17d3ff;
+    border-radius: 14px;
 }
 
 #ChatBubbleAI {
-    background: rgba(124, 58, 237, 0.12);
-    border: 1px solid #7c3aed;
-    border-radius: 12px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(104, 71, 255, 0.12), stop:1 rgba(135, 88, 255, 0.16));
+    border: 1px solid #8459ff;
+    border-radius: 14px;
 }
 
 NeonButton {
-    color: #d8f8ff;
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #08263f, stop:1 #0b3d66);
-    border: 1px solid #0af5ff;
-    border-radius: 12px;
-    padding: 10px 16px;
-    font-weight: 700;
+    color: #e1f9ff;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0c2c4e, stop:1 #0b3f70);
+    border: 1px solid #11d9ff;
+    border-radius: 14px;
+    padding: 10px 18px;
+    font-weight: 800;
     letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
 NeonButton:hover {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0a3558, stop:1 #0f5080);
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #12406b, stop:1 #0f5a8a);
 }
 
 NeonButton:pressed {
-    background: #072239;
+    background: #08243e;
     border-color: #5ee9ff;
 }
 
 NeonButton[variant="toggle"] {
-    background: rgba(8, 18, 40, 0.6);
-    border: 1px solid #194567;
-    color: #7fd9ff;
+    background: rgba(9, 22, 48, 0.7);
+    border: 1px solid #17517a;
+    color: #8fdcff;
     text-align: left;
 }
 
 NeonButton[variant="toggle"][active="true"] {
-    background: rgba(14, 212, 255, 0.16);
-    border-color: #0af5ff;
-    color: #d8f8ff;
+    background: rgba(10, 212, 255, 0.18);
+    border-color: #12e7ff;
+    color: #e1f9ff;
 }
 
 NeonButton[variant="provider"] {
     text-align: left;
     border-color: #5b21b6;
-    background: rgba(40, 6, 80, 0.4);
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(44, 10, 92, 0.55), stop:1 rgba(30, 6, 64, 0.5));
 }
 
 NeonButton[variant="provider"][active="true"] {
-    border-color: #8b5cf6;
-    background: rgba(83, 20, 160, 0.5);
-    color: #e0d7ff;
+    border-color: #a084ff;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(91, 28, 182, 0.65), stop:1 rgba(69, 20, 140, 0.65));
+    color: #efe7ff;
 }
 
 #SectionTitle {
-    color: #6ee0ff;
-    font-weight: 800;
+    color: #7de9ff;
+    font-weight: 900;
     letter-spacing: 2px;
+    text-transform: uppercase;
 }
 
 #StatusIndicator {
-    background: qradialgradient(cx:0.5, cy:0.5, fx:0.5, fy:0.5, radius:0.8, stop:0 #0af5ff, stop:1 #063a5a);
-    border-radius: 6px;
+    background: qradialgradient(cx:0.5, cy:0.5, fx:0.5, fy:0.5, radius:0.9, stop:0 #12ffcb, stop:1 #074a42);
+    border-radius: 7px;
+    border: 1px solid #27ffc6;
 }
 
 #StatusText {
-    color: #60f7ab;
-    font-weight: 800;
+    color: #63f5a4;
+    font-weight: 900;
     letter-spacing: 2px;
 }
 
 #GameStatusPanel {
-    border-color: #0af5ff;
+    border-color: #13d5ff;
+}
+
+#HexWidget {
+    background: transparent;
+}
+
+#HexIcon {
+    color: #ff4e4e;
+    font-size: 42px;
+    font-weight: 800;
+    text-shadow: 0 0 12px rgba(255, 78, 78, 0.6);
 }
 
 #HexGameLabel {
-    color: #ff4242;
+    color: #ff4e4e;
     font-size: 24px;
-    font-weight: 800;
+    font-weight: 900;
     letter-spacing: 2px;
 }
 
 #HexStatusLabel {
-    color: #6bfbca;
-    font-weight: 700;
+    color: #74ffd3;
+    font-weight: 800;
+    letter-spacing: 2px;
 }
 
 #StatContainer {
-    border: 1px solid #0c3f66;
-    border-radius: 10px;
-    background: rgba(4, 12, 26, 0.75);
+    border: 1px solid #0e4f7d;
+    border-radius: 12px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(6, 18, 40, 0.9), stop:1 rgba(6, 14, 30, 0.85));
 }
 
 #StatLabel {
-    color: #6ee0ff;
+    color: #7de9ff;
     letter-spacing: 2px;
 }
 
 #StatValue {
-    color: #60f7ab;
+    color: #63f5a4;
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 900;
 }
 
 #BottomBar {
-    background: rgba(7, 12, 28, 0.85);
-    border: 1px solid #0a4d7a;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(7, 16, 36, 0.9), stop:1 rgba(9, 28, 58, 0.9));
+    border: 1px solid #0d4c7a;
     border-radius: 14px;
 }
 
 #OverlayButton {
     font-size: 14px;
-    padding: 12px 28px;
+    padding: 12px 26px;
+}
+
+#FooterSettingsButton {
+    font-size: 14px;
+    padding: 12px 22px;
+    border-color: #6f7cff;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(71, 86, 255, 0.32), stop:1 rgba(56, 64, 162, 0.3));
 }

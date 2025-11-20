@@ -310,3 +310,10 @@ worker.start()
 - Added custom stylesheet `src/ui/omnix.qss` for cyberpunk gradients, neon outlines, and chat bubble styling.
 - Updated game watcher UI hooks to reflect detected/idle games in the central hex module.
 - Applied entry animations and custom QSS loading in theme pipeline; resolved indentation error discovered via `python -m compileall src/gui.py`.
+
+## 2025-??-?? UI Neon HUD Refresh
+- Implemented neon HUD styling for main dashboard panels (chat, game status, settings, AI provider) using enhanced gradients, glows, and typography.
+- Added hex status widget icon layering, dual-border rendering, and brighter online indicators for closer match to concept art.
+- Expanded bottom bar with settings shortcut and tightened layout spacing to mirror reference layout proportions.
+- Applied updated omnix.qss styles for deep-space background, glowing buttons, chat dividers, and holographic stat chips.
+- Test: `python -m compileall src/gui.py` (pass).
