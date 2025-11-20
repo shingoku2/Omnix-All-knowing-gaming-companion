@@ -7,10 +7,11 @@
 
 ## Project Summary
 
-**Omnix** is a desktop AI gaming companion built with Python and PyQt6 that provides real-time assistance for gamers using multiple AI providers (OpenAI, Anthropic, Google Gemini).
+**Omnix** is a desktop AI gaming companion built with Python and PyQt6 that provides real-time assistance for gamers using multiple AI providers (OpenAI, Anthropic, Google Gemini). A new React/TypeScript web frontend with Tailwind CSS is now available for a modern Sci-Fi/Cyberpunk UI experience.
 
-**Tech Stack:** Python 3.8+, PyQt6, psutil, OpenAI/Anthropic/Gemini APIs
-**LOC:** ~14,700 lines
+**Backend Tech Stack:** Python 3.8+, PyQt6, psutil, OpenAI/Anthropic/Gemini APIs
+**Frontend Tech Stack:** React 18, TypeScript, Tailwind CSS, Vite, Lucide Icons
+**LOC:** ~14,700 lines (backend) + frontend code
 **Test Coverage:** 272 test functions, 3,196 lines of test code
 
 ---
@@ -27,7 +28,7 @@
 
 ### Directory Structure
 ```
-src/                     # 14,700 LOC main source
+src/                     # 14,700 LOC main source (Python/PyQt6)
 ├── config.py            # Configuration management
 ├── game_*.py            # Game detection and profiles
 ├── ai_*.py              # AI integration
@@ -35,6 +36,18 @@ src/                     # 14,700 LOC main source
 ├── macro_*.py           # Macro system
 ├── session_*.py         # Session management
 └── ui/                  # UI components and design system
+
+frontend/                # React/TypeScript web UI (NEW - 2025-11-20)
+├── src/
+│   ├── App.tsx          # Main HUD component
+│   ├── main.tsx         # React entry point
+│   └── index.css        # Global styles + Tailwind
+├── index.html           # HTML entry point
+├── package.json         # Node dependencies
+├── tsconfig.json        # TypeScript configuration
+├── tailwind.config.js   # Tailwind theme (Omnix colors)
+├── vite.config.ts       # Vite build config
+└── README.md            # Frontend documentation
 
 tests/                   # 3,196 LOC test code
 ├── unit/                # Component tests
@@ -86,6 +99,30 @@ scripts/                 # Automation scripts
 
 ## Recent Changes
 
+### 2025-11-20: React/TypeScript Frontend (MAJOR UI UPGRADE)
+- ✅ Created complete React/TypeScript frontend with Tailwind CSS
+- ✅ Implemented Sci-Fi/Cyberpunk HUD design
+- ✅ Added neon blue (#00f3ff) and red (#ff2a2a) color scheme
+- ✅ Integrated Lucide React icons
+- ✅ Set up Vite build system
+- ✅ Added custom fonts (Orbitron, Rajdhani)
+- ✅ Implemented reusable Panel component with corner accents
+- ✅ Created responsive 12-column grid layout
+- ✅ Added glassmorphism effects and backdrop blur
+- ✅ Implemented chat interface with message bubbles
+- ✅ Created rotating game status display
+- ✅ Added settings panel with hover effects
+- ✅ Implemented AI provider selector with radio buttons
+- ✅ Added comprehensive frontend documentation
+
+**Frontend Features:**
+- Modern web-based UI alongside PyQt6 desktop app
+- Vite dev server with hot module replacement
+- TypeScript for type safety
+- Tailwind CSS with custom Omnix theme
+- Production build optimization
+- Custom scrollbars and animations
+
 ### 2025-11-20: CI/CD Pipeline Enhancement
 - ✅ Added CI/CD verification tool
 - ✅ Added automated staging deployment workflow
@@ -109,7 +146,7 @@ scripts/                 # Automation scripts
 
 ## Common Commands
 
-### Development
+### Development (Python Backend)
 ```bash
 # Run application
 python main.py
@@ -125,6 +162,27 @@ xvfb-run -a pytest tests/ -v
 
 # Verify CI/CD pipeline
 python scripts/verify_ci.py
+```
+
+### Frontend Development (React/TypeScript)
+```bash
+# Navigate to frontend
+cd frontend
+
+# Install dependencies
+npm install
+
+# Run development server (http://localhost:3000)
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Lint code
+npm run lint
 ```
 
 ### Deployment
@@ -230,6 +288,8 @@ worker.start()
 - Self-hosted runner requires manual maintenance
 - Headless testing requires `QT_QPA_PLATFORM=offscreen`
 - API keys stored in system keyring (encrypted)
+- Frontend requires Node.js 18+ for development
+- Frontend integration with Python backend TBD (options: Electron, API server, WebView)
 
 ---
 
@@ -317,3 +377,100 @@ worker.start()
 - Expanded bottom bar with settings shortcut and tightened layout spacing to mirror reference layout proportions.
 - Applied updated omnix.qss styles for deep-space background, glowing buttons, chat dividers, and holographic stat chips.
 - Test: `python -m compileall src/gui.py` (pass).
+
+## 2025-11-20 React/TypeScript Frontend Implementation
+- **MAJOR UPGRADE:** Created complete React/TypeScript web frontend with modern Sci-Fi/Cyberpunk aesthetic
+- **Framework:** React 18 + TypeScript + Vite for fast development and optimized builds
+- **Styling:** Tailwind CSS with custom Omnix theme (neon blue #00f3ff, alert red #ff2a2a)
+- **Icons:** Lucide React for consistent, modern iconography
+- **Fonts:** Google Fonts - Orbitron (HUD/headers), Rajdhani (body text)
+
+### Frontend Architecture
+```
+frontend/
+├── src/
+│   ├── App.tsx          # Main HUD component with Panel wrapper
+│   ├── main.tsx         # React entry point
+│   └── index.css        # Global styles + Tailwind + custom animations
+├── index.html           # HTML entry with font imports
+├── package.json         # Node dependencies
+├── tsconfig.json        # TypeScript config (strict mode)
+├── tailwind.config.js   # Custom Omnix theme (colors, fonts, shadows)
+├── vite.config.ts       # Vite build config (port 3000)
+└── README.md            # Comprehensive frontend documentation
+```
+
+### Key Features Implemented
+1. **Reusable Panel Component** - Glassmorphism container with decorative corner accents
+2. **12-Column Grid Layout** - Responsive layout with chat (col 1-3), status (col 4-8), settings (col 9-12)
+3. **Chat Interface** - Message bubbles with role indicators (OMNIX, USER, SYSTEM)
+4. **Game Status Display** - Rotating circular border with animated pulse indicator
+5. **Settings Panel** - Menu items with hover effects and smooth transitions
+6. **AI Provider Selector** - Radio button groups with neon blue selection state
+7. **Custom Animations** - Slow rotation (8s), pulse effects, hover transitions
+8. **Custom Scrollbars** - Cyberpunk-themed with neon blue accents
+
+### Design System
+- **Colors:**
+  - `omnix-dark`: #050b14 (deep space background)
+  - `omnix-panel`: rgba(10, 20, 40, 0.7) (glassmorphism)
+  - `omnix-blue`: #00f3ff (primary cyan neon)
+  - `omnix-blueDim`: rgba(0, 243, 255, 0.1) (subtle highlights)
+  - `omnix-red`: #ff2a2a (alert/accent red)
+  - `omnix-text`: #e0f7ff (text color)
+
+- **Typography:**
+  - Font HUD: Orbitron (futuristic display)
+  - Font Body: Rajdhani (clean sans-serif)
+  - Tracking: Wide letter spacing for titles
+
+- **Effects:**
+  - Box shadows: Neon glow effects
+  - Backdrop blur: Glassmorphism
+  - Borders: Corner accents, gradient lines
+  - Animations: Spin-slow, pulse, fade transitions
+
+### Development Commands
+```bash
+cd frontend
+npm install              # Install dependencies
+npm run dev             # Start dev server (localhost:3000)
+npm run build           # Production build
+npm run preview         # Preview production build
+npm run lint            # ESLint checks
+```
+
+### Next Steps for Integration
+1. **Electron App** - Package as standalone desktop app
+2. **API Server** - Run Python backend as REST/WebSocket API
+3. **WebView Embed** - Embed in PyQt6 QWebEngineView
+4. **Hybrid Mode** - Use web UI for settings, PyQt6 for system tray
+
+### Dependencies Added
+- react: ^18.2.0
+- react-dom: ^18.2.0
+- lucide-react: ^0.292.0 (icons)
+- typescript: ^5.2.2
+- tailwindcss: ^3.3.5
+- vite: ^5.0.0
+- @vitejs/plugin-react: ^4.2.0
+
+### Files Created
+- ✅ frontend/package.json - Node dependencies and scripts
+- ✅ frontend/tsconfig.json - TypeScript configuration
+- ✅ frontend/tailwind.config.js - Tailwind theme (Omnix colors)
+- ✅ frontend/postcss.config.js - PostCSS for Tailwind
+- ✅ frontend/vite.config.ts - Vite build configuration
+- ✅ frontend/index.html - HTML entry point
+- ✅ frontend/src/App.tsx - Main HUD component (330+ lines)
+- ✅ frontend/src/main.tsx - React entry point
+- ✅ frontend/src/index.css - Global styles + Tailwind directives
+- ✅ frontend/.eslintrc.cjs - ESLint configuration
+- ✅ frontend/.gitignore - Node/build artifacts
+- ✅ frontend/README.md - Comprehensive documentation (200+ lines)
+
+### Troubleshooting
+- Port conflict: Change port in vite.config.ts
+- Build errors: Clear node_modules and reinstall
+- TypeScript errors: Ensure @types/react and @types/react-dom are installed
+- Missing dependencies: Run `npm install` in frontend directory
