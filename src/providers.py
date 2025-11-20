@@ -16,7 +16,20 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 # styles. This avoids mismatched exception types when code follows the
 # recommended ``from src.module import`` pattern but tests or legacy modules
 # import without the package prefix.
-sys.modules.setdefault("providers", sys.modules[__name__])
+_current_module = sys.modules[__name__]
+
+if __name__ == "src.providers":
+    # Preferred import path is loaded first; guarantee the legacy alias points
+    # to the same module object.
+    sys.modules["providers"] = _current_module
+elif __name__ == "providers":
+    # Legacy import path is loaded first; register the namespaced alias to
+    # prevent Python from creating a second module instance when
+    # ``import src.providers`` occurs later.
+    sys.modules["src.providers"] = _current_module
+else:  # Defensive fallback for unexpected import names
+    sys.modules.setdefault("providers", _current_module)
+    sys.modules.setdefault("src.providers", _current_module)
 
 logger = logging.getLogger(__name__)
 
