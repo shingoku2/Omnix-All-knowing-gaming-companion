@@ -474,3 +474,9 @@ npm run lint            # ESLint checks
 - Build errors: Clear node_modules and reinstall
 - TypeScript errors: Ensure @types/react and @types/react-dom are installed
 - Missing dependencies: Run `npm install` in frontend directory
+
+## 2025-11-20 - UI interaction restoration (frontend)
+- Added stateful chat panel in `frontend/src/App.tsx` with input handling, quick action buttons, and dynamic message list (Omnix/user messages, processing indicator) to ensure every chat control triggers visible behavior.
+- Rewired settings menu to track active submenu (Overlay, General, Notifications, Privacy) and added actionable toggles (overlay layout, lock position, startup/energy/tooltips, desktop/sound/AI alerts, streamer/privacy toggles, usage sharing) so each list item opens content and updates state.
+- Added active provider banner and quick action mapping so provider selection and commands visibly respond to clicks.
+- Troubleshooting: multiple attempts to run `npm install` in `frontend/` (commands with and without timeout/registry overrides) hung after several minutes; processes were killed (`kill -9`). Build/test commands were not executed because dependency installation could not complete in the container environment.
