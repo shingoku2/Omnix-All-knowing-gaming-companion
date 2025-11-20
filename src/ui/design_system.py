@@ -189,7 +189,7 @@ QToolTip {{
 
 /* Primary Button */
 QPushButton {{
-    background-color: #00F0FF26;
+    background-color: #2600F0FF;
     color: {self.tokens.colors.accent_primary};
     border: 1px solid {self.tokens.colors.accent_primary};
     border-radius: {self.tokens.radius.base}px;
@@ -213,7 +213,7 @@ QPushButton:pressed {{
 }}
 
 QPushButton:disabled {{
-    background-color: #FFFFFF0D;
+    background-color: #0DFFFFFF;
     border: 1px solid {self.tokens.colors.text_disabled};
     color: {self.tokens.colors.text_disabled};
 }}
@@ -228,14 +228,14 @@ QPushButton[buttonStyle="secondary"] {{
 QPushButton[buttonStyle="secondary"]:hover {{
     border-color: {self.tokens.colors.text_primary};
     color: {self.tokens.colors.text_primary};
-    background-color: #FFFFFF0D;
+    background-color: #0DFFFFFF;
 }}
 
 /* Danger Button */
 QPushButton[buttonStyle="danger"] {{
     color: {self.tokens.colors.error};
     border-color: {self.tokens.colors.error};
-    background-color: #FF2A2A1A;
+    background-color: #1AFF2A2A;
 }}
 
 QPushButton[buttonStyle="danger"]:hover {{
@@ -245,7 +245,7 @@ QPushButton[buttonStyle="danger"]:hover {{
 
 /* Success Button */
 QPushButton[buttonStyle="success"] {{
-    background-color: #00FF9D26;
+    background-color: #2600FF9D;
     color: {self.tokens.colors.success};
     border: 1px solid {self.tokens.colors.success};
 }}
@@ -268,7 +268,7 @@ QPushButton[buttonStyle="icon"] {{
 }}
 
 QPushButton[buttonStyle="icon"]:hover {{
-    background-color: #FFFFFF1A;
+    background-color: #1AFFFFFF;
 }}
 
 /* Tool Button */
@@ -281,7 +281,7 @@ QToolButton {{
 }}
 
 QToolButton:hover {{
-    background-color: #FFFFFF1A;
+    background-color: #1AFFFFFF;
 }}
 
 QToolButton:pressed {{
@@ -304,7 +304,7 @@ QToolButton:checked {{
 
 /* Line Edit */
 QLineEdit {{
-    background-color: #0000004D;
+    background-color: #4D000000;
     color: {self.tokens.colors.text_primary};
     border: 1px solid {self.tokens.colors.border_default};
     border-radius: {self.tokens.radius.base}px;
@@ -320,18 +320,18 @@ QLineEdit:hover {{
 
 QLineEdit:focus {{
     border: 1px solid {self.tokens.colors.accent_primary_bright};
-    background-color: #00F0FF0D;
+    background-color: #0D00F0FF;
 }}
 
 QLineEdit:disabled {{
-    background-color: #00000033;
+    background-color: #33000000;
     color: {self.tokens.colors.text_disabled};
     border-color: {self.tokens.colors.border_subtle};
 }}
 
 /* Text Edit */
 QTextEdit, QPlainTextEdit {{
-    background-color: #0000004D;
+    background-color: #4D000000;
     color: {self.tokens.colors.text_primary};
     border: 1px solid {self.tokens.colors.border_default};
     border-radius: {self.tokens.radius.base}px;
@@ -347,12 +347,12 @@ QTextEdit:hover, QPlainTextEdit:hover {{
 
 QTextEdit:focus, QPlainTextEdit:focus {{
     border: 1px solid {self.tokens.colors.accent_primary_bright};
-    background-color: #00F0FF0D;
+    background-color: #0D00F0FF;
 }}
 
 /* Combo Box (Dropdown) */
 QComboBox {{
-    background-color: #0000004D;
+    background-color: #4D000000;
     color: {self.tokens.colors.text_primary};
     border: 1px solid {self.tokens.colors.border_default};
     border-radius: {self.tokens.radius.base}px;
@@ -390,7 +390,7 @@ QComboBox QAbstractItemView {{
 
 /* Spin Box */
 QSpinBox, QDoubleSpinBox {{
-    background-color: #0000004D;
+    background-color: #4D000000;
     color: {self.tokens.colors.text_primary};
     border: 1px solid {self.tokens.colors.border_default};
     border-radius: {self.tokens.radius.base}px;
@@ -399,11 +399,11 @@ QSpinBox, QDoubleSpinBox {{
 
 QSpinBox:focus, QDoubleSpinBox:focus {{
     border: 1px solid {self.tokens.colors.accent_primary_bright};
-    background-color: #00F0FF0D;
+    background-color: #0D00F0FF;
 }}
 
 QSpinBox::up-button, QDoubleSpinBox::up-button {{
-    background-color: #00000066;
+    background-color: #66000000;
     border: none;
     border-radius: {self.tokens.radius.sm}px;
     width: 20px;
@@ -414,7 +414,7 @@ QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {{
 }}
 
 QSpinBox::down-button, QDoubleSpinBox::down-button {{
-    background-color: #00000066;
+    background-color: #66000000;
     border: none;
     border-radius: {self.tokens.radius.sm}px;
     width: 20px;
@@ -784,7 +784,7 @@ QLabel[labelStyle="error"] {{
         # Deep space background with specified opacity
         # Convert opacity (0-1) to hex alpha (00-FF)
         alpha_hex = format(int(opacity * 255), '02x')
-        bg_color = f"#0A0C14{alpha_hex}"
+        bg_color = f"#{alpha_hex}0A0C14"
 
         return f"""
 /* ========================================
@@ -807,7 +807,7 @@ QFrame {{
 
 /* Minimize overlay chrome */
 QPushButton {{
-    background-color: #00F0FF26;
+    background-color: #2600F0FF;
     color: {self.tokens.colors.accent_primary};
     border: 1px solid {self.tokens.colors.accent_primary};
     border-radius: {self.tokens.radius.sm}px;
@@ -823,7 +823,7 @@ QPushButton:hover {{
 
 /* Chat Display - slightly different background */
 QTextEdit {{
-    background-color: #00000066;
+    background-color: #66000000;
     color: {self.tokens.colors.text_primary};
     border: 1px solid {self.tokens.colors.border_subtle};
     border-radius: {self.tokens.radius.base}px;
@@ -832,7 +832,7 @@ QTextEdit {{
 
 /* Input Field */
 QLineEdit {{
-    background-color: #0000004D;
+    background-color: #4D000000;
     color: {self.tokens.colors.text_primary};
     border: 1px solid {self.tokens.colors.border_default};
     border-radius: {self.tokens.radius.sm}px;
@@ -848,7 +848,7 @@ QLineEdit:hover {{
 
 QLineEdit:focus {{
     border: 1px solid {self.tokens.colors.accent_primary_bright};
-    background-color: #00F0FF0D;
+    background-color: #0D00F0FF;
 }}
 
 /* Minimal Scrollbars for Overlay */

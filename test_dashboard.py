@@ -10,12 +10,12 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from PyQt6.QtWidgets import QApplication, QMainWindow
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from ui.components import OmnixDashboard
 from ui.design_system import OmnixDesignSystem
 
 
-def test_dashboard():
+def test_dashboard(run_interactive: bool = False):
     """Test dashboard creation and functionality"""
     app = QApplication(sys.argv)
 
@@ -62,8 +62,13 @@ def test_dashboard():
     print("✓ Click any button to test signal connections")
     print("\nClose the window to exit...")
 
+    if run_interactive:
+        return app.exec()
+
+    QTimer.singleShot(50, app.quit)
+    app.processEvents()
     return app.exec()
 
 
 if __name__ == "__main__":
-    sys.exit(test_dashboard())
+    sys.exit(test_dashboard(run_interactive=True))
