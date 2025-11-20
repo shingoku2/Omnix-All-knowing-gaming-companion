@@ -1,8 +1,8 @@
 # CLAUDE.md - AI Assistant Guide for Omnix Gaming Companion
 
-**Last Updated:** 2025-11-18
-**Codebase Version:** 1.2+
-**Total LOC:** ~14,700
+**Last Updated:** 2025-11-20
+**Codebase Version:** 1.3+
+**Total LOC:** ~14,700 (src) + 3,196 (tests)
 
 ---
 
@@ -13,6 +13,7 @@
 3. [Key Modules & Responsibilities](#key-modules--responsibilities)
 4. [Technology Stack](#technology-stack)
 5. [Development Workflows](#development-workflows)
+   - [CI/CD Pipeline](#cicd-pipeline-new---2025-11-20) ⭐ NEW
 6. [Code Conventions](#code-conventions)
 7. [Testing Strategy](#testing-strategy)
 8. [Common Tasks & Patterns](#common-tasks--patterns)
@@ -1089,7 +1090,185 @@ git push -u origin claude/feature-name
 gh pr create --title "Feature: description" --body "Details..."
 ```
 
-**Important:** For this session, always use branch: `claude/claude-md-mi0udx5q25azj8gs-014ci8Xyu9DvRRXC76VYQcE5`
+**Important:** For this session, always use branch: `claude/proxmox-staging-cicd-01EfJQvejjX64Rs7vD4sFpzq`
+
+### CI/CD Pipeline (NEW - 2025-11-20)
+
+Omnix now uses a **self-hosted CI/CD pipeline** running on Proxmox infrastructure for automated testing and deployment.
+
+#### Infrastructure
+
+**Self-Hosted Runner:**
+- **Host:** Proxmox LXC Container (omnix-staging, ID 200)
+- **OS:** Ubuntu 24.04 LTS
+- **Location:** `/opt/omnix/`
+- **Runner:** `/opt/actions-runner/` (systemd service)
+- **Labels:** `self-hosted`, `linux`, `proxmox`
+
+**Access:**
+```bash
+# SSH to Proxmox container
+ssh pve
+sudo pct enter 200
+
+# Check runner status
+sudo systemctl status actions-runner
+
+# View logs
+sudo journalctl -u actions-runner -f
+```
+
+#### Workflows
+
+**1. CI Pipeline (`.github/workflows/ci.yml`)**
+
+Runs on every push to `main`, `staging`, `dev` branches and pull requests:
+
+```yaml
+# Triggers: Push to main/staging/dev, PRs to main/staging
+# Steps:
+1. Checkout code
+2. Set up Python environment
+3. Install dependencies (requirements.txt + requirements-dev.txt)
+4. Run flake8 linting
+5. Run pytest with xvfb (headless Qt testing)
+```
+
+**2. Staging Deployment (`.github/workflows/staging-deploy.yml`)**
+
+Automated deployment to staging environment:
+
+```yaml
+# Triggers: Push to staging branch, manual dispatch
+# Steps:
+1. Checkout and verify branch
+2. Update deployment directory with rsync
+3. Install dependencies
+4. Run pre-deployment tests
+5. Create deployment marker
+6. Verify deployment
+7. Show summary
+```
+
+**Trigger Deployment:**
+```bash
+# Automatic
+git checkout staging
+git merge main
+git push origin staging
+
+# Manual
+gh workflow run staging-deploy.yml
+```
+
+#### CI/CD Tools
+
+**Verification Script (`scripts/verify_ci.py`):**
+
+Comprehensive pipeline health check:
+```bash
+python scripts/verify_ci.py
+```
+
+Checks:
+- ✅ Git repository status
+- ✅ Workflow file configuration
+- ✅ Test suite organization
+- ✅ Python dependencies
+- ✅ Self-hosted runner connectivity
+- ✅ Sample test execution
+
+**Deployment Script (`scripts/deploy_staging.sh`):**
+
+Manual deployment with automated backups:
+```bash
+./scripts/deploy_staging.sh
+```
+
+Features:
+- Prerequisite checking
+- Automatic backup (keeps last 5)
+- Code synchronization
+- Dependency installation
+- Pre-deployment tests
+- Deployment verification
+
+#### Testing in CI
+
+**Headless Qt Testing:**
+```bash
+# CI uses offscreen platform
+export QT_QPA_PLATFORM=offscreen
+xvfb-run -a pytest tests/ -v
+```
+
+**CI-Specific Tests:**
+- `tests/integration/test_ci_pipeline.py` - 20+ CI integration tests
+- Tests environment setup, module imports, headless components
+- Validates deployment readiness
+- Verifies data persistence
+
+**Test Markers:**
+```python
+@pytest.mark.unit           # Unit tests
+@pytest.mark.integration    # Integration tests
+@pytest.mark.skip_ci        # Skip in CI environment
+@pytest.mark.requires_api_key  # Requires API keys
+```
+
+#### Deployment Process
+
+**Staging Environment:**
+- **Directory:** `/opt/omnix/staging/`
+- **Backups:** `/opt/omnix/backups/`
+- **Virtual Env:** `/opt/omnix/venv/`
+
+**Deployment Marker:**
+```bash
+# Check deployment info
+cat /opt/omnix/staging/.deployment_info
+```
+
+**Recovery:**
+```bash
+# List backups
+ls -lt /opt/omnix/backups/
+
+# Restore from backup
+cp -r /opt/omnix/backups/staging_backup_YYYYMMDD_HHMMSS /opt/omnix/staging/
+```
+
+#### Documentation
+
+**Comprehensive Guides:**
+- `docs/CI_CD_GUIDE.md` - Full CI/CD documentation
+- `docs/QUICK_START_CI.md` - Quick reference guide
+- `scripts/README.md` - Scripts documentation
+- `CHANGELOG_CI_CD.md` - Enhancement changelog
+- `aicontext.md` - Quick AI assistant reference
+
+#### Monitoring
+
+**Check Workflow Status:**
+```bash
+# List recent runs
+gh run list --limit 10
+
+# View specific run
+gh run view [run-id] --log
+
+# Re-run failed workflow
+gh run rerun [run-id]
+```
+
+**Runner Health:**
+```bash
+# Check status
+sudo systemctl status actions-runner
+
+# Restart if needed
+sudo systemctl restart actions-runner
+```
 
 ---
 
@@ -2192,11 +2371,66 @@ theme_mgr = ThemeManager()
 
 **Migration Details:** See `THEME_MIGRATION_PLAN.md`
 
-#### ✅ Recent Fixes
+#### ✅ Recent Enhancements & Fixes
 
-**Status:** Latest fix completed 2025-11-19
+**Status:** Latest enhancement completed 2025-11-20
 
-**1. Search Index Corruption Fix (2025-11-19)** ⭐ **CRITICAL**
+**1. CI/CD Pipeline Enhancement (2025-11-20)** ⭐ **NEW**
+
+Comprehensive CI/CD pipeline implementation with self-hosted infrastructure, automated testing, and staging deployment.
+
+**New Features:**
+- **Self-Hosted Runner** - Proxmox LXC container with GitHub Actions runner
+- **CI Workflow** - Automated linting and testing on push/PR
+- **Staging Deployment** - Automated deployment to staging environment
+- **Verification Tool** - `scripts/verify_ci.py` for pipeline health checks
+- **Deployment Script** - `scripts/deploy_staging.sh` with automated backups
+- **CI Tests** - 20+ integration tests for CI/CD scenarios in `tests/integration/test_ci_pipeline.py`
+
+**Infrastructure:**
+- Host: Proxmox LXC (omnix-staging, ID 200)
+- Runner: `/opt/actions-runner/` (systemd service)
+- Staging: `/opt/omnix/staging/`
+- Backups: `/opt/omnix/backups/`
+
+**Documentation:**
+- `docs/CI_CD_GUIDE.md` - Comprehensive CI/CD guide
+- `docs/QUICK_START_CI.md` - Quick reference
+- `scripts/README.md` - Scripts documentation
+- `CHANGELOG_CI_CD.md` - Enhancement changelog
+- `aicontext.md` - AI assistant quick reference
+
+**Workflows:**
+```yaml
+.github/workflows/ci.yml              # Main CI pipeline
+.github/workflows/staging-deploy.yml  # Staging deployment
+```
+
+**Usage:**
+```bash
+# Verify pipeline
+python scripts/verify_ci.py
+
+# Deploy to staging
+./scripts/deploy_staging.sh
+
+# Or push to staging branch (automatic)
+git push origin staging
+```
+
+**Benefits:**
+- ✅ Automated testing on every push
+- ✅ Self-hosted infrastructure (faster, cost-effective)
+- ✅ Automated staging deployments
+- ✅ Pre-deployment test validation
+- ✅ Automatic backups (keeps last 5)
+- ✅ Comprehensive documentation
+
+**Commit:** `17b7d69` | **Branch:** `claude/proxmox-staging-cicd-01EfJQvejjX64Rs7vD4sFpzq`
+
+---
+
+**2. Search Index Corruption Fix (2025-11-19)** ⭐ **CRITICAL**
 
 The knowledge pack search system was experiencing a critical bug where TF-IDF model state was not persisted to disk, causing search results to become random garbage after application restarts.
 
