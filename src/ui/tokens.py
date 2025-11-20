@@ -19,9 +19,9 @@ class ColorPalette:
     bg_primary_alt: str = "#0a0a12"
 
     # Secondary Backgrounds - Glass/Holographic panels
-    # Using RGBA for transparency support in QSS
-    bg_secondary: str = "rgba(20, 25, 40, 0.6)"
-    bg_secondary_alt: str = "rgba(30, 35, 50, 0.8)"
+    # Using hex with alpha channel for Qt compatibility (#RRGGBBAA)
+    bg_secondary: str = "#14192899"      # rgba(20, 25, 40, 0.6)
+    bg_secondary_alt: str = "#1e2332cc"  # rgba(30, 35, 50, 0.8)
 
     # Accent Colors - Neon / Laser
     accent_primary: str = "#00F0FF"       # Cyber Cyan
@@ -44,25 +44,25 @@ class ColorPalette:
     info: str = "#00F0FF"     # Cyber Cyan
 
     # Border Colors
-    border_subtle: str = "rgba(255, 255, 255, 0.1)"
-    border_default: str = "rgba(0, 240, 255, 0.3)"
+    border_subtle: str = "#ffffff1a"    # rgba(255, 255, 255, 0.1)
+    border_default: str = "#00f0ff4d"   # rgba(0, 240, 255, 0.3)
     border_accent: str = "#00F0FF"
 
     # Overlay Colors
-    overlay_dark: str = "rgba(5, 5, 8, 0.90)"
-    overlay_medium: str = "rgba(5, 5, 8, 0.80)"
-    overlay_light: str = "rgba(5, 5, 8, 0.60)"
+    overlay_dark: str = "#050508e6"     # rgba(5, 5, 8, 0.90)
+    overlay_medium: str = "#050508cc"   # rgba(5, 5, 8, 0.80)
+    overlay_light: str = "#05050899"    # rgba(5, 5, 8, 0.60)
 
     # Interactive States
-    hover_overlay: str = "rgba(0, 240, 255, 0.1)"  # Cyan tint
-    active_overlay: str = "rgba(0, 240, 255, 0.2)"  # Stronger cyan tint
-    focus_outline: str = "#00F0FF"  # Cyber Cyan
+    hover_overlay: str = "#00f0ff1a"   # rgba(0, 240, 255, 0.1) - Cyan tint
+    active_overlay: str = "#00f0ff33"  # rgba(0, 240, 255, 0.2) - Stronger cyan tint
+    focus_outline: str = "#00F0FF"     # Cyber Cyan
 
     # Gradients
     gradient_primary: str = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00F0FF, stop:1 #7000FF)"
-    gradient_surface: str = "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(30,35,50,0.9), stop:1 rgba(20,25,40,0.95))"
+    gradient_surface: str = "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1e2332e6, stop:1 #141928f2)"
     gradient_dark: str = "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #0a0a12, stop:1 #050508)"
-    gradient_panel: str = "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(30,35,50,0.8), stop:1 rgba(20,25,40,0.6))"
+    gradient_panel: str = "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1e2332cc, stop:1 #14192899)"
 
 
 @dataclass
