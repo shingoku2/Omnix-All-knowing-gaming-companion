@@ -475,12 +475,23 @@ npm run lint            # ESLint checks
 - TypeScript errors: Ensure @types/react and @types/react-dom are installed
 - Missing dependencies: Run `npm install` in frontend directory
 
----
+## 2025-11-20 - UI interaction restoration (frontend)
+- Added stateful chat panel in `frontend/src/App.tsx` with input handling, quick action buttons, and dynamic message list (Omnix/user messages, processing indicator) to ensure every chat control triggers visible behavior.
+- Rewired settings menu to track active submenu (Overlay, General, Notifications, Privacy) and added actionable toggles (overlay layout, lock position, startup/energy/tooltips, desktop/sound/AI alerts, streamer/privacy toggles, usage sharing) so each list item opens content and updates state.
+- Added active provider banner and quick action mapping so provider selection and commands visibly respond to clicks.
+- Troubleshooting: multiple attempts to run `npm install` in `frontend/` (commands with and without timeout/registry overrides) hung after several minutes; processes were killed (`kill -9`). Build/test commands were not executed because dependency installation could not complete in the container environment.
 
-## 2025-01-?? Work Log (Automated Update)
+## 2026-02-24 Updates
+- Updated `tests/integration/test_ci_pipeline.py` to use `SessionLogger.get_recent_events` and ensure `GameProfileStore` persistence tests call the correct method signature.
+- Added optional `config_dir` support to `GameProfileStore` so tests can persist profiles in temporary directories without touching user directories.
+- Appended `credentials.enc` to `.gitignore` to prevent encrypted credential files from being tracked.
 
-- Updated AI modules to follow the `from src.module import X` import convention for consistency and to avoid circular import edge cases. Adjusted `src/ai_assistant.py` and `src/ai_router.py` to import Config, router, and provider errors via the `src` package paths.
-- Added a compatibility shim in `src/providers.py` so that imports using either `providers` or `src.providers` resolve to the same module instance. This keeps exception classes identical across import styles and prevents mismatched error handling.
-- Tests run:
-  - `pytest tests/test_ai.py -q` (pass)
-  - `pytest -q` (fails at Qt-dependent collection due to missing `libGL.so.1` in environment)
+### Troubleshooting
+- Verified fixes via `pytest tests/integration/test_ci_pipeline.py::TestCIPipeline::test_session_logger_headless tests/integration/test_ci_pipeline.py::TestDatabaseIntegrity::test_game_profile_persistence` (pass).
+
+## 2026-02-25 UI smoke test helper
+- Added `scripts/ui_test_tool.py` to drive the chat widget headlessly with a stub AI assistant, capture optional screenshots, and report bubble counts for UI validation.
+- Documented usage in `TESTING.md` under the new UI Smoke Test Helper section.
+
+### Troubleshooting
+- Attempted `python scripts/ui_test_tool.py --message "UI test ping"` but exited early with `libGL.so.1` missing; tool now detects the missing OpenGL runtime and provides installation guidance while returning exit code 2.
