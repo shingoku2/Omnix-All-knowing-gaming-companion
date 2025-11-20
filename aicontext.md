@@ -489,14 +489,9 @@ npm run lint            # ESLint checks
 ### Troubleshooting
 - Verified fixes via `pytest tests/integration/test_ci_pipeline.py::TestCIPipeline::test_session_logger_headless tests/integration/test_ci_pipeline.py::TestDatabaseIntegrity::test_game_profile_persistence` (pass).
 
-## 2026-02-26 Futuristic HUD refresh
-- Rebuilt `frontend/src/App.tsx` layout to mirror the neon HUD reference with corner-bracket panels, centered game detector hex, refreshed chat/feed styling, and right-hand settings/provider controls bound to live state.
-- Bound game statistics (K/D, wins, matches, provider sync, online status) to `gameStatus` state instead of static placeholders and synchronized provider selections with settings interactions.
-- Added typed setting toggle helper to keep general/notification/privacy controls type-safe while preserving previous functionality.
-
-### Tests
-- `npm run build` (frontend) — pass.
+## 2026-02-25 UI smoke test helper
+- Added `scripts/ui_test_tool.py` to drive the chat widget headlessly with a stub AI assistant, capture optional screenshots, and report bubble counts for UI validation.
+- Documented usage in `TESTING.md` under the new UI Smoke Test Helper section.
 
 ### Troubleshooting
-- Resolved TypeScript implicit `any` error in `toggleSetting` by adding typed `SettingGroup`/`SettingStateMap` mapping.
-- `ss` command unavailable when checking dev server shutdown; relied on Ctrl+C stop instead.
+- Attempted `python scripts/ui_test_tool.py --message "UI test ping"` but exited early with `libGL.so.1` missing; tool now detects the missing OpenGL runtime and provides installation guidance while returning exit code 2.
