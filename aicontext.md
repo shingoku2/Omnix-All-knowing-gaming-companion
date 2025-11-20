@@ -480,3 +480,10 @@ npm run lint            # ESLint checks
 - Rewired settings menu to track active submenu (Overlay, General, Notifications, Privacy) and added actionable toggles (overlay layout, lock position, startup/energy/tooltips, desktop/sound/AI alerts, streamer/privacy toggles, usage sharing) so each list item opens content and updates state.
 - Added active provider banner and quick action mapping so provider selection and commands visibly respond to clicks.
 - Troubleshooting: multiple attempts to run `npm install` in `frontend/` (commands with and without timeout/registry overrides) hung after several minutes; processes were killed (`kill -9`). Build/test commands were not executed because dependency installation could not complete in the container environment.
+
+## 2025-??-?? Updates (theme bridge cleanup)
+- Removed deprecated `src/ui/theme_bridge.py` and migrated references to the maintained `theme_compat` layer.
+- Updated UI documentation and migration plan to reflect the removal and highlight `ThemeManagerCompat` for legacy integration.
+- Refreshed CLAUDE.md deprecated file list and bandit report entry to drop the deleted module.
+- Replaced theme bridge test with compatibility layer coverage in `src/ui/test_design_system.py`.
+- Test: `python -m compileall src/ui/test_design_system.py` (pass).
