@@ -591,14 +591,23 @@ class Config:
 
         # Update with new values
         existing_content['AI_PROVIDER'] = provider
-        # Preserve existing API keys if present, otherwise leave empty
-        # (API keys are now stored in encrypted credential store)
+
+        # IMPORTANT: Preserve existing API keys if present
+        # This allows users who prefer .env configuration to continue using it
+        # while also supporting the encrypted credential store for better security
+        # Only set empty placeholder if key doesn't exist
         if 'OPENAI_API_KEY' not in existing_content:
             existing_content['OPENAI_API_KEY'] = ''
+        # else: preserve existing value from .env file
+
         if 'ANTHROPIC_API_KEY' not in existing_content:
             existing_content['ANTHROPIC_API_KEY'] = ''
+        # else: preserve existing value from .env file
+
         if 'GEMINI_API_KEY' not in existing_content:
             existing_content['GEMINI_API_KEY'] = ''
+        # else: preserve existing value from .env file
+
         existing_content['OVERLAY_HOTKEY'] = overlay_hotkey
         existing_content['CHECK_INTERVAL'] = str(check_interval)
 

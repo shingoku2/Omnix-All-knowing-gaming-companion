@@ -96,8 +96,10 @@ class GameWatcher(QObject):
             except Exception as e:
                 logger.error(f"Error in watch loop: {e}", exc_info=True)
 
-            # Sleep with interruptible waits
-            time.sleep(self.check_interval)
+            # Sleep with interruptible wait using Event (allows immediate shutdown)
+            if self._stop_event.wait(self.check_interval):
+                # Event was set (stop requested), exit immediately
+                break
 
         logger.debug("Watch loop ended")
 

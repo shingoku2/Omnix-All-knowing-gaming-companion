@@ -60,7 +60,7 @@ class AIProvider(Protocol):
         """Test connection to the provider with a lightweight call"""
         ...
 
-    async def chat(
+    def chat(
         self,
         messages: List[Dict[str, str]],
         model: Optional[str] = None,
@@ -174,7 +174,7 @@ class OpenAIProvider:
                     error_type="connection"
                 )
 
-    async def chat(
+    def chat(
         self,
         messages: List[Dict[str, str]],
         model: Optional[str] = None,
@@ -202,14 +202,6 @@ class OpenAIProvider:
                 messages=messages,
                 **kwargs
             )
-
-            # Support both sync and async client implementations in tests by awaiting if needed
-            try:
-                import inspect
-                if inspect.isawaitable(response):
-                    response = await response
-            except Exception:
-                pass
 
             usage = None
             try:
@@ -309,7 +301,7 @@ class AnthropicProvider:
                     error_type="connection"
                 )
 
-    async def chat(
+    def chat(
         self,
         messages: List[Dict[str, str]],
         model: Optional[str] = None,
@@ -352,14 +344,6 @@ class AnthropicProvider:
                 api_params["system"] = system_prompt
 
             response = self.client.messages.create(**api_params)
-
-            # Await coroutine responses in tests if necessary
-            try:
-                import inspect
-                if inspect.isawaitable(response):
-                    response = await response
-            except Exception:
-                pass
 
             # Compute usage totals if available
             total_tokens = None
@@ -490,12 +474,6 @@ class GeminiProvider:
         model_name = model or self.default_model
 
         try:
-            # Make this an async method to match other providers and support AsyncMock in tests
-            import asyncio
-        except Exception:
-            pass
-
-        async def _chat_impl():
             # Prefer an explicitly set `model` (tests patch this), otherwise use client/genai
             if getattr(self, 'model', None) is not None:
                 model_client = self.model
@@ -520,24 +498,22 @@ class GeminiProvider:
                 **kwargs
             )
 
-            # Await coroutine responses in tests if necessary
-            try:
-                import inspect
-                if inspect.isawaitable(response):
-                    response = await response
-            except Exception:
-                pass
-
             return {
                 "content": response.text,
                 "model": model_name,
                 "stop_reason": response.candidates[0].finish_reason if response.candidates else None,
             }
+        except Exception as e:
+            error_str = str(e).lower()
 
-        # Return coroutine so callers can await
-        return _chat_impl()
-
-        # Note: Errors raised within the returned coroutine will propagate to the caller.
+            if "authentication" in error_str or "api key" in error_str or "401" in error_str:
+                raise ProviderAuthError(f"Gemini authentication failed: {str(e)}")
+            elif "resource_exhausted" in error_str or "quota" in error_str:
+                raise ProviderQuotaError(f"Gemini quota exceeded: {str(e)}")
+            elif "rate" in error_str or "429" in error_str:
+                raise ProviderRateLimitError(f"Gemini rate limited: {str(e)}")
+            else:
+                raise ProviderError(f"Gemini API error: {str(e)}")
 
 
 def get_provider_class(provider_name: str) -> type:
