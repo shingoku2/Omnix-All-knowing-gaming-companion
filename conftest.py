@@ -5,19 +5,19 @@ This file is automatically discovered by pytest and provides fixtures
 that are available to all test files.
 """
 
-import builtins
 import os
-import shutil
 import sys
 import tempfile
+import shutil
 from pathlib import Path
-from typing import Generator
-from unittest.mock import MagicMock
+from typing import Dict, Generator
+from unittest.mock import Mock, MagicMock
+import builtins
 
 import pytest
 
 # Add src to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 
 def pytest_addoption(parser):
@@ -36,7 +36,6 @@ def pytest_addoption(parser):
 # Session-scoped fixtures (run once per test session)
 # ============================================================================
 
-
 @pytest.fixture(scope="session")
 def test_data_dir() -> Path:
     """Return path to test data directory."""
@@ -46,7 +45,6 @@ def test_data_dir() -> Path:
 # ============================================================================
 # Function-scoped fixtures (run for each test)
 # ============================================================================
-
 
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
@@ -123,7 +121,6 @@ def mock_game_detector():
             game = detector.detect_running_game()
     """
     from src.game_detector import GameDetector
-
     return GameDetector()
 
 
@@ -160,7 +157,7 @@ def mock_game_profile():
         exe_names=["eldenring.exe"],
         system_prompt="You are an expert Elden Ring guide.",
         default_provider="anthropic",
-        overlay_mode_default="full",
+        overlay_mode_default="full"
     )
 
 
@@ -183,14 +180,14 @@ def mock_ai_provider():
         return {
             "content": "This is a test response.",
             "model": "test-model",
-            "usage": {"total_tokens": 100},
+            "usage": {"total_tokens": 100}
         }
 
     mock.chat = mock_chat
 
     # Mock test_connection
     def mock_test():
-        return type("Health", (), {"healthy": True, "message": "OK"})()
+        return type('Health', (), {'healthy': True, 'message': 'OK'})()
 
     mock.test_connection = mock_test
 
@@ -230,8 +227,8 @@ def sample_macro():
         steps=[
             MacroStep(type=MacroStepType.KEY_PRESS.value, key="a"),
             MacroStep(type=MacroStepType.DELAY.value, duration_ms=100),
-            MacroStep(type=MacroStepType.KEY_PRESS.value, key="b"),
-        ],
+            MacroStep(type=MacroStepType.KEY_PRESS.value, key="b")
+        ]
     )
 
 
@@ -250,7 +247,7 @@ def sample_knowledge_pack():
         id="test_source",
         type="note",
         title="Test Note",
-        content="This is test content about game mechanics.",
+        content="This is test content about game mechanics."
     )
 
     return KnowledgePack(
@@ -258,7 +255,7 @@ def sample_knowledge_pack():
         name="Test Pack",
         description="A test knowledge pack",
         game_profile_id="elden_ring",
-        sources=[source],
+        sources=[source]
     )
 
 
@@ -271,9 +268,8 @@ def sample_session_events():
         def test_session(sample_session_events):
             assert len(sample_session_events) > 0
     """
-    from datetime import datetime
-
     from src.session_logger import SessionEvent
+    from datetime import datetime
 
     return [
         SessionEvent(
@@ -281,22 +277,21 @@ def sample_session_events():
             event_type="question",
             game_profile_id="elden_ring",
             content="How do I beat Margit?",
-            meta={},
+            meta={}
         ),
         SessionEvent(
             timestamp=datetime.now(),
             event_type="answer",
             game_profile_id="elden_ring",
             content="Use ranged attacks and summon help.",
-            meta={"tokens": 50},
-        ),
+            meta={"tokens": 50}
+        )
     ]
 
 
 # ============================================================================
 # Qt/GUI fixtures
 # ============================================================================
-
 
 @pytest.fixture(scope="session")
 def qapp():
@@ -312,9 +307,8 @@ def qapp():
             button = QPushButton("Test")
             assert button.text() == "Test"
     """
-    import sys
-
     from PyQt6.QtWidgets import QApplication
+    import sys
 
     # Check if QApplication already exists
     app = QApplication.instance()
@@ -343,7 +337,6 @@ def qtbot(qapp, request):
     """
     try:
         from pytestqt.qtbot import QtBot
-
         bot = QtBot(request)
         yield bot
     except ImportError:
@@ -353,7 +346,6 @@ def qtbot(qapp, request):
 # ============================================================================
 # Mocking fixtures
 # ============================================================================
-
 
 @pytest.fixture
 def mock_keyring():
@@ -365,13 +357,12 @@ def mock_keyring():
             # keyring operations will be mocked
             pass
     """
+    import keyring
     from unittest.mock import patch
 
-    import keyring  # noqa: F401
-
-    with patch("keyring.get_password") as mock_get, patch(
-        "keyring.set_password"
-    ) as mock_set, patch("keyring.delete_password") as mock_del:
+    with patch('keyring.get_password') as mock_get, \
+         patch('keyring.set_password') as mock_set, \
+         patch('keyring.delete_password') as mock_del:
 
         # Store in-memory credentials
         credentials = {}
@@ -391,7 +382,11 @@ def mock_keyring():
         mock_get.side_effect = get_password
         mock_del.side_effect = delete_password
 
-        yield {"get": mock_get, "set": mock_set, "delete": mock_del}
+        yield {
+            'get': mock_get,
+            'set': mock_set,
+            'delete': mock_del
+        }
 
 
 @pytest.fixture
@@ -404,13 +399,13 @@ def mock_psutil():
             # psutil.process_iter() will return mock processes
             pass
     """
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import patch, MagicMock
 
-    with patch("psutil.process_iter") as mock_iter:
+    with patch('psutil.process_iter') as mock_iter:
         # Create mock processes
         mock_process = MagicMock()
-        mock_process.info = {"name": "eldenring.exe", "pid": 12345}
-        mock_process.name.return_value = "eldenring.exe"
+        mock_process.info = {'name': 'eldenring.exe', 'pid': 12345}
+        mock_process.name.return_value = 'eldenring.exe'
 
         mock_iter.return_value = [mock_process]
 
@@ -420,7 +415,6 @@ def mock_psutil():
 # ============================================================================
 # Environment fixtures
 # ============================================================================
-
 
 @pytest.fixture
 def clean_env():
@@ -436,9 +430,9 @@ def clean_env():
 
     # Remove API keys
     keys_to_remove = [
-        "ANTHROPIC_API_KEY",
-        "OPENAI_API_KEY",
-        "GEMINI_API_KEY",
+        'ANTHROPIC_API_KEY',
+        'OPENAI_API_KEY',
+        'GEMINI_API_KEY',
     ]
 
     for key in keys_to_remove:
@@ -463,9 +457,9 @@ def test_api_keys():
     original_env = os.environ.copy()
 
     # Set fake API keys
-    os.environ["ANTHROPIC_API_KEY"] = "sk-ant-test-key-12345"
-    os.environ["OPENAI_API_KEY"] = "sk-test-key-12345"
-    os.environ["GEMINI_API_KEY"] = "test-gemini-key-12345"
+    os.environ['ANTHROPIC_API_KEY'] = 'sk-ant-test-key-12345'
+    os.environ['OPENAI_API_KEY'] = 'sk-test-key-12345'
+    os.environ['GEMINI_API_KEY'] = 'test-gemini-key-12345'
 
     yield
 
@@ -478,12 +472,11 @@ def test_api_keys():
 # Markers and hooks
 # ============================================================================
 
-
 def pytest_configure(config):
     """Configure pytest with custom settings."""
     # Ensure Qt platform is set for headless testing
-    if "QT_QPA_PLATFORM" not in os.environ:
-        os.environ["QT_QPA_PLATFORM"] = "offscreen"
+    if 'QT_QPA_PLATFORM' not in os.environ:
+        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
 
 def pytest_collection_modifyitems(config, items):
@@ -501,12 +494,10 @@ def pytest_collection_modifyitems(config, items):
 
         # Skip tests requiring API keys if not available
         if "requires_api_key" in item.keywords:
-            has_key = any(
-                [
-                    os.environ.get("ANTHROPIC_API_KEY"),
-                    os.environ.get("OPENAI_API_KEY"),
-                    os.environ.get("GEMINI_API_KEY"),
-                ]
-            )
+            has_key = any([
+                os.environ.get("ANTHROPIC_API_KEY"),
+                os.environ.get("OPENAI_API_KEY"),
+                os.environ.get("GEMINI_API_KEY")
+            ])
             if not has_key:
                 item.add_marker(pytest.mark.skip(reason="No API keys available"))

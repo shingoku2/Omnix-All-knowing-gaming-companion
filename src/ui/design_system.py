@@ -6,12 +6,12 @@ Central design system manager that generates QSS stylesheets and provides
 component styling utilities based on the Omnix design tokens.
 """
 
-from typing import Optional  # noqa: F401
+from typing import Dict, Optional
 
 try:
-    from .tokens import tokens
+    from .tokens import tokens, COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS
 except ImportError:  # Allow importing as top-level `design_system`
-    from tokens import tokens
+    from tokens import tokens, COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS
 
 
 class OmnixDesignSystem:
@@ -189,39 +189,38 @@ QToolTip {{
 
 /* Primary Button */
 QPushButton {{
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {self.tokens.colors.accent_primary}, stop:1 {self.tokens.colors.accent_primary_dark});
-    color: {self.tokens.colors.text_primary};
-    border: 1px solid {self.tokens.colors.accent_primary_bright};
+    background-color: #2600F0FF;
+    color: {self.tokens.colors.accent_primary};
+    border: 1px solid {self.tokens.colors.accent_primary};
     border-radius: {self.tokens.radius.base}px;
     padding: {self.tokens.spacing.padding_button};
     font-weight: {self.tokens.typography.weight_bold};
     font-size: {self.tokens.typography.size_md}pt;
-    letter-spacing: 0.5px;
     text-transform: uppercase;
     min-width: 80px;
 }}
 
 QPushButton:hover {{
-    background: {self.tokens.colors.accent_primary_bright};
-    color: #02101c;
-    border: 1px solid {self.tokens.colors.accent_primary};
+    background-color: {self.tokens.colors.accent_primary};
+    color: #000000;
+    border: 1px solid {self.tokens.colors.accent_primary_bright};
 }}
 
 QPushButton:pressed {{
-    background: {self.tokens.colors.accent_primary_dark};
+    background-color: {self.tokens.colors.accent_primary_dark};
     border-color: {self.tokens.colors.accent_primary_dark};
-    color: #e8faff;
+    color: white;
 }}
 
 QPushButton:disabled {{
-    background: {self.tokens.colors.bg_secondary};
+    background-color: #0DFFFFFF;
     border: 1px solid {self.tokens.colors.text_disabled};
     color: {self.tokens.colors.text_disabled};
 }}
 
 /* Secondary Button (Ghost) */
 QPushButton[buttonStyle="secondary"] {{
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: transparent;
     border: 1px solid {self.tokens.colors.text_muted};
     color: {self.tokens.colors.text_secondary};
 }}
@@ -229,57 +228,31 @@ QPushButton[buttonStyle="secondary"] {{
 QPushButton[buttonStyle="secondary"]:hover {{
     border-color: {self.tokens.colors.text_primary};
     color: {self.tokens.colors.text_primary};
-    background-color: rgba(13, 255, 255, 0.1);
+    background-color: #0DFFFFFF;
 }}
 
 /* Danger Button */
 QPushButton[buttonStyle="danger"] {{
-    color: #200000;
+    color: {self.tokens.colors.error};
     border-color: {self.tokens.colors.error};
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {self.tokens.colors.error}, stop:1 #8f0606);
+    background-color: #1AFF2A2A;
 }}
 
 QPushButton[buttonStyle="danger"]:hover {{
-    background: #ff2a2a;
-    color: #fefefe;
-    border-color: #ff5a5a;
+    background-color: {self.tokens.colors.error};
+    color: white;
 }}
 
 /* Success Button */
 QPushButton[buttonStyle="success"] {{
-    color: #002a1a;
+    background-color: #2600FF9D;
+    color: {self.tokens.colors.success};
     border: 1px solid {self.tokens.colors.success};
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {self.tokens.colors.success}, stop:1 #0b6f4f);
 }}
 
 QPushButton[buttonStyle="success"]:hover {{
-    background: {self.tokens.colors.success};
-    color: #001a12;
-    border-color: #66ffc7;
-}}
-
-/* Provider & Toggle Chips */
-QPushButton[variant="provider"], QPushButton[variant="toggle"] {{
-    background: rgba(10, 20, 40, 0.6);
-    border: 1px solid {self.tokens.colors.accent_primary};
-    color: {self.tokens.colors.accent_primary_bright};
-    text-align: left;
-    padding: {self.tokens.spacing.padding_button};
-    font-weight: {self.tokens.typography.weight_semibold};
-    letter-spacing: 0.6px;
-    min-height: 44px;
-}}
-
-QPushButton[variant="provider"]:hover, QPushButton[variant="toggle"]:hover {{
-    background: rgba(20, 60, 90, 0.8);
-    border-color: {self.tokens.colors.accent_primary_bright};
-    color: {self.tokens.colors.text_primary};
-}}
-
-QPushButton[variant="provider"]:checked, QPushButton[variant="toggle"]:checked {{
-    background: rgba(0, 240, 255, 0.18);
-    color: #03121c;
-    border-color: {self.tokens.colors.accent_primary_bright};
+    background-color: {self.tokens.colors.success};
+    color: #000000;
 }}
 
 /* Icon Button */
@@ -810,7 +783,7 @@ QLabel[labelStyle="error"] {{
         """
         # Deep space background with specified opacity
         # Convert opacity (0-1) to hex alpha (00-FF)
-        alpha_hex = format(int(opacity * 255), "02x")
+        alpha_hex = format(int(opacity * 255), '02x')
         bg_color = f"#{alpha_hex}0A0C14"
 
         return f"""

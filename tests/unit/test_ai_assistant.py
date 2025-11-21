@@ -3,10 +3,8 @@ Unit tests for AIAssistant module
 
 Tests AI assistant initialization, conversation management, and integration with providers.
 """
-
-import os
-
 import pytest
+import os
 
 
 @pytest.mark.unit
@@ -20,17 +18,15 @@ class TestAIAssistant:
         from ai_assistant import AIAssistant
 
         # Skip if no API keys available
-        if not any(
-            [
-                os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("OPENAI_API_KEY"),
-                os.getenv("GEMINI_API_KEY"),
-            ]
-        ):
+        if not any([
+            os.getenv("ANTHROPIC_API_KEY"),
+            os.getenv("OPENAI_API_KEY"),
+            os.getenv("GEMINI_API_KEY")
+        ]):
             pytest.skip("No API keys configured")
 
         try:
-            assistant = AIAssistant()  # noqa: F841
+            assistant = AIAssistant()
             assert assistant is not None
         except ValueError:
             # Expected if no API keys configured
@@ -54,17 +50,15 @@ class TestAIAssistant:
         """Test setting current game context"""
         from ai_assistant import AIAssistant
 
-        if not any(
-            [
-                os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("OPENAI_API_KEY"),
-                os.getenv("GEMINI_API_KEY"),
-            ]
-        ):
+        if not any([
+            os.getenv("ANTHROPIC_API_KEY"),
+            os.getenv("OPENAI_API_KEY"),
+            os.getenv("GEMINI_API_KEY")
+        ]):
             pytest.skip("No API keys configured")
 
         try:
-            assistant = AIAssistant()  # noqa: F841
+            assistant = AIAssistant()
             game_info = {"name": "Test Game", "id": "test123"}
             assistant.set_current_game(game_info)
             assert assistant.current_game["name"] == "Test Game"
@@ -77,17 +71,15 @@ class TestAIAssistant:
         """Test conversation history management"""
         from ai_assistant import AIAssistant
 
-        if not any(
-            [
-                os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("OPENAI_API_KEY"),
-                os.getenv("GEMINI_API_KEY"),
-            ]
-        ):
+        if not any([
+            os.getenv("ANTHROPIC_API_KEY"),
+            os.getenv("OPENAI_API_KEY"),
+            os.getenv("GEMINI_API_KEY")
+        ]):
             pytest.skip("No API keys configured")
 
         try:
-            assistant = AIAssistant()  # noqa: F841
+            assistant = AIAssistant()
             history = assistant.get_conversation_summary()
             assert isinstance(history, list)
         except ValueError:
@@ -99,17 +91,15 @@ class TestAIAssistant:
         """Test clearing conversation history"""
         from ai_assistant import AIAssistant
 
-        if not any(
-            [
-                os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("OPENAI_API_KEY"),
-                os.getenv("GEMINI_API_KEY"),
-            ]
-        ):
+        if not any([
+            os.getenv("ANTHROPIC_API_KEY"),
+            os.getenv("OPENAI_API_KEY"),
+            os.getenv("GEMINI_API_KEY")
+        ]):
             pytest.skip("No API keys configured")
 
         try:
-            assistant = AIAssistant()  # noqa: F841
+            assistant = AIAssistant()
             assistant.clear_history()
             history = assistant.get_conversation_summary()
             # After clear, should be empty or minimal
@@ -127,17 +117,15 @@ class TestAIAssistantEdgeCases:
         """Test setting game with empty dictionary"""
         from ai_assistant import AIAssistant
 
-        if not any(
-            [
-                os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("OPENAI_API_KEY"),
-                os.getenv("GEMINI_API_KEY"),
-            ]
-        ):
+        if not any([
+            os.getenv("ANTHROPIC_API_KEY"),
+            os.getenv("OPENAI_API_KEY"),
+            os.getenv("GEMINI_API_KEY")
+        ]):
             pytest.skip("No API keys configured")
 
         try:
-            assistant = AIAssistant()  # noqa: F841
+            assistant = AIAssistant()
             assistant.set_current_game({})
             # Should handle gracefully
         except (ValueError, AttributeError):
@@ -149,17 +137,15 @@ class TestAIAssistantEdgeCases:
         """Test setting game with None values"""
         from ai_assistant import AIAssistant
 
-        if not any(
-            [
-                os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("OPENAI_API_KEY"),
-                os.getenv("GEMINI_API_KEY"),
-            ]
-        ):
+        if not any([
+            os.getenv("ANTHROPIC_API_KEY"),
+            os.getenv("OPENAI_API_KEY"),
+            os.getenv("GEMINI_API_KEY")
+        ]):
             pytest.skip("No API keys configured")
 
         try:
-            assistant = AIAssistant()  # noqa: F841
+            assistant = AIAssistant()
             assistant.set_current_game({"name": None, "id": None})
             # Should handle gracefully
         except (ValueError, AttributeError):

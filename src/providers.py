@@ -7,9 +7,9 @@ Defines a consistent interface for interacting with different AI providers
 
 import logging
 import sys
-from abc import abstractmethod  # noqa: F401
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 # Ensure imports using either ``providers`` or ``src.providers`` resolve to the
 # same module instance so exception classes remain identical across import
@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ProviderHealth:
     """Health status of a provider"""
-
     healthy: bool
     message: str
     error_type: Optional[str] = None  # 'auth', 'quota', 'rate_limit', 'connection', etc.
@@ -46,31 +45,26 @@ class ProviderHealth:
 
 class ProviderError(Exception):
     """Base exception for provider-related errors"""
-
     pass
 
 
 class ProviderAuthError(ProviderError):
     """Raised when API key is invalid or missing"""
-
     pass
 
 
 class ProviderQuotaError(ProviderError):
     """Raised when quota is exceeded"""
-
     pass
 
 
 class ProviderRateLimitError(ProviderError):
     """Raised when rate limit is exceeded"""
-
     pass
 
 
 class ProviderConnectionError(ProviderError):
     """Raised when unable to connect to provider"""
-
     pass
 
 
@@ -88,7 +82,10 @@ class AIProvider(Protocol):
         ...
 
     def chat(
-        self, messages: List[Dict[str, str]], model: Optional[str] = None, **kwargs: Any
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None,
+        **kwargs: Any
     ) -> Dict[str, Any]:
         """
         Send a chat message to the provider
@@ -109,12 +106,7 @@ class OpenAIProvider:
 
     name = "openai"
 
-    def __init__(
-        self,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-        default_model: Optional[str] = None,
-    ):
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, default_model: Optional[str] = None):
         """
         Initialize OpenAI provider
 
@@ -132,9 +124,11 @@ class OpenAIProvider:
         """Initialize the OpenAI client"""
         try:
             import openai
-
             if self.api_key:
-                self.client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url)
+                self.client = openai.OpenAI(
+                    api_key=self.api_key,
+                    base_url=self.base_url
+                )
         except Exception:
             logger.warning("OpenAI library not installed or failed to initialize")
 
@@ -146,7 +140,9 @@ class OpenAIProvider:
         """Test OpenAI API connection"""
         if not self.is_configured():
             return ProviderHealth(
-                is_healthy=False, message="OpenAI API key not configured", error_type="auth"
+                is_healthy=False,
+                message="OpenAI API key not configured",
+                error_type="auth"
             )
 
         try:
@@ -163,10 +159,11 @@ class OpenAIProvider:
                 response = self.client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[{"role": "user", "content": "Hi"}],
-                    max_tokens=5,
+                    max_tokens=5
                 )
                 return ProviderHealth(
-                    is_healthy=True, message="✅ Connected! API key is valid and working."
+                    is_healthy=True,
+                    message="✅ Connected! API key is valid and working."
                 )
 
         except Exception as e:
@@ -177,29 +174,32 @@ class OpenAIProvider:
                     is_healthy=False,
                     message="❌ Quota Exceeded - Please check your OpenAI billing",
                     error_type="quota",
-                    details={"original_error": str(e)},
+                    details={"original_error": str(e)}
                 )
             elif "rate" in error_str or "429" in error_str:
                 return ProviderHealth(
                     is_healthy=False,
                     message="❌ Rate Limited - Please try again later",
-                    error_type="rate_limit",
+                    error_type="rate_limit"
                 )
             elif "authentication" in error_str or "api key" in error_str or "401" in error_str:
                 return ProviderHealth(
                     is_healthy=False,
                     message="❌ Authentication Failed - Invalid API key",
-                    error_type="auth",
+                    error_type="auth"
                 )
             else:
                 return ProviderHealth(
                     is_healthy=False,
                     message=f"❌ Connection Failed - {str(e)}",
-                    error_type="connection",
+                    error_type="connection"
                 )
 
     def chat(
-        self, messages: List[Dict[str, str]], model: Optional[str] = None, **kwargs: Any
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None,
+        **kwargs: Any
     ) -> Dict[str, Any]:
         """
         Send a chat request to OpenAI
@@ -215,16 +215,18 @@ class OpenAIProvider:
         if not self.is_configured():
             raise ProviderAuthError("OpenAI API key not configured")
 
-        model = model or getattr(self, "default_model", "gpt-3.5-turbo")
+        model = model or getattr(self, 'default_model', "gpt-3.5-turbo")
 
         try:
-            response = self.client.chat.completions.create(  # noqa: F841
-                model=model, messages=messages, **kwargs
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                **kwargs
             )
 
             usage = None
             try:
-                usage = {"total_tokens": getattr(response.usage, "total_tokens", None)}
+                usage = {"total_tokens": getattr(response.usage, 'total_tokens', None)}
             except Exception:
                 usage = {"total_tokens": None}
 
@@ -268,7 +270,6 @@ class AnthropicProvider:
         """Initialize the Anthropic client"""
         try:
             import anthropic
-
             if self.api_key:
                 self.client = anthropic.Anthropic(api_key=self.api_key)
         except Exception:
@@ -282,7 +283,9 @@ class AnthropicProvider:
         """Test Anthropic API connection"""
         if not self.is_configured():
             return ProviderHealth(
-                is_healthy=False, message="Anthropic API key not configured", error_type="auth"
+                is_healthy=False,
+                message="Anthropic API key not configured",
+                error_type="auth"
             )
 
         try:
@@ -293,7 +296,8 @@ class AnthropicProvider:
                 messages=[{"role": "user", "content": "Hi"}],
             )
             return ProviderHealth(
-                is_healthy=True, message="✅ Connected! API key is valid and working."
+                is_healthy=True,
+                message="✅ Connected! API key is valid and working."
             )
 
         except Exception as e:
@@ -303,23 +307,26 @@ class AnthropicProvider:
                 return ProviderHealth(
                     is_healthy=False,
                     message="❌ Authentication Failed - Invalid API key",
-                    error_type="auth",
+                    error_type="auth"
                 )
             elif "rate" in error_str or "429" in error_str:
                 return ProviderHealth(
                     is_healthy=False,
                     message="❌ Rate Limited - Please try again later",
-                    error_type="rate_limit",
+                    error_type="rate_limit"
                 )
             else:
                 return ProviderHealth(
                     is_healthy=False,
                     message=f"❌ Connection Failed - {str(e)}",
-                    error_type="connection",
+                    error_type="connection"
                 )
 
     def chat(
-        self, messages: List[Dict[str, str]], model: Optional[str] = None, **kwargs: Any
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None,
+        **kwargs: Any
     ) -> Dict[str, Any]:
         """
         Send a chat request to Anthropic
@@ -335,7 +342,7 @@ class AnthropicProvider:
         if not self.is_configured():
             raise ProviderAuthError("Anthropic API key not configured")
 
-        model = model or getattr(self, "default_model", "claude-3-5-sonnet-20240620")
+        model = model or getattr(self, 'default_model', "claude-3-5-sonnet-20240620")
         max_tokens = kwargs.pop("max_tokens", 1024)
 
         # Extract system messages - Anthropic requires them as a separate parameter
@@ -351,19 +358,19 @@ class AnthropicProvider:
                 "model": model,
                 "max_tokens": max_tokens,
                 "messages": user_messages,
-                **kwargs,
+                **kwargs
             }
 
             if system_prompt:
                 api_params["system"] = system_prompt
 
-            response = self.client.messages.create(**api_params)  # noqa: F841
+            response = self.client.messages.create(**api_params)
 
             # Compute usage totals if available
             total_tokens = None
             try:
-                input_tokens = getattr(response.usage, "input_tokens", 0) or 0
-                output_tokens = getattr(response.usage, "output_tokens", 0) or 0
+                input_tokens = getattr(response.usage, 'input_tokens', 0) or 0
+                output_tokens = getattr(response.usage, 'output_tokens', 0) or 0
                 total_tokens = input_tokens + output_tokens
             except Exception:
                 total_tokens = None
@@ -408,7 +415,6 @@ class GeminiProvider:
         """Initialize the Gemini client"""
         try:
             import google.generativeai as genai
-
             if self.api_key:
                 genai.configure(api_key=self.api_key)
                 self._genai = genai
@@ -424,7 +430,9 @@ class GeminiProvider:
         """Test Gemini API connection"""
         if not self.is_configured():
             return ProviderHealth(
-                is_healthy=False, message="Gemini API key not configured", error_type="auth"
+                is_healthy=False,
+                message="Gemini API key not configured",
+                error_type="auth"
             )
 
         try:
@@ -432,7 +440,8 @@ class GeminiProvider:
             model = self.client or self._genai.GenerativeModel(self.default_model)
             response = model.generate_content("Hi", stream=False)
             return ProviderHealth(
-                is_healthy=True, message="✅ Connected! API key is valid and working."
+                is_healthy=True,
+                message="✅ Connected! API key is valid and working."
             )
 
         except Exception as e:
@@ -442,29 +451,32 @@ class GeminiProvider:
                 return ProviderHealth(
                     is_healthy=False,
                     message="❌ Authentication Failed - Invalid API key",
-                    error_type="auth",
+                    error_type="auth"
                 )
             elif "resource_exhausted" in error_str or "quota" in error_str:
                 return ProviderHealth(
                     is_healthy=False,
                     message="❌ Quota Exceeded - Please check your Gemini quota",
-                    error_type="quota",
+                    error_type="quota"
                 )
             elif "rate" in error_str or "429" in error_str:
                 return ProviderHealth(
                     is_healthy=False,
                     message="❌ Rate Limited - Please try again later",
-                    error_type="rate_limit",
+                    error_type="rate_limit"
                 )
             else:
                 return ProviderHealth(
                     is_healthy=False,
                     message=f"❌ Connection Failed - {str(e)}",
-                    error_type="connection",
+                    error_type="connection"
                 )
 
     def chat(
-        self, messages: List[Dict[str, str]], model: Optional[str] = None, **kwargs: Any
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None,
+        **kwargs: Any
     ) -> Dict[str, Any]:
         """
         Send a chat request to Gemini
@@ -484,7 +496,7 @@ class GeminiProvider:
 
         try:
             # Prefer an explicitly set `model` (tests patch this), otherwise use client/genai
-            if getattr(self, "model", None) is not None:
+            if getattr(self, 'model', None) is not None:
                 model_client = self.model
             elif model_name == self.default_model and self.client:
                 model_client = self.client
@@ -496,18 +508,21 @@ class GeminiProvider:
             # Convert messages to Gemini format
             gemini_messages = []
             for msg in messages:
-                gemini_messages.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
+                gemini_messages.append({
+                    "role": msg["role"],
+                    "parts": [{"text": msg["content"]}]
+                })
 
-            response = model_client.generate_content(  # noqa: F841
-                gemini_messages, stream=False, **kwargs
+            response = model_client.generate_content(
+                gemini_messages,
+                stream=False,
+                **kwargs
             )
 
             return {
                 "content": response.text,
                 "model": model_name,
-                "stop_reason": (
-                    response.candidates[0].finish_reason if response.candidates else None
-                ),
+                "stop_reason": response.candidates[0].finish_reason if response.candidates else None,
             }
         except Exception as e:
             error_str = str(e).lower()
@@ -547,7 +562,11 @@ def get_provider_class(provider_name: str) -> type:
         raise ValueError(f"Unknown provider: {provider_name}")
 
 
-def create_provider(provider_name: str, api_key: Optional[str] = None, **kwargs: Any) -> Any:
+def create_provider(
+    provider_name: str,
+    api_key: Optional[str] = None,
+    **kwargs: Any
+) -> Any:
     """
     Factory function to create a provider instance
 

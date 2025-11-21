@@ -3,11 +3,9 @@ Edge case and error handling tests
 
 Tests boundary conditions, error scenarios, and resilience.
 """
-
+import pytest
 import os
 from pathlib import Path
-
-import pytest
 
 
 @pytest.mark.unit
@@ -21,7 +19,7 @@ class TestConfigEdgeCases:
         config_path = Path(temp_dir) / "bad_config.json"
 
         # Write invalid JSON
-        with open(config_path, "w") as f:
+        with open(config_path, 'w') as f:
             f.write("{invalid json content")
 
         # Try to load (should recover)
@@ -115,13 +113,11 @@ class TestAIAssistantEdgeCases:
         """Test setting game with empty dict"""
         from ai_assistant import AIAssistant
 
-        if not any(
-            [
-                os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("OPENAI_API_KEY"),
-                os.getenv("GEMINI_API_KEY"),
-            ]
-        ):
+        if not any([
+            os.getenv("ANTHROPIC_API_KEY"),
+            os.getenv("OPENAI_API_KEY"),
+            os.getenv("GEMINI_API_KEY")
+        ]):
             pytest.skip("No API keys configured")
 
         try:
@@ -136,17 +132,15 @@ class TestAIAssistantEdgeCases:
         """Test getting summary on empty history"""
         from ai_assistant import AIAssistant
 
-        if not any(
-            [
-                os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("OPENAI_API_KEY"),
-                os.getenv("GEMINI_API_KEY"),
-            ]
-        ):
+        if not any([
+            os.getenv("ANTHROPIC_API_KEY"),
+            os.getenv("OPENAI_API_KEY"),
+            os.getenv("GEMINI_API_KEY")
+        ]):
             pytest.skip("No API keys configured")
 
         try:
-            assistant = AIAssistant()  # noqa: F841
+            assistant = AIAssistant()
             summary = assistant.get_conversation_summary()
             assert isinstance(summary, list)
         except ValueError:
@@ -159,9 +153,8 @@ class TestConcurrentOperations:
 
     def test_concurrent_config_operations(self):
         """Test concurrent config operations"""
-        import threading
-
         from config import Config
+        import threading
 
         errors = []
 
@@ -177,7 +170,7 @@ class TestConcurrentOperations:
         # Run operations in parallel
         threads = [
             threading.Thread(target=config_operations),
-            threading.Thread(target=config_operations),
+            threading.Thread(target=config_operations)
         ]
 
         for thread in threads:
@@ -190,9 +183,8 @@ class TestConcurrentOperations:
 
     def test_concurrent_detector_operations(self):
         """Test concurrent detector operations"""
-        import threading
-
         from game_detector import GameDetector
+        import threading
 
         errors = []
 
@@ -207,7 +199,7 @@ class TestConcurrentOperations:
 
         threads = [
             threading.Thread(target=detector_operations),
-            threading.Thread(target=detector_operations),
+            threading.Thread(target=detector_operations)
         ]
 
         for thread in threads:
@@ -230,7 +222,10 @@ class TestProfileEdgeCases:
         from game_profile import GameProfile
 
         profile = GameProfile(
-            id="generic", display_name="Generic", exe_names=[], system_prompt="Matches any game"
+            id="generic",
+            display_name="Generic",
+            exe_names=[],
+            system_prompt="Matches any game"
         )
 
         # Should not match anything specifically
@@ -241,7 +236,10 @@ class TestProfileEdgeCases:
         from game_profile import GameProfile
 
         profile = GameProfile(
-            id="test", display_name="Test", exe_names=["test.exe"], system_prompt="Prompt"
+            id="test",
+            display_name="Test",
+            exe_names=["test.exe"],
+            system_prompt="Prompt"
         )
 
         # Should not crash
@@ -272,7 +270,7 @@ class TestErrorRecovery:
         config_path = Path(temp_dir) / "bad_config.json"
 
         # Write invalid JSON
-        with open(config_path, "w") as f:
+        with open(config_path, 'w') as f:
             f.write("{invalid json content")
 
         # Try to load (should recover)

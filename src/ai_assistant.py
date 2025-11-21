@@ -10,18 +10,19 @@ while delegating actual API calls to the provider layer.
 import logging
 import os
 import threading
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
-from src.ai_router import get_router
 from src.config import Config
-from src.knowledge_integration import (
-    get_knowledge_integration,
-)
+from src.ai_router import get_router, AIRouter
 from src.providers import (
-    ProviderAuthError,
     ProviderError,
+    ProviderAuthError,
     ProviderQuotaError,
     ProviderRateLimitError,
+)
+from src.knowledge_integration import (
+    get_knowledge_integration,
+    KnowledgeIntegration,
 )
 
 # Configure logging
@@ -62,7 +63,9 @@ class AIAssistant:
         self.current_game = None
         self.current_profile = None
         self.current_model = None
-        self._session_refresh_handler: Optional[Callable[[str, str, Dict[str, str]], None]] = None
+        self._session_refresh_handler: Optional[
+            Callable[[str, str, Dict[str, str]], None]
+        ] = None
 
         # Thread safety for conversation history
         self._history_lock = threading.Lock()
@@ -136,7 +139,7 @@ class AIAssistant:
             self.conversation_history = []
 
             # Add system context
-            game_name = game_info.get("name", "Unknown Game")
+            game_name = game_info.get('name', 'Unknown Game')
             self._add_system_context(game_name)
 
         logger.info(f"Set current game context: {game_name}")
@@ -168,7 +171,10 @@ class AIAssistant:
             self.conversation_history = []
 
             # Add profile's system prompt as context
-            self.conversation_history.append({"role": "system", "content": profile.system_prompt})
+            self.conversation_history.append({
+                "role": "system",
+                "content": profile.system_prompt
+            })
 
         logger.info(f"Set game profile: {profile.display_name} (id={profile.id})")
 
@@ -184,9 +190,7 @@ class AIAssistant:
         # This prevents the provider from staying "stuck" on a game-specific provider
         # after the game is closed
         if self.provider != self.config.ai_provider:
-            logger.info(
-                f"Resetting provider from {self.provider} to global default {self.config.ai_provider}"
-            )
+            logger.info(f"Resetting provider from {self.provider} to global default {self.config.ai_provider}")
             self.provider = self.config.ai_provider
 
         logger.info("Cleared game profile and reverted to default provider")
@@ -213,7 +217,10 @@ What you CAN help with for {game_name}:
 
 Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
 
-        self.conversation_history.append({"role": "system", "content": system_message})
+        self.conversation_history.append({
+            "role": "system",
+            "content": system_message
+        })
 
     def _trim_conversation_history(self):
         """Trim conversation history to prevent token limit issues"""
@@ -227,14 +234,10 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
                 system_messages = system_messages[-3:]
 
             # Keep system message and most recent messages
-            recent_messages = recent_messages[
-                -(self.MAX_CONVERSATION_MESSAGES - len(system_messages)) :
-            ]
+            recent_messages = recent_messages[-(self.MAX_CONVERSATION_MESSAGES - len(system_messages)):]
             self.conversation_history = system_messages + recent_messages
 
-            logger.info(
-                f"Trimmed conversation history to {len(self.conversation_history)} messages"
-            )
+            logger.info(f"Trimmed conversation history to {len(self.conversation_history)} messages")
 
     def ask_question(self, question: str, game_context: Optional[str] = None) -> str:
         """
@@ -265,13 +268,11 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
                 extra_settings = self.current_profile.extra_settings
 
                 # Check if knowledge packs should be used
-                if self.knowledge_integration.should_use_knowledge_packs(
-                    game_profile_id, extra_settings
-                ):
+                if self.knowledge_integration.should_use_knowledge_packs(game_profile_id, extra_settings):
                     knowledge_context = self.knowledge_integration.get_knowledge_context(
                         game_profile_id=game_profile_id,
                         question=question,
-                        extra_settings=extra_settings,
+                        extra_settings=extra_settings
                     )
 
             # Add knowledge context if available
@@ -280,14 +281,15 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
 
             # Add web scraping context if available
             if game_context:
-                user_message = (
-                    f"{user_message}\n\nAdditional context from game resources:\n{game_context}"
-                )
+                user_message = f"{user_message}\n\nAdditional context from game resources:\n{game_context}"
 
             # Thread-safe history modification
             with self._history_lock:
                 # Add to conversation history
-                self.conversation_history.append({"role": "user", "content": user_message})
+                self.conversation_history.append({
+                    "role": "user",
+                    "content": user_message
+                })
 
                 # Trim history if needed
                 self._trim_conversation_history()
@@ -299,7 +301,7 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
                     self.conversation_history,
                     provider=self.provider,
                     max_tokens=1000,
-                    temperature=0.7,
+                    temperature=0.7
                 )
 
                 # Extract content from response
@@ -309,14 +311,19 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
                     content = str(response)
 
                 # Add response to history only if it's not an error
-                if not content.startswith(("⚠️", "❌")):
+                if not content.startswith(('⚠️', '❌')):
                     with self._history_lock:
-                        self.conversation_history.append({"role": "assistant", "content": content})
+                        self.conversation_history.append({
+                            "role": "assistant",
+                            "content": content
+                        })
 
                 # Log conversation to session logger
                 if self.current_profile:
                     self.knowledge_integration.log_conversation(
-                        game_profile_id=self.current_profile.id, question=question, answer=content
+                        game_profile_id=self.current_profile.id,
+                        question=question,
+                        answer=content
                     )
 
                 return content
@@ -341,22 +348,18 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
         if not self.current_game:
             return "🎮 No game detected!\n\nPlease start a game to get tips and strategies. I'm here to help you once you're playing."
 
-        game_name = self.current_game.get("name", "the current game")
+        game_name = self.current_game.get('name', 'the current game')
 
         if specific_topic:
             question = f"Give me tips and strategies for {specific_topic} in {game_name}."
         else:
-            question = (
-                f"Give me some general tips and strategies for playing {game_name} effectively."
-            )
+            question = f"Give me some general tips and strategies for playing {game_name} effectively."
 
         return self.ask_question(question)
 
     def clear_history(self):
         """Clear conversation history"""
-        game_name = (
-            self.current_game.get("name", "Unknown Game") if self.current_game else "Unknown Game"
-        )
+        game_name = self.current_game.get('name', 'Unknown Game') if self.current_game else 'Unknown Game'
 
         with self._history_lock:
             self.conversation_history = []
@@ -371,6 +374,7 @@ Be concise, accurate, and helpful. Stay strictly focused on {game_name} only."""
 
 if __name__ == "__main__":
     # Test the AI assistant
+    import sys
 
     # Test with environment variables
     provider = os.getenv("AI_PROVIDER", "anthropic")

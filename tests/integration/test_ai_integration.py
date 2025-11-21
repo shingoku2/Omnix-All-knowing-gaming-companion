@@ -3,10 +3,8 @@ Integration tests for AI components
 
 Tests integration between AI router, assistant, and providers.
 """
-
-import os
-
 import pytest
+import os
 
 
 @pytest.mark.integration
@@ -15,8 +13,8 @@ class TestAIIntegration:
 
     def test_router_initialization(self):
         """Test AIRouter initialization with Config"""
-        from ai_router import AIRouter
         from config import Config
+        from ai_router import AIRouter
 
         config = Config(require_keys=False)
         router = AIRouter(config)
@@ -25,8 +23,8 @@ class TestAIIntegration:
 
     def test_list_configured_providers(self):
         """Test listing configured providers"""
-        from ai_router import AIRouter
         from config import Config
+        from ai_router import AIRouter
 
         config = Config(require_keys=False)
         router = AIRouter(config)
@@ -36,8 +34,8 @@ class TestAIIntegration:
 
     def test_get_provider_status(self):
         """Test getting provider status"""
-        from ai_router import AIRouter
         from config import Config
+        from ai_router import AIRouter
 
         config = Config(require_keys=False)
         router = AIRouter(config)
@@ -53,13 +51,11 @@ class TestAIIntegration:
         """Test AIAssistant using AIRouter"""
         from ai_assistant import AIAssistant
 
-        if not any(
-            [
-                os.getenv("ANTHROPIC_API_KEY"),
-                os.getenv("OPENAI_API_KEY"),
-                os.getenv("GEMINI_API_KEY"),
-            ]
-        ):
+        if not any([
+            os.getenv("ANTHROPIC_API_KEY"),
+            os.getenv("OPENAI_API_KEY"),
+            os.getenv("GEMINI_API_KEY")
+        ]):
             pytest.skip("No API keys configured")
 
         try:
@@ -86,13 +82,13 @@ class TestGameIntegration:
 
         if game:
             # Try to get profile for detected game
-            profile = store.get_profile_by_executable(game["name"])
+            profile = store.get_profile_by_executable(game['name'])
             # Should at least get generic profile
             assert profile is not None
 
     def test_custom_profile_resolution(self):
         """Test custom profile can be resolved"""
-        from game_profile import GameProfile, GameProfileStore
+        from game_profile import GameProfileStore, GameProfile
 
         store = GameProfileStore()
 
@@ -101,7 +97,7 @@ class TestGameIntegration:
             id="integration_test_game",
             display_name="Integration Test Game",
             exe_names=["integration_test.exe"],
-            system_prompt="Custom AI behavior",
+            system_prompt="Custom AI behavior"
         )
 
         # Clean up if exists
@@ -126,23 +122,21 @@ class TestKnowledgeIntegration:
 
     def test_pack_storage_and_indexing(self, temp_dir):
         """Test knowledge pack storage and indexing together"""
-        from knowledge_index import KnowledgeIndex, SimpleTFIDFEmbedding
         from knowledge_pack import KnowledgePack, KnowledgeSource
         from knowledge_store import KnowledgePackStore
+        from knowledge_index import KnowledgeIndex, SimpleTFIDFEmbedding
 
         # Create store and index (must use same store instance)
         store = KnowledgePackStore(config_dir=temp_dir)
         embedding = SimpleTFIDFEmbedding()
-        index = KnowledgeIndex(
-            config_dir=temp_dir, embedding_provider=embedding, knowledge_store=store
-        )
+        index = KnowledgeIndex(config_dir=temp_dir, embedding_provider=embedding, knowledge_store=store)
 
         # Create knowledge pack
         source = KnowledgeSource(
             id="s1",
             type="note",
             title="Boss Guide",
-            content="To defeat the boss, use fire attacks and dodge left.",
+            content="To defeat the boss, use fire attacks and dodge left."
         )
 
         pack = KnowledgePack(
@@ -150,7 +144,7 @@ class TestKnowledgeIntegration:
             name="Boss Tips",
             description="Tips for bosses",
             game_profile_id="test_game",
-            sources=[source],
+            sources=[source]
         )
 
         # Save to store
@@ -161,7 +155,9 @@ class TestKnowledgeIntegration:
 
         # Query
         results = index.query(
-            game_profile_id="test_game", question="How do I beat the boss?", top_k=3
+            game_profile_id="test_game",
+            question="How do I beat the boss?",
+            top_k=3
         )
 
         # Should find relevant content
@@ -174,8 +170,8 @@ class TestFullWorkflow:
 
     def test_config_to_router_workflow(self):
         """Test workflow from Config to AIRouter"""
-        from ai_router import AIRouter
         from config import Config
+        from ai_router import AIRouter
 
         # Initialize config
         config = Config(require_keys=False)
@@ -201,6 +197,6 @@ class TestFullWorkflow:
 
         if games:
             for game in games:
-                profile = store.get_profile_by_executable(game["name"])
+                profile = store.get_profile_by_executable(game['name'])
                 # Should always get at least generic profile
                 assert profile is not None
