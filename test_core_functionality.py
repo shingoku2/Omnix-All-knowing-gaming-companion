@@ -17,209 +17,152 @@ os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 def test_game_detector():
     """Test game detection system"""
     print("Testing Game Detector...")
-    try:
-        from game_detector import GameDetector
+    from game_detector import GameDetector
 
-        detector = GameDetector()
-        assert len(detector.common_games) > 0, "No games configured"
-        print(f"  ✓ {len(detector.common_games)} games configured")
+    detector = GameDetector()
+    assert len(detector.common_games) > 0, "No games configured"
+    print(f"  ✓ {len(detector.common_games)} games configured")
 
-        # Test detection (will return None if no games running)
-        game = detector.detect_running_game()
-        if game:
-            print(f"  ✓ Detected running game: {game.get('name')}")
-        else:
-            print("  ℹ No games currently running")
-
-        return True
-    except Exception as e:
-        print(f"  ✗ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    # Test detection (will return None if no games running)
+    game = detector.detect_running_game()
+    if game:
+        print(f"  ✓ Detected running game: {game.get('name')}")
+    else:
+        print("  ℹ No games currently running")
 
 def test_game_profiles():
     """Test game profile system"""
     print("\nTesting Game Profiles...")
-    try:
-        from game_profile import get_profile_store
+    from game_profile import get_profile_store
 
-        profile_store = get_profile_store()
-        profiles = profile_store.list_profiles()
-        print(f"  ✓ {len(profiles)} game profiles available")
+    profile_store = get_profile_store()
+    profiles = profile_store.list_profiles()
+    assert isinstance(profiles, list), "Profile list was not returned"
+    print(f"  ✓ {len(profiles)} game profiles available")
 
-        # Test getting a profile
-        if profiles:
-            profile = profile_store.get_profile_by_id(profiles[0])
-            print(f"  ✓ Loaded profile: {profile.display_name}")
-
-        return True
-    except Exception as e:
-        print(f"  ✗ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    # Test getting a profile
+    if profiles:
+        profile = profile_store.get_profile_by_id(profiles[0])
+        assert profile is not None, "Failed to load profile"
+        print(f"  ✓ Loaded profile: {profile.display_name}")
 
 def test_config_system():
     """Test configuration management"""
     print("\nTesting Configuration System...")
-    try:
-        from config import Config
+    from config import Config
 
-        config = Config(require_keys=False)
-        print(f"  ✓ AI Provider: {config.ai_provider}")
-        print(f"  ✓ Hotkey: {config.overlay_hotkey}")
-        print(f"  ✓ Check interval: {config.check_interval}s")
-
-        return True
-    except Exception as e:
-        print(f"  ✗ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    config = Config(require_keys=False)
+    print(f"  ✓ AI Provider: {config.ai_provider}")
+    print(f"  ✓ Hotkey: {config.overlay_hotkey}")
+    print(f"  ✓ Check interval: {config.check_interval}s")
 
 def test_credential_store():
     """Test credential storage"""
     print("\nTesting Credential Store...")
-    try:
-        # Set a master password for the test environment
-        import os
-        os.environ['OMNIX_MASTER_PASSWORD'] = 'test_password_for_testing_only'
+    # Set a master password for the test environment
+    import os
+    os.environ['OMNIX_MASTER_PASSWORD'] = 'test_password_for_testing_only'
 
-        from credential_store import CredentialStore
+    from credential_store import CredentialStore
 
-        store = CredentialStore()
-        print("  ✓ Credential store initialized")
+    store = CredentialStore()
+    print("  ✓ Credential store initialized")
 
-        # Test set/get/delete
-        test_key = "test_service"
-        test_name = "test_key"
-        test_value = "test_value_123"
+    # Test set/get/delete
+    test_key = "test_service"
+    test_name = "test_key"
+    test_value = "test_value_123"
 
-        store.set_credential(test_key, test_name, test_value)
-        retrieved = store.get_credential(test_key, test_name)
-        assert retrieved == test_value, "Value mismatch"
-        print("  ✓ Set/Get credential working")
+    store.set_credential(test_key, test_name, test_value)
+    retrieved = store.get_credential(test_key, test_name)
+    assert retrieved == test_value, "Value mismatch"
+    print("  ✓ Set/Get credential working")
 
-        store.delete_credential(test_key, test_name)
-        deleted = store.get_credential(test_key, test_name)
-        assert deleted is None, "Credential not deleted"
-        print("  ✓ Delete credential working")
-
-        return True
-    except Exception as e:
-        print(f"  ✗ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    store.delete_credential(test_key, test_name)
+    deleted = store.get_credential(test_key, test_name)
+    assert deleted is None, "Credential not deleted"
+    print("  ✓ Delete credential working")
 
 def test_knowledge_system():
     """Test knowledge pack system"""
     print("\nTesting Knowledge System...")
-    try:
-        from knowledge_store import get_knowledge_pack_store
-        from knowledge_index import get_knowledge_index
+    from knowledge_store import get_knowledge_pack_store
+    from knowledge_index import get_knowledge_index
 
-        store = get_knowledge_pack_store()
-        print("  ✓ Knowledge store initialized")
+    store = get_knowledge_pack_store()
+    print("  ✓ Knowledge store initialized")
 
-        index = get_knowledge_index()
-        print("  ✓ Knowledge index initialized")
+    index = get_knowledge_index()
+    print("  ✓ Knowledge index initialized")
+    assert index is not None, "Knowledge index was not created"
 
-        packs = store.list_packs()
-        print(f"  ✓ {len(packs)} knowledge packs available")
-
-        return True
-    except Exception as e:
-        print(f"  ✗ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    packs = store.list_packs()
+    assert isinstance(packs, list), "Knowledge packs not returned as list"
+    print(f"  ✓ {len(packs)} knowledge packs available")
 
 def test_macro_system():
     """Test macro management system"""
     print("\nTesting Macro System...")
-    try:
-        from macro_manager import MacroManager
-        from macro_runner import MacroRunner
+    from macro_manager import MacroManager
+    from macro_runner import MacroRunner
 
-        manager = MacroManager()
-        print("  ✓ Macro manager initialized")
+    manager = MacroManager()
+    print("  ✓ Macro manager initialized")
 
-        runner = MacroRunner(enabled=False)
-        print("  ✓ Macro runner initialized")
+    runner = MacroRunner(enabled=False)
+    print("  ✓ Macro runner initialized")
+    assert runner is not None, "Macro runner failed to initialize"
 
-        macros = manager.get_all_macros()
-        print(f"  ✓ {len(macros)} macros configured")
-
-        return True
-    except Exception as e:
-        print(f"  ✗ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    macros = manager.get_all_macros()
+    assert isinstance(macros, list), "Macros were not returned as a list"
+    print(f"  ✓ {len(macros)} macros configured")
 
 def test_ui_components():
     """Test UI component system"""
     print("\nTesting UI Components...")
-    try:
-        from ui.design_system import design_system
-        from ui.tokens import COLORS, TYPOGRAPHY, SPACING
-        from ui.components import OmnixIconButton, OmnixLineEdit
+    from ui.design_system import design_system
+    from ui.tokens import COLORS, TYPOGRAPHY, SPACING
+    from ui.components import OmnixIconButton, OmnixLineEdit
 
-        print("  ✓ Design system loaded")
-        print(f"  ✓ Color tokens available: {type(COLORS).__name__}")
-        print(f"  ✓ Typography tokens available: {type(TYPOGRAPHY).__name__}")
-        print(f"  ✓ Spacing tokens available: {type(SPACING).__name__}")
+    print("  ✓ Design system loaded")
+    print(f"  ✓ Color tokens available: {type(COLORS).__name__}")
+    print(f"  ✓ Typography tokens available: {type(TYPOGRAPHY).__name__}")
+    print(f"  ✓ Spacing tokens available: {type(SPACING).__name__}")
 
-        # Test component imports
-        print("  ✓ UI components available")
-
-        return True
-    except Exception as e:
-        print(f"  ✗ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    # Test component imports
+    assert OmnixIconButton is not None and OmnixLineEdit is not None, "UI components missing"
+    print("  ✓ UI components available")
 
 def test_gui_creation():
     """Test GUI window creation"""
     print("\nTesting GUI Creation...")
-    try:
-        from PyQt6.QtWidgets import QApplication
-        from config import Config
-        from credential_store import CredentialStore
-        from ui.design_system import design_system
-        from gui import MainWindow
+    from PyQt6.QtWidgets import QApplication
+    from config import Config
+    from credential_store import CredentialStore
+    from ui.design_system import design_system
+    from gui import MainWindow
 
-        app = QApplication(sys.argv)
-        config = Config(require_keys=False)
-        credential_store = CredentialStore()
+    app = QApplication(sys.argv)
+    config = Config(require_keys=False)
+    credential_store = CredentialStore()
 
-        window = MainWindow(
-            ai_assistant=None,
-            config=config,
-            credential_store=credential_store,
-            design_system=design_system
-        )
-        print("  ✓ Main window created")
+    window = MainWindow(
+        ai_assistant=None,
+        config=config,
+        credential_store=credential_store,
+        design_system=design_system
+    )
+    print("  ✓ Main window created")
 
-        # Check key components exist
-        assert hasattr(window, 'chat_panel'), "Missing chat_panel"
-        assert hasattr(window, 'game_status_panel'), "Missing game_status_panel"
-        assert hasattr(window, 'overlay_window'), "Missing overlay_window"
-        print("  ✓ All UI panels present")
+    # Check key components exist
+    assert hasattr(window, 'chat_panel'), "Missing chat_panel"
+    assert hasattr(window, 'game_status_panel'), "Missing game_status_panel"
+    assert hasattr(window, 'overlay_window'), "Missing overlay_window"
+    print("  ✓ All UI panels present")
 
-        # Clean up
-        window.cleanup()
-        app.quit()
-
-        return True
-    except Exception as e:
-        print(f"  ✗ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    # Clean up
+    window.cleanup()
+    app.quit()
 
 if __name__ == "__main__":
     print("=" * 70)
@@ -243,10 +186,11 @@ if __name__ == "__main__":
 
     for name, test_func in tests:
         try:
-            if test_func():
-                passed += 1
-            else:
+            result = test_func()
+            if result is False:
                 failed += 1
+            else:
+                passed += 1
         except Exception as e:
             print(f"\n✗ Test '{name}' crashed: {e}")
             failed += 1
