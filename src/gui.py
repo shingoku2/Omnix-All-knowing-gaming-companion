@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Optional
 
-from PyQt6.QtCore import QEvent, QPoint, Qt, QThread, pyqtSignal
+from PyQt6.QtCore import QEvent, QPoint, Qt, QThread, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
@@ -434,6 +434,12 @@ class OverlayWindow(QWidget):
         overlay_styles = ds.generate_overlay_stylesheet(getattr(config, "overlay_opacity", 0.8)) if ds else ""
         self.setStyleSheet(overlay_styles + "\n" + _load_qss())
 
+        # Debounce timer for position/size saving (reduces I/O during drag/resize)
+        self._save_timer = QTimer(self)
+        self._save_timer.setSingleShot(True)
+        self._save_timer.timeout.connect(self._save_position_and_size)
+        self._save_delay_ms = 500  # Wait 500ms after last move/resize before saving
+
         if self.minimized:
             self.toggle_minimize()
 
@@ -446,6 +452,33 @@ class OverlayWindow(QWidget):
         else:
             self.chat.setVisible(True)
             self.setFixedHeight(getattr(self, "_saved_height", self.sizeHint().height()))
+
+    def moveEvent(self, event) -> None:
+        """Handle window move - debounce save to reduce I/O."""
+        super().moveEvent(event)
+        # Restart the debounce timer on every move
+        self._save_timer.start(self._save_delay_ms)
+
+    def resizeEvent(self, event) -> None:
+        """Handle window resize - debounce save to reduce I/O."""
+        super().resizeEvent(event)
+        # Restart the debounce timer on every resize
+        self._save_timer.start(self._save_delay_ms)
+
+    def _save_position_and_size(self) -> None:
+        """Save current window position and size to config (called after debounce delay)."""
+        try:
+            # Update config with current geometry
+            self.config.overlay_x = self.x()
+            self.config.overlay_y = self.y()
+            self.config.overlay_width = self.width()
+            self.config.overlay_height = self.height()
+
+            # Persist to disk
+            self.config.save()
+            logger.debug(f"Saved overlay position: ({self.x()}, {self.y()}) size: ({self.width()}x{self.height()})")
+        except Exception as e:
+            logger.error(f"Failed to save overlay position: {e}")
 
 
 class MainWindow(QMainWindow):
