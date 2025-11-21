@@ -6,15 +6,14 @@ Tests macro execution, safety limits, state management, and input simulation
 import os
 import sys
 import time
-from unittest.mock import MagicMock, patch
-
+from unittest.mock import Mock, MagicMock, patch
 import pytest
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.macro_manager import Macro, MacroStep, MacroStepType
-from src.macro_runner import MacroExecutionState, MacroRunner
+from src.macro_runner import MacroRunner, MacroExecutionState
 
 
 @pytest.mark.unit
@@ -57,9 +56,8 @@ class TestMacroExecutionBasics:
         runner = MacroRunner()
 
         # Mock the input simulation
-        with patch("pynput.keyboard.Controller") as mock_kb, patch(
-            "pynput.mouse.Controller"
-        ) as _mock_mouse:
+        with patch('pynput.keyboard.Controller') as mock_kb, \
+             patch('pynput.mouse.Controller') as mock_mouse:
 
             mock_keyboard = MagicMock()
             mock_kb.return_value = mock_keyboard
@@ -69,22 +67,21 @@ class TestMacroExecutionBasics:
                 id="test",
                 name="Test",
                 description="Test",
-                steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")],
+                steps=[
+                    MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")
+                ]
             )
 
             result = runner.execute_macro(macro)
 
             # Verify execution started successfully
-            assert result is True or runner.state in [
-                MacroExecutionState.RUNNING,
-                MacroExecutionState.STOPPED,
-            ]
+            assert result is True or runner.state in [MacroExecutionState.RUNNING, MacroExecutionState.STOPPED]
 
     def test_execute_macro_with_delay(self):
         """Test executing macro with delay steps"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller"):
+        with patch('pynput.keyboard.Controller'):
             macro = Macro(
                 id="test",
                 name="Test",
@@ -92,8 +89,8 @@ class TestMacroExecutionBasics:
                 steps=[
                     MacroStep(type=MacroStepType.KEY_PRESS.value, key="a"),
                     MacroStep(type=MacroStepType.DELAY.value, duration_ms=100),
-                    MacroStep(type=MacroStepType.KEY_PRESS.value, key="b"),
-                ],
+                    MacroStep(type=MacroStepType.KEY_PRESS.value, key="b")
+                ]
             )
 
             start_time = time.time()
@@ -108,7 +105,7 @@ class TestMacroExecutionBasics:
         """Test executing mouse click macro"""
         runner = MacroRunner()
 
-        with patch("pynput.mouse.Controller") as mock_mouse_class:
+        with patch('pynput.mouse.Controller') as mock_mouse_class:
             mock_mouse = MagicMock()
             mock_mouse_class.return_value = mock_mouse
 
@@ -117,8 +114,13 @@ class TestMacroExecutionBasics:
                 name="Test",
                 description="Test",
                 steps=[
-                    MacroStep(type=MacroStepType.MOUSE_CLICK.value, button="left", x=100, y=200)
-                ],
+                    MacroStep(
+                        type=MacroStepType.MOUSE_CLICK.value,
+                        button="left",
+                        x=100,
+                        y=200
+                    )
+                ]
             )
 
             result = runner.execute_macro(macro)
@@ -130,7 +132,7 @@ class TestMacroExecutionBasics:
         """Test executing mouse move macro"""
         runner = MacroRunner()
 
-        with patch("pynput.mouse.Controller") as mock_mouse_class:
+        with patch('pynput.mouse.Controller') as mock_mouse_class:
             mock_mouse = MagicMock()
             mock_mouse_class.return_value = mock_mouse
 
@@ -138,7 +140,13 @@ class TestMacroExecutionBasics:
                 id="test",
                 name="Test",
                 description="Test",
-                steps=[MacroStep(type=MacroStepType.MOUSE_MOVE.value, x=500, y=300)],
+                steps=[
+                    MacroStep(
+                        type=MacroStepType.MOUSE_MOVE.value,
+                        x=500,
+                        y=300
+                    )
+                ]
             )
 
             result = runner.execute_macro(macro)
@@ -153,7 +161,7 @@ class TestSafetyLimits:
         """Test that max repeat limit is enforced"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller"):
+        with patch('pynput.keyboard.Controller'):
             # Create macro with excessive repeat
             macro = Macro(
                 id="test",
@@ -161,7 +169,7 @@ class TestSafetyLimits:
                 description="Test",
                 steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")],
                 repeat=1000,  # Excessive repeat
-                max_repeat=10,  # Limit to 10
+                max_repeat=10  # Limit to 10
             )
 
             # Should respect max_repeat
@@ -174,15 +182,17 @@ class TestSafetyLimits:
         """Test that execution timeout is enforced"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller"):
+        with patch('pynput.keyboard.Controller'):
             # Create macro that would take too long
             macro = Macro(
                 id="test",
                 name="Test",
                 description="Test",
-                steps=[MacroStep(type=MacroStepType.DELAY.value, duration_ms=100)],
+                steps=[
+                    MacroStep(type=MacroStepType.DELAY.value, duration_ms=100)
+                ],
                 repeat=1000,  # Would take 100 seconds
-                execution_timeout=1,  # Timeout after 1 second
+                execution_timeout=1  # Timeout after 1 second
             )
 
             start_time = time.time()
@@ -201,7 +211,7 @@ class TestSafetyLimits:
             id="test",
             name="Test",
             description="Test",
-            steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")],
+            steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")]
         )
 
         result = runner.execute_macro(macro)
@@ -221,12 +231,14 @@ class TestExecutionStates:
 
         assert runner.state == MacroExecutionState.IDLE
 
-        with patch("pynput.keyboard.Controller"):
+        with patch('pynput.keyboard.Controller'):
             macro = Macro(
                 id="test",
                 name="Test",
                 description="Test",
-                steps=[MacroStep(type=MacroStepType.DELAY.value, duration_ms=100)],
+                steps=[
+                    MacroStep(type=MacroStepType.DELAY.value, duration_ms=100)
+                ]
             )
 
             # Start execution in background if possible
@@ -237,15 +249,15 @@ class TestExecutionStates:
         """Test state transition to COMPLETED"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller"):
-            macro = Macro(  # noqa: F841
+        with patch('pynput.keyboard.Controller'):
+            macro = Macro(
                 id="test",
                 name="Test",
                 description="Test",
-                steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")],
+                steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")]
             )
 
-            runner.execute_macro(macro)
+            result = runner.execute_macro(macro)
 
             # After execution, should be idle or completed
             assert runner.state in [MacroExecutionState.IDLE, MacroExecutionState.COMPLETED]
@@ -257,12 +269,12 @@ class TestExecutionStates:
         assert not runner.is_running()
 
         # After execution completes, should not be running
-        with patch("pynput.keyboard.Controller"):
+        with patch('pynput.keyboard.Controller'):
             macro = Macro(
                 id="test",
                 name="Test",
                 description="Test",
-                steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")],
+                steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")]
             )
 
             result = runner.execute_macro(macro)
@@ -277,12 +289,15 @@ class TestStopFunctionality:
         """Test stopping a running macro"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller"):
+        with patch('pynput.keyboard.Controller'):
             # Just test that stop_macro exists and is callable
             runner.stop_macro()
 
             # Should be able to call even when nothing is running
-            assert runner.state in [MacroExecutionState.IDLE, MacroExecutionState.COMPLETED]
+            assert runner.state in [
+                MacroExecutionState.IDLE,
+                MacroExecutionState.COMPLETED
+            ]
 
     def test_stop_during_execution(self):
         """Test stopping macro during execution"""
@@ -290,7 +305,7 @@ class TestStopFunctionality:
 
         # This test would require threading/async execution
         # For now, just verify the method exists
-        assert hasattr(runner, "stop_macro")
+        assert hasattr(runner, 'stop_macro')
         assert callable(runner.stop_macro)
 
 
@@ -303,7 +318,12 @@ class TestErrorHandling:
         runner = MacroRunner()
 
         # Macro with no steps
-        invalid_macro = Macro(id="test", name="Test", description="Test", steps=[])
+        invalid_macro = Macro(
+            id="test",
+            name="Test",
+            description="Test",
+            steps=[]
+        )
 
         result = runner.execute_macro(invalid_macro)
 
@@ -314,13 +334,15 @@ class TestErrorHandling:
         """Test execution with invalid step type"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller"):
+        with patch('pynput.keyboard.Controller'):
             # Macro with invalid step
             macro = Macro(
                 id="test",
                 name="Test",
                 description="Test",
-                steps=[MacroStep(type="invalid_type", key="a")],
+                steps=[
+                    MacroStep(type="invalid_type", key="a")
+                ]
             )
 
             # Should handle error gracefully
@@ -335,12 +357,12 @@ class TestErrorHandling:
         """Test handling of keyboard controller failure"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller", side_effect=Exception("Keyboard unavailable")):
+        with patch('pynput.keyboard.Controller', side_effect=Exception("Keyboard unavailable")):
             macro = Macro(
                 id="test",
                 name="Test",
                 description="Test",
-                steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")],
+                steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")]
             )
 
             # Should handle keyboard failure gracefully
@@ -362,15 +384,15 @@ class TestExecutionResults:
         """Test result from successful execution"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller"):
+        with patch('pynput.keyboard.Controller'):
             macro = Macro(
                 id="test",
                 name="Test",
                 description="Test",
-                steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")],
+                steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")]
             )
 
-            result = runner.execute_macro(macro)  # noqa: F841  # noqa: F841
+            result = runner.execute_macro(macro)
 
             # execute_macro returns bool
             assert result is not None
@@ -381,9 +403,14 @@ class TestExecutionResults:
         runner = MacroRunner()
 
         # Invalid macro
-        macro = Macro(id="test", name="Test", description="Test", steps=[])
+        macro = Macro(
+            id="test",
+            name="Test",
+            description="Test",
+            steps=[]
+        )
 
-        result = runner.execute_macro(macro)  # noqa: F841
+        result = runner.execute_macro(macro)
 
         # execute_macro returns bool - False indicates failed to start
         # For invalid macros, it should return False
@@ -400,7 +427,7 @@ class TestInputSimulation:
         """Test keyboard press and release simulation"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller") as mock_kb_class:
+        with patch('pynput.keyboard.Controller') as mock_kb_class:
             mock_keyboard = MagicMock()
             mock_kb_class.return_value = mock_keyboard
 
@@ -411,8 +438,8 @@ class TestInputSimulation:
                 steps=[
                     MacroStep(type=MacroStepType.KEY_DOWN.value, key="shift"),
                     MacroStep(type=MacroStepType.KEY_PRESS.value, key="a"),
-                    MacroStep(type=MacroStepType.KEY_UP.value, key="shift"),
-                ],
+                    MacroStep(type=MacroStepType.KEY_UP.value, key="shift")
+                ]
             )
 
             result = runner.execute_macro(macro)
@@ -422,7 +449,7 @@ class TestInputSimulation:
         """Test key sequence simulation"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller") as mock_kb_class:
+        with patch('pynput.keyboard.Controller') as mock_kb_class:
             mock_keyboard = MagicMock()
             mock_kb_class.return_value = mock_keyboard
 
@@ -431,8 +458,11 @@ class TestInputSimulation:
                 name="Test",
                 description="Test",
                 steps=[
-                    MacroStep(type=MacroStepType.KEY_SEQUENCE.value, key="hello")  # Type "hello"
-                ],
+                    MacroStep(
+                        type=MacroStepType.KEY_SEQUENCE.value,
+                        key="hello"  # Type "hello"
+                    )
+                ]
             )
 
             result = runner.execute_macro(macro)
@@ -442,7 +472,7 @@ class TestInputSimulation:
         """Test mouse scroll simulation"""
         runner = MacroRunner()
 
-        with patch("pynput.mouse.Controller") as mock_mouse_class:
+        with patch('pynput.mouse.Controller') as mock_mouse_class:
             mock_mouse = MagicMock()
             mock_mouse_class.return_value = mock_mouse
 
@@ -450,7 +480,12 @@ class TestInputSimulation:
                 id="test",
                 name="Test",
                 description="Test",
-                steps=[MacroStep(type=MacroStepType.MOUSE_SCROLL.value, scroll_amount=5)],
+                steps=[
+                    MacroStep(
+                        type=MacroStepType.MOUSE_SCROLL.value,
+                        scroll_amount=5
+                    )
+                ]
             )
 
             result = runner.execute_macro(macro)
@@ -465,7 +500,8 @@ class TestComplexMacros:
         """Test a realistic gaming macro"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller"), patch("pynput.mouse.Controller"):
+        with patch('pynput.keyboard.Controller'), \
+             patch('pynput.mouse.Controller'):
 
             # Simulate a gaming combo: Q -> W -> E with delays
             macro = Macro(
@@ -479,17 +515,18 @@ class TestComplexMacros:
                     MacroStep(type=MacroStepType.DELAY.value, duration_ms=50),
                     MacroStep(type=MacroStepType.KEY_PRESS.value, key="e"),
                 ],
-                repeat=1,
+                repeat=1
             )
 
-            result = runner.execute_macro(macro)  # noqa: F841
+            result = runner.execute_macro(macro)
             assert result is not None
 
     def test_macro_with_mouse_and_keyboard(self):
         """Test macro combining mouse and keyboard inputs"""
         runner = MacroRunner()
 
-        with patch("pynput.keyboard.Controller"), patch("pynput.mouse.Controller"):
+        with patch('pynput.keyboard.Controller'), \
+             patch('pynput.mouse.Controller'):
 
             macro = Macro(
                 id="combo",
@@ -497,9 +534,14 @@ class TestComplexMacros:
                 description="Keyboard and mouse combo",
                 steps=[
                     MacroStep(type=MacroStepType.KEY_DOWN.value, key="shift"),
-                    MacroStep(type=MacroStepType.MOUSE_CLICK.value, button="left", x=500, y=300),
-                    MacroStep(type=MacroStepType.KEY_UP.value, key="shift"),
-                ],
+                    MacroStep(
+                        type=MacroStepType.MOUSE_CLICK.value,
+                        button="left",
+                        x=500,
+                        y=300
+                    ),
+                    MacroStep(type=MacroStepType.KEY_UP.value, key="shift")
+                ]
             )
 
             result = runner.execute_macro(macro)
@@ -518,9 +560,9 @@ class TestDurationCalculation:
             description="Test",
             steps=[
                 MacroStep(type=MacroStepType.DELAY.value, duration_ms=100),
-                MacroStep(type=MacroStepType.DELAY.value, duration_ms=200),
+                MacroStep(type=MacroStepType.DELAY.value, duration_ms=200)
             ],
-            repeat=1,
+            repeat=1
         )
 
         duration = macro.get_total_duration()
@@ -532,8 +574,10 @@ class TestDurationCalculation:
             id="test",
             name="Test",
             description="Test",
-            steps=[MacroStep(type=MacroStepType.DELAY.value, duration_ms=100)],
-            repeat=5,
+            steps=[
+                MacroStep(type=MacroStepType.DELAY.value, duration_ms=100)
+            ],
+            repeat=5
         )
 
         duration = macro.get_total_duration()

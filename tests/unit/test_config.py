@@ -3,11 +3,9 @@ Unit tests for Config module
 
 Tests configuration management, API key handling, and persistence.
 """
-
-
-from pathlib import Path
-
 import pytest
+import os
+from pathlib import Path
 
 
 @pytest.mark.unit
@@ -20,7 +18,7 @@ class TestConfig:
 
         config = Config(require_keys=False)
         assert config is not None
-        assert hasattr(config, "ai_provider")
+        assert hasattr(config, 'ai_provider')
 
     def test_config_ai_provider_default(self, clean_config_dir):
         """Test default AI provider setting"""
@@ -44,10 +42,10 @@ class TestConfig:
         from config import Config
 
         config = Config(require_keys=False)
-        assert hasattr(config, "overlay_x")
-        assert hasattr(config, "overlay_y")
-        assert hasattr(config, "overlay_width")
-        assert hasattr(config, "overlay_height")
+        assert hasattr(config, 'overlay_x')
+        assert hasattr(config, 'overlay_y')
+        assert hasattr(config, 'overlay_width')
+        assert hasattr(config, 'overlay_height')
 
     def test_config_get_effective_provider(self, clean_config_dir):
         """Test getting effective provider"""

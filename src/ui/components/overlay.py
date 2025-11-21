@@ -5,22 +5,20 @@ Omnix Overlay Components
 Components specifically designed for the in-game overlay.
 """
 
-from typing import Optional
-
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor  # noqa: F401
 from PyQt6.QtWidgets import (
-    QFrame,
+    QWidget,
+    QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QTextEdit,
-    QVBoxLayout,
-    QWidget,
+    QFrame,
 )
-
-from ..tokens import COLORS, RADIUS, SPACING, TYPOGRAPHY
-from .buttons import OmnixButton
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QColor
+from typing import Optional
+from ..tokens import COLORS, SPACING, RADIUS, TYPOGRAPHY
 from .inputs import OmnixLineEdit
+from .buttons import OmnixButton
 
 
 class OmnixOverlayPanel(QFrame):
@@ -54,16 +52,14 @@ class OmnixOverlayPanel(QFrame):
         self.setFrameShape(QFrame.Shape.StyledPanel)
 
         # Apply styling
-        bg_alpha = format(int(opacity * 255), "02x")
-        self.setStyleSheet(
-            f"""
+        bg_alpha = format(int(opacity * 255), '02x')
+        self.setStyleSheet(f"""
             OmnixOverlayPanel {{
                 background-color: #0F0F1A{bg_alpha};
                 border: 1px solid {COLORS.accent_primary};
                 border-radius: {RADIUS.md}px;
             }}
-        """
-        )
+        """)
 
         # Create layout
         self._layout = QVBoxLayout(self)
@@ -113,8 +109,7 @@ class OmnixOverlayChatWidget(QWidget):
         self.chat_display.setReadOnly(True)
         self.chat_display.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.chat_display.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.chat_display.setStyleSheet(
-            f"""
+        self.chat_display.setStyleSheet(f"""
             QTextEdit {{
                 background-color: #2A2A4A80;
                 color: {COLORS.text_primary};
@@ -123,8 +118,7 @@ class OmnixOverlayChatWidget(QWidget):
                 padding: {SPACING.sm}px;
                 font-size: {TYPOGRAPHY.size_sm}pt;
             }}
-        """
-        )
+        """)
         layout.addWidget(self.chat_display, 1)
 
         # Input area
@@ -136,8 +130,7 @@ class OmnixOverlayChatWidget(QWidget):
         # Input field
         self.input_field = OmnixLineEdit(placeholder="Ask Omnix...")
         self.input_field.returnPressed.connect(self._send_message)
-        self.input_field.setStyleSheet(
-            f"""
+        self.input_field.setStyleSheet(f"""
             QLineEdit {{
                 background-color: #2A2A4AB2;
                 color: {COLORS.text_primary};
@@ -149,15 +142,13 @@ class OmnixOverlayChatWidget(QWidget):
             QLineEdit:focus {{
                 border: 2px solid {COLORS.accent_primary_bright};
             }}
-        """
-        )
+        """)
         input_layout.addWidget(self.input_field, 1)
 
         # Send button
         self.send_button = OmnixButton("Send", style="primary")
         self.send_button.clicked.connect(self._send_message)
-        self.send_button.setStyleSheet(
-            f"""
+        self.send_button.setStyleSheet(f"""
             QPushButton {{
                 background-color: #00BFFF4D;
                 color: {COLORS.text_primary};
@@ -170,8 +161,7 @@ class OmnixOverlayChatWidget(QWidget):
             QPushButton:hover {{
                 background-color: {COLORS.accent_primary};
             }}
-        """
-        )
+        """)
         input_layout.addWidget(self.send_button)
 
         layout.addWidget(input_container)
@@ -249,9 +239,9 @@ class OmnixOverlayTip(QWidget):
 
         # Set window flags for overlay
         self.setWindowFlags(
-            Qt.WindowType.ToolTip
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
+            Qt.WindowType.ToolTip |
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
@@ -264,8 +254,7 @@ class OmnixOverlayTip(QWidget):
         border_color = tip_colors.get(tip_type, COLORS.accent_primary)
 
         # Styling
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             QWidget {{
                 background-color: #2A2A4AE6;
                 border: 1px solid {border_color};
@@ -275,8 +264,7 @@ class OmnixOverlayTip(QWidget):
                 color: {COLORS.text_primary};
                 font-size: {TYPOGRAPHY.size_sm}pt;
             }}
-        """
-        )
+        """)
 
         # Layout
         layout = QHBoxLayout(self)
@@ -354,15 +342,13 @@ class OmnixOverlayStatus(QWidget):
         super().__init__(parent)
 
         # Styling
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             QWidget {{
                 background-color: #2A2A4ACC;
                 border: 1px solid {COLORS.accent_primary};
                 border-radius: {RADIUS.sm}px;
             }}
-        """
-        )
+        """)
 
         # Layout
         layout = QHBoxLayout(self)
@@ -376,15 +362,13 @@ class OmnixOverlayStatus(QWidget):
 
         # Status text
         self.status_text = QLabel("Ready")
-        self.status_text.setStyleSheet(
-            f"""
+        self.status_text.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS.text_primary};
                 font-size: {TYPOGRAPHY.size_xs}pt;
                 font-weight: {TYPOGRAPHY.weight_medium};
             }}
-        """
-        )
+        """)
         layout.addWidget(self.status_text)
 
         # Set default status
@@ -409,11 +393,9 @@ class OmnixOverlayStatus(QWidget):
 
         color = status_colors.get(status, COLORS.info)
 
-        self.indicator.setStyleSheet(
-            f"""
+        self.indicator.setStyleSheet(f"""
             QLabel {{
                 background-color: {color};
                 border-radius: 4px;
             }}
-        """
-        )
+        """)

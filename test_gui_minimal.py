@@ -4,15 +4,14 @@ Minimal GUI test to verify PyQt6 and virtual display setup
 """
 import os
 import sys
-
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel
 from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QApplication, QLabel, QMainWindow
 
 
 def test_gui():
     """Test basic GUI functionality in offscreen mode or skip gracefully."""
     # Ensure offscreen platform for headless CI
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
     try:
         app = QApplication.instance() or QApplication(sys.argv)
@@ -38,7 +37,6 @@ def test_gui():
     # Auto-close after 100ms and return success
     QTimer.singleShot(100, app.quit)
     return app.exec()
-
 
 if __name__ == "__main__":
     sys.exit(test_gui())

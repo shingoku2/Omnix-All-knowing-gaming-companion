@@ -6,16 +6,15 @@ Creates a standalone .exe for Windows
 """
 
 import os
-import shutil
-import subprocess
 import sys
+import subprocess
+import shutil
 
 # Set UTF-8 encoding for Windows console
-if sys.platform == "win32":
+if sys.platform == 'win32':
     import codecs
-
-    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer, "strict")
-    sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, "strict")
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 print("=" * 70)
 print("GAMING AI ASSISTANT - WINDOWS EXECUTABLE BUILDER")
@@ -23,8 +22,7 @@ print("=" * 70)
 
 # Check if PyInstaller is installed
 try:
-    import PyInstaller  # noqa: F401
-
+    import PyInstaller
     print("\n✓ PyInstaller found")
 except ImportError:
     print("\n✗ PyInstaller not found. Installing...")
@@ -45,7 +43,12 @@ print("\n[2/4] Building Windows executable...")
 print("  Using GamingAIAssistant.spec for build configuration...")
 print("  This may take several minutes...\n")
 
-cmd = ["pyinstaller", "GamingAIAssistant.spec", "--clean", "--noconfirm"]
+cmd = [
+    "pyinstaller",
+    "GamingAIAssistant.spec",
+    "--clean",
+    "--noconfirm"
+]
 
 result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -117,22 +120,22 @@ dist_name = "GamingAIAssistant_Windows"
 if os.path.exists(f"{dist_name}.zip"):
     os.remove(f"{dist_name}.zip")
 
-shutil.make_archive(dist_name, "zip", "dist", "GamingAIAssistant")
+shutil.make_archive(dist_name, 'zip', 'dist', 'GamingAIAssistant')
 print(f"  ✓ Created {dist_name}.zip")
 
 # Summary
 print("\n" + "=" * 70)
 print("BUILD COMPLETE!")
 print("=" * 70)
-print("\n📦 Windows executable created:")
-print("   Location: dist/GamingAIAssistant/GamingAIAssistant.exe")
-print("\n📦 Distribution package:")
+print(f"\n📦 Windows executable created:")
+print(f"   Location: dist/GamingAIAssistant/GamingAIAssistant.exe")
+print(f"\n📦 Distribution package:")
 print(f"   File: {dist_name}.zip")
-print("\n💡 To use on Windows:")
+print(f"\n💡 To use on Windows:")
 print(f"   1. Extract {dist_name}.zip")
-print("   2. Run GamingAIAssistant.exe")
-print("   3. Setup Wizard will guide you through API key configuration")
-print("\n🔒 Security:")
-print("   - API keys are stored securely in system credential manager")
-print("   - NOT stored in .env files!")
+print(f"   2. Run GamingAIAssistant.exe")
+print(f"   3. Setup Wizard will guide you through API key configuration")
+print(f"\n🔒 Security:")
+print(f"   - API keys are stored securely in system credential manager")
+print(f"   - NOT stored in .env files!")
 print("=" * 70)

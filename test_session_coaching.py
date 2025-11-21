@@ -5,17 +5,16 @@ Tests session recap generation, event formatting, and coaching insights
 
 import os
 import sys
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
-
+from datetime import datetime, timedelta
+from unittest.mock import Mock, MagicMock, patch, AsyncMock
 import pytest
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from src.config import Config
+from src.session_logger import SessionLogger, SessionEvent
 from src.session_coaching import SessionCoach
-from src.session_logger import SessionEvent, SessionLogger
+from src.config import Config
 
 
 @pytest.mark.unit
@@ -23,7 +22,8 @@ class TestSessionCoachInitialization:
     """Test session coach initialization"""
 
     def test_initialization_default(self, temp_config_dir):
-
+        """Test default initialization"""
+        config = Config(config_dir=str(temp_config_dir))
         coach = SessionCoach(config=config)
 
         assert coach is not None
@@ -65,7 +65,7 @@ class TestEventFormatting:
                 event_type="question",
                 game_profile_id="elden_ring",
                 content="How do I beat Margit?",
-                meta={},
+                meta={}
             )
         ]
 
@@ -95,7 +95,7 @@ class TestEventFormatting:
                 event_type="question",
                 game_profile_id="test",
                 content="Test question",
-                meta={},
+                meta={}
             )
         ]
 
@@ -116,7 +116,7 @@ class TestSessionRecapGeneration:
         coach = SessionCoach(config=config)
 
         # Mock the AI router
-        with patch.object(coach, "router") as mock_router:
+        with patch.object(coach, 'router') as mock_router:
             mock_provider = MagicMock()
             mock_router.get_default_provider.return_value = mock_provider
 
@@ -152,7 +152,7 @@ class TestSessionRecapGeneration:
         config = Config(config_dir=str(temp_config_dir))
         coach = SessionCoach(config=config)
 
-        with patch.object(coach, "router") as mock_router:
+        with patch.object(coach, 'router') as mock_router:
             mock_provider = MagicMock()
             mock_router.get_default_provider.return_value = mock_provider
 
@@ -184,22 +184,26 @@ class TestInsightsGeneration:
 
         # Add some events
         logger.log_event(
-            game_profile_id="elden_ring", event_type="question", content="How do I beat Margit?"
+            game_profile_id="elden_ring",
+            event_type="question",
+            content="How do I beat Margit?"
         )
         logger.log_event(
             game_profile_id="elden_ring",
             event_type="answer",
-            content="Use ranged attacks and summons",
+            content="Use ranged attacks and summons"
         )
 
         coach = SessionCoach(session_logger=logger, config=config)
 
-        with patch.object(coach, "router") as mock_router:
+        with patch.object(coach, 'router') as mock_router:
             mock_provider = MagicMock()
             mock_router.get_default_provider.return_value = mock_provider
 
             async def mock_chat(messages, **kwargs):
-                return {"content": "Focus on learning boss patterns. Practice dodging."}
+                return {
+                    "content": "Focus on learning boss patterns. Practice dodging."
+                }
 
             mock_provider.chat = mock_chat
 
@@ -216,12 +220,14 @@ class TestInsightsGeneration:
 
         # Add events
         logger.log_event(
-            game_profile_id="test_game", event_type="question", content="Help with strategy"
+            game_profile_id="test_game",
+            event_type="question",
+            content="Help with strategy"
         )
 
         coach = SessionCoach(session_logger=logger, config=config)
 
-        with patch.object(coach, "router") as mock_router:
+        with patch.object(coach, 'router') as mock_router:
             mock_provider = MagicMock()
             mock_router.get_default_provider.return_value = mock_provider
 
@@ -246,8 +252,16 @@ class TestSessionSummaryIntegration:
         logger = SessionLogger(config_dir=str(temp_config_dir))
 
         # Log some events
-        logger.log_event(game_profile_id="test_game", event_type="question", content="Question 1")
-        logger.log_event(game_profile_id="test_game", event_type="answer", content="Answer 1")
+        logger.log_event(
+            game_profile_id="test_game",
+            event_type="question",
+            content="Question 1"
+        )
+        logger.log_event(
+            game_profile_id="test_game",
+            event_type="answer",
+            content="Answer 1"
+        )
 
         coach = SessionCoach(session_logger=logger, config=config)
 
@@ -266,20 +280,24 @@ class TestSessionSummaryIntegration:
         # Log various event types
         for i in range(5):
             logger.log_event(
-                game_profile_id="test_game", event_type="question", content=f"Question {i}"
+                game_profile_id="test_game",
+                event_type="question",
+                content=f"Question {i}"
             )
 
         for i in range(5):
             logger.log_event(
-                game_profile_id="test_game", event_type="answer", content=f"Answer {i}"
+                game_profile_id="test_game",
+                event_type="answer",
+                content=f"Answer {i}"
             )
 
         # Get summary
         summary = logger.get_session_summary("test_game")
 
-        assert summary["total_events"] == 10
-        assert summary["event_types"]["question"] == 5
-        assert summary["event_types"]["answer"] == 5
+        assert summary['total_events'] == 10
+        assert summary['event_types']['question'] == 5
+        assert summary['event_types']['answer'] == 5
 
 
 @pytest.mark.unit
@@ -294,7 +312,7 @@ class TestRecapPromptConstruction:
 
         captured_messages = []
 
-        with patch.object(coach, "router") as mock_router:
+        with patch.object(coach, 'router') as mock_router:
             mock_provider = MagicMock()
             mock_router.get_default_provider.return_value = mock_provider
 
@@ -323,7 +341,7 @@ class TestRecapPromptConstruction:
 
         captured_messages = []
 
-        with patch.object(coach, "router") as mock_router:
+        with patch.object(coach, 'router') as mock_router:
             mock_provider = MagicMock()
             mock_router.get_default_provider.return_value = mock_provider
 
@@ -350,7 +368,7 @@ class TestErrorHandling:
         config = Config(config_dir=str(temp_config_dir))
         coach = SessionCoach(config=config)
 
-        with patch.object(coach, "router") as mock_router:
+        with patch.object(coach, 'router') as mock_router:
             mock_router.get_default_provider.return_value = None
 
             # Should handle missing provider gracefully
@@ -393,7 +411,7 @@ class TestEndToEndCoaching:
 
         coach = SessionCoach(session_logger=logger, config=config)
 
-        with patch.object(coach, "router") as mock_router:
+        with patch.object(coach, 'router') as mock_router:
             mock_provider = MagicMock()
             mock_router.get_default_provider.return_value = mock_provider
 
@@ -409,7 +427,7 @@ class TestEndToEndCoaching:
             assert len(events) == 4
 
             # Generate recap
-            recap = await coach.generate_recap("elden_ring", events)  # noqa: F841
+            recap = await coach.generate_recap("elden_ring", events)
             assert recap is not None
             assert len(recap) > 0
 

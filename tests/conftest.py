@@ -3,23 +3,21 @@ Pytest configuration and fixtures for Omnix test suite
 
 Provides common fixtures and configuration for all tests.
 """
-
 import os
 import sys
 import tempfile
+import pytest
 from pathlib import Path
 
-import pytest
-
 # Ensure QT_QPA_PLATFORM is set before any Qt imports
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 # Set master password for credential store in test environments
 # This allows tests to run in CI where system keyring is unavailable
-os.environ.setdefault("OMNIX_MASTER_PASSWORD", "test-master-password-for-ci")
+os.environ.setdefault('OMNIX_MASTER_PASSWORD', 'test-master-password-for-ci')
 
 # Add src to path
-src_path = Path(__file__).parent.parent / "src"
+src_path = Path(__file__).parent.parent / 'src'
 sys.path.insert(0, str(src_path))
 
 
@@ -48,13 +46,12 @@ def mock_api_key():
 def mock_game_profile():
     """Provide a test game profile"""
     from game_profile import GameProfile
-
     return GameProfile(
         id="test_game",
         display_name="Test Game",
         exe_names=["testgame.exe"],
         system_prompt="You are a test assistant",
-        default_provider="anthropic",
+        default_provider="anthropic"
     )
 
 
@@ -62,7 +59,6 @@ def mock_game_profile():
 def game_detector():
     """Provide a GameDetector instance"""
     from game_detector import GameDetector
-
     return GameDetector()
 
 
@@ -70,7 +66,6 @@ def game_detector():
 def game_profile_store():
     """Provide a GameProfileStore instance"""
     from game_profile import GameProfileStore
-
     return GameProfileStore()
 
 
@@ -78,7 +73,6 @@ def game_profile_store():
 def config(temp_dir):
     """Provide a test Config instance"""
     from config import Config
-
     config_path = temp_dir / "test_config.json"
     return Config(config_path=str(config_path), require_keys=False)
 
@@ -87,7 +81,6 @@ def config(temp_dir):
 def macro_store(temp_dir):
     """Provide a MacroStore instance"""
     from macro_store import MacroStore
-
     return MacroStore(str(temp_dir))
 
 
@@ -95,7 +88,6 @@ def macro_store(temp_dir):
 def knowledge_pack_store(temp_dir):
     """Provide a KnowledgePackStore instance"""
     from knowledge_store import KnowledgePackStore
-
     return KnowledgePackStore(config_dir=str(temp_dir))
 
 
@@ -103,16 +95,17 @@ def knowledge_pack_store(temp_dir):
 def knowledge_index(temp_dir):
     """Provide a KnowledgeIndex instance"""
     from knowledge_index import KnowledgeIndex, SimpleTFIDFEmbedding
-
     embedding_provider = SimpleTFIDFEmbedding()
-    return KnowledgeIndex(config_dir=str(temp_dir), embedding_provider=embedding_provider)
+    return KnowledgeIndex(
+        config_dir=str(temp_dir),
+        embedding_provider=embedding_provider
+    )
 
 
 @pytest.fixture
 def session_logger(temp_dir):
     """Provide a SessionLogger instance"""
     from session_logger import SessionLogger
-
     return SessionLogger(config_dir=str(temp_dir))
 
 
@@ -125,7 +118,7 @@ def sample_knowledge_pack():
         id="sample_source",
         type="note",
         title="Sample Note",
-        content="This is sample content for testing knowledge packs.",
+        content="This is sample content for testing knowledge packs."
     )
 
     return KnowledgePack(
@@ -133,7 +126,7 @@ def sample_knowledge_pack():
         name="Sample Pack",
         description="A sample knowledge pack for testing",
         game_profile_id="test_game",
-        sources=[source],
+        sources=[source]
     )
 
 
@@ -149,6 +142,6 @@ def sample_macro():
         steps=[
             MacroStep(type=MacroStepType.KEY_PRESS.value, key="a"),
             MacroStep(type=MacroStepType.DELAY.value, duration_ms=100),
-            MacroStep(type=MacroStepType.KEY_PRESS.value, key="b"),
-        ],
+            MacroStep(type=MacroStepType.KEY_PRESS.value, key="b")
+        ]
     )

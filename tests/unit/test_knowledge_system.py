@@ -3,11 +3,9 @@ Unit tests for Knowledge Pack system
 
 Tests knowledge pack creation, storage, indexing, and retrieval.
 """
-
-from datetime import datetime  # noqa: F401
-from pathlib import Path
-
 import pytest
+from pathlib import Path
+from datetime import datetime
 
 
 @pytest.mark.unit
@@ -19,7 +17,10 @@ class TestKnowledgeModels:
         from knowledge_pack import KnowledgeSource
 
         source = KnowledgeSource(
-            id="test_source", type="note", title="Test Note", content="This is test content"
+            id="test_source",
+            type="note",
+            title="Test Note",
+            content="This is test content"
         )
 
         assert source.id == "test_source"
@@ -32,26 +33,40 @@ class TestKnowledgeModels:
 
         # Valid file source
         file_source = KnowledgeSource(
-            id="file1", type="file", title="File", path="/path/to/file.txt"
+            id="file1",
+            type="file",
+            title="File",
+            path="/path/to/file.txt"
         )
         assert file_source.validate() is True
 
         # Invalid file source (no path)
-        invalid_file = KnowledgeSource(id="file2", type="file", title="File")
+        invalid_file = KnowledgeSource(
+            id="file2",
+            type="file",
+            title="File"
+        )
         assert invalid_file.validate() is False
 
     def test_knowledge_pack_creation(self):
         """Test creating a knowledge pack"""
         from knowledge_pack import KnowledgePack, KnowledgeSource
 
-        sources = [KnowledgeSource(id="s1", type="note", title="Note 1", content="Content 1")]
+        sources = [
+            KnowledgeSource(
+                id="s1",
+                type="note",
+                title="Note 1",
+                content="Content 1"
+            )
+        ]
 
         pack = KnowledgePack(
             id="pack1",
             name="Test Pack",
             description="A test pack",
             game_profile_id="elden_ring",
-            sources=sources,
+            sources=sources
         )
 
         assert pack.id == "pack1"
@@ -67,11 +82,16 @@ class TestKnowledgeModels:
             name="Test Pack",
             description="Test",
             game_profile_id="elden_ring",
-            sources=[],
+            sources=[]
         )
 
         # Add source
-        source = KnowledgeSource(id="s1", type="note", title="Note 1", content="Content 1")
+        source = KnowledgeSource(
+            id="s1",
+            type="note",
+            title="Note 1",
+            content="Content 1"
+        )
         pack.add_source(source)
         assert pack.get_source_count() == 1
 
@@ -84,12 +104,16 @@ class TestKnowledgeModels:
         from knowledge_pack import KnowledgePack
 
         pack = KnowledgePack(
-            id="pack1", name="Test Pack", description="Test", game_profile_id="game1", sources=[]
+            id="pack1",
+            name="Test Pack",
+            description="Test",
+            game_profile_id="game1",
+            sources=[]
         )
 
         # Serialize
         pack_dict = pack.to_dict()
-        assert pack_dict["id"] == "pack1"
+        assert pack_dict['id'] == 'pack1'
 
         # Deserialize
         pack2 = KnowledgePack.from_dict(pack_dict)
@@ -103,13 +127,17 @@ class TestKnowledgeStore:
 
     def test_save_and_load_pack(self, temp_dir):
         """Test saving and loading a pack"""
-        from knowledge_pack import KnowledgePack
         from knowledge_store import KnowledgePackStore
+        from knowledge_pack import KnowledgePack
 
         store = KnowledgePackStore(config_dir=temp_dir)
 
         pack = KnowledgePack(
-            id="pack1", name="Test Pack", description="Test", game_profile_id="game1", sources=[]
+            id="pack1",
+            name="Test Pack",
+            description="Test",
+            game_profile_id="game1",
+            sources=[]
         )
 
         # Save
@@ -124,13 +152,17 @@ class TestKnowledgeStore:
 
     def test_delete_pack(self, temp_dir):
         """Test deleting a pack"""
-        from knowledge_pack import KnowledgePack
         from knowledge_store import KnowledgePackStore
+        from knowledge_pack import KnowledgePack
 
         store = KnowledgePackStore(config_dir=temp_dir)
 
         pack = KnowledgePack(
-            id="pack1", name="Test Pack", description="Test", game_profile_id="game1", sources=[]
+            id="pack1",
+            name="Test Pack",
+            description="Test",
+            game_profile_id="game1",
+            sources=[]
         )
 
         # Save and delete
@@ -144,16 +176,24 @@ class TestKnowledgeStore:
 
     def test_get_packs_for_game(self, temp_dir):
         """Test filtering packs by game profile"""
-        from knowledge_pack import KnowledgePack
         from knowledge_store import KnowledgePackStore
+        from knowledge_pack import KnowledgePack
 
         store = KnowledgePackStore(config_dir=temp_dir)
 
         pack1 = KnowledgePack(
-            id="pack1", name="Pack 1", description="Test", game_profile_id="game1", sources=[]
+            id="pack1",
+            name="Pack 1",
+            description="Test",
+            game_profile_id="game1",
+            sources=[]
         )
         pack2 = KnowledgePack(
-            id="pack2", name="Pack 2", description="Test", game_profile_id="game2", sources=[]
+            id="pack2",
+            name="Pack 2",
+            description="Test",
+            game_profile_id="game2",
+            sources=[]
         )
 
         store.save_pack(pack1)
@@ -174,7 +214,10 @@ class TestKnowledgeIndex:
         from knowledge_index import KnowledgeIndex, SimpleTFIDFEmbedding
 
         embedding_provider = SimpleTFIDFEmbedding()
-        index = KnowledgeIndex(config_dir=temp_dir, embedding_provider=embedding_provider)
+        index = KnowledgeIndex(
+            config_dir=temp_dir,
+            embedding_provider=embedding_provider
+        )
 
         text = "This is sentence one. This is sentence two. This is sentence three."
         chunks = index._chunk_text(text, chunk_size=30, overlap=10)
@@ -191,14 +234,17 @@ class TestKnowledgeIndex:
 
         # Create index
         embedding_provider = SimpleTFIDFEmbedding()
-        index = KnowledgeIndex(config_dir=temp_dir, embedding_provider=embedding_provider)
+        index = KnowledgeIndex(
+            config_dir=temp_dir,
+            embedding_provider=embedding_provider
+        )
 
         # Create pack with content
         source = KnowledgeSource(
             id="s1",
             type="note",
             title="Build Guide",
-            content="The best build for magic users is to focus on Intelligence stat and use Glintstone Sorcery.",
+            content="The best build for magic users is to focus on Intelligence stat and use Glintstone Sorcery."
         )
 
         pack = KnowledgePack(
@@ -206,7 +252,7 @@ class TestKnowledgeIndex:
             name="Test Pack",
             description="Test",
             game_profile_id="elden_ring",
-            sources=[source],
+            sources=[source]
         )
 
         # Save pack to store (required before indexing)
@@ -218,7 +264,9 @@ class TestKnowledgeIndex:
 
         # Query
         results = index.query(
-            game_profile_id="elden_ring", question="What is the best magic build?", top_k=3
+            game_profile_id="elden_ring",
+            question="What is the best magic build?",
+            top_k=3
         )
 
         # Should find relevant chunks
@@ -231,17 +279,25 @@ class TestKnowledgeIndex:
         from knowledge_pack import KnowledgePack, KnowledgeSource
 
         embedding_provider = SimpleTFIDFEmbedding()
-        index = KnowledgeIndex(config_dir=temp_dir, embedding_provider=embedding_provider)
+        index = KnowledgeIndex(
+            config_dir=temp_dir,
+            embedding_provider=embedding_provider
+        )
 
         # Add pack
-        source = KnowledgeSource(id="s1", type="note", title="Note", content="Test content")
+        source = KnowledgeSource(
+            id="s1",
+            type="note",
+            title="Note",
+            content="Test content"
+        )
 
         pack = KnowledgePack(
             id="pack1",
             name="Test Pack",
             description="Test",
             game_profile_id="game1",
-            sources=[source],
+            sources=[source]
         )
 
         index.add_pack(pack)
@@ -250,7 +306,11 @@ class TestKnowledgeIndex:
         index.remove_pack("pack1")
 
         # Query should return nothing
-        results = index.query(game_profile_id="game1", question="test", top_k=3)
+        results = index.query(
+            game_profile_id="game1",
+            question="test",
+            top_k=3
+        )
         assert len(results) == 0
 
     def test_index_persistence_after_restart(self, temp_dir):
@@ -274,7 +334,7 @@ class TestKnowledgeIndex:
             type="note",
             title="Magic Build Guide",
             content="The best build for magic users is to focus on Intelligence stat and use Glintstone Sorcery. "
-            "You should prioritize leveling Intelligence and Mind. Equip the Staff of Loss for bonus damage.",
+                   "You should prioritize leveling Intelligence and Mind. Equip the Staff of Loss for bonus damage."
         )
 
         pack = KnowledgePack(
@@ -282,7 +342,7 @@ class TestKnowledgeIndex:
             name="Test Pack",
             description="Test pack for persistence",
             game_profile_id="elden_ring",
-            sources=[source],
+            sources=[source]
         )
 
         # Save pack to store (required before indexing)
@@ -291,7 +351,9 @@ class TestKnowledgeIndex:
         # Create first index instance and index the pack
         embedding_provider1 = SimpleTFIDFEmbedding()
         index1 = KnowledgeIndex(
-            config_dir=temp_dir, embedding_provider=embedding_provider1, knowledge_store=store
+            config_dir=temp_dir,
+            embedding_provider=embedding_provider1,
+            knowledge_store=store
         )
         index1.add_pack(pack)
 
@@ -299,7 +361,7 @@ class TestKnowledgeIndex:
         results_before = index1.query(
             game_profile_id="elden_ring",
             question="What stats should I level for magic build?",
-            top_k=3,
+            top_k=3
         )
 
         # Should find relevant results
@@ -315,14 +377,16 @@ class TestKnowledgeIndex:
         # This should load the persisted TF-IDF model from disk
         embedding_provider2 = SimpleTFIDFEmbedding()
         index2 = KnowledgeIndex(
-            config_dir=temp_dir, embedding_provider=embedding_provider2, knowledge_store=store
+            config_dir=temp_dir,
+            embedding_provider=embedding_provider2,
+            knowledge_store=store
         )
 
         # Query after "restart" with same question
         results_after = index2.query(
             game_profile_id="elden_ring",
             question="What stats should I level for magic build?",
-            top_k=3,
+            top_k=3
         )
 
         # Verify results are still valid (not random garbage)
@@ -358,7 +422,7 @@ class TestIngestion:
         test_file.write_text(test_content)
 
         # Ingest
-        content = pipeline.ingest("file", file_path=str(test_file))
+        content = pipeline.ingest('file', file_path=str(test_file))
         assert content == test_content
 
     def test_ingest_note(self):
@@ -368,7 +432,7 @@ class TestIngestion:
         pipeline = IngestionPipeline()
 
         note_content = "This is a test note."
-        content = pipeline.ingest("note", content=note_content)
+        content = pipeline.ingest('note', content=note_content)
         assert content.strip() == note_content
 
     def test_ingest_batch(self, temp_dir):
@@ -382,8 +446,8 @@ class TestIngestion:
         file1.write_text("Content 1")
 
         sources = [
-            {"type": "file", "file_path": str(file1)},
-            {"type": "note", "content": "Note content"},
+            {'type': 'file', 'file_path': str(file1)},
+            {'type': 'note', 'content': 'Note content'}
         ]
 
         results = pipeline.ingest_batch(sources)
@@ -403,7 +467,9 @@ class TestSessionLogger:
         logger = SessionLogger(config_dir=temp_dir)
 
         logger.log_event(
-            game_profile_id="elden_ring", event_type="question", content="How do I beat Malenia?"
+            game_profile_id="elden_ring",
+            event_type="question",
+            content="How do I beat Malenia?"
         )
 
         # Get events
@@ -420,12 +486,14 @@ class TestSessionLogger:
         # Log some events
         for i in range(5):
             logger.log_event(
-                game_profile_id="elden_ring", event_type="question", content=f"Question {i}"
+                game_profile_id="elden_ring",
+                event_type="question",
+                content=f"Question {i}"
             )
 
         summary = logger.get_session_summary("elden_ring")
-        assert summary["total_events"] == 5
-        assert summary["event_types"]["question"] == 5
+        assert summary['total_events'] == 5
+        assert summary['event_types']['question'] == 5
 
     def test_multiple_sessions(self, temp_dir):
         """Test handling multiple game profiles"""
@@ -433,9 +501,17 @@ class TestSessionLogger:
 
         logger = SessionLogger(config_dir=temp_dir)
 
-        logger.log_event(game_profile_id="game1", event_type="question", content="Q1")
+        logger.log_event(
+            game_profile_id="game1",
+            event_type="question",
+            content="Q1"
+        )
 
-        logger.log_event(game_profile_id="game2", event_type="question", content="Q2")
+        logger.log_event(
+            game_profile_id="game2",
+            event_type="question",
+            content="Q2"
+        )
 
         events1 = logger.get_current_session_events("game1")
         events2 = logger.get_current_session_events("game2")

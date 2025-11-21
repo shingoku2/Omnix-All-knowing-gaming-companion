@@ -5,22 +5,21 @@ Live Test Script
 Tests the Gaming AI Assistant with real API calls
 """
 
-import os
 import sys
+import os
 import time
 
 # Set UTF-8 encoding for Windows console
-if sys.platform == "win32":
+if sys.platform == 'win32':
     import codecs
-
-    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer, "strict")
-    sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, "strict")
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 # Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from ai_assistant import AIAssistant
 from config import Config
+from ai_assistant import AIAssistant
 from game_detector import GameDetector
 
 print("=" * 70)
@@ -31,10 +30,10 @@ print("=" * 70)
 print("\n[1/6] Loading configuration...")
 try:
     config = Config()
-    print("✓ Configuration loaded")
+    print(f"✓ Configuration loaded")
     print(f"  - AI Provider: {config.ai_provider}")
-    openai_key = config.get_api_key("openai")
-    anthropic_key = config.get_api_key("anthropic")
+    openai_key = config.get_api_key('openai')
+    anthropic_key = config.get_api_key('anthropic')
     print(f"  - OpenAI Key: {'*' * 20}{openai_key[-10:] if openai_key else 'Not set'}")
     print(f"  - Anthropic Key: {'*' * 20}{anthropic_key[-10:] if anthropic_key else 'Not set'}")
 except Exception as e:
@@ -45,13 +44,13 @@ except Exception as e:
 print("\n[2/6] Initializing game detector...")
 try:
     game_detector = GameDetector()
-    print("✓ Game detector initialized")
+    print(f"✓ Game detector initialized")
     print(f"  - Known games: {len(game_detector.KNOWN_GAMES)}")
     game = game_detector.detect_running_game()
     if game:
         print(f"  - Currently running: {game['name']}")
     else:
-        print("  - No game currently running")
+        print(f"  - No game currently running")
 except Exception as e:
     print(f"✗ Game detector error: {e}")
     sys.exit(1)
@@ -82,11 +81,11 @@ if ai_anthropic:
         elapsed_time = time.time() - start_time
 
         print(f"✓ API call successful (took {elapsed_time:.2f} seconds)")
-        print("\n  AI Response:")
+        print(f"\n  AI Response:")
         print("  " + "-" * 60)
         # Print first 500 chars of response
         response_preview = response[:500] + "..." if len(response) > 500 else response
-        for line in response_preview.split("\n"):
+        for line in response_preview.split('\n'):
             print(f"  {line}")
         print("  " + "-" * 60)
 
@@ -104,11 +103,11 @@ print("\n[5/5] Testing with different game context...")
 try:
     # This test will use the *default* provider, just with a different game.
     ai_test2 = AIAssistant(config=config)
-    print("✓ Second AI assistant initialized")
+    print(f"✓ Second AI assistant initialized")
 
     # Set a test game context
     ai_test2.set_current_game({"name": "Minecraft"})
-    print("✓ Game context set: Minecraft")
+    print(f"✓ Game context set: Minecraft")
 
     # Make a quick test call
     print("  Question: 'What are the basic resources in Minecraft?'")
@@ -120,7 +119,7 @@ try:
     print(f"\n  AI Response:")
     print("  " + "-" * 60)
     response_preview = response[:500] + "..." if len(response) > 500 else response
-    for line in response_preview.split("\n"):
+    for line in response_preview.split('\n'):
         print(f"  {line}")
     print("  " + "-" * 60)
 
@@ -136,12 +135,14 @@ if ai_anthropic:
 
         # Add multiple messages to trigger trimming
         for i in range(25):
-            ai_anthropic.conversation_history.append(
-                {"role": "user", "content": f"Test message {i}"}
-            )
-            ai_anthropic.conversation_history.append(
-                {"role": "assistant", "content": f"Response {i}"}
-            )
+            ai_anthropic.conversation_history.append({
+                "role": "user",
+                "content": f"Test message {i}"
+            })
+            ai_anthropic.conversation_history.append({
+                "role": "assistant",
+                "content": f"Response {i}"
+            })
 
         print(f"  - After adding 50 messages: {len(ai_anthropic.conversation_history)}")
 

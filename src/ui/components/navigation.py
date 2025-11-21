@@ -5,20 +5,19 @@ Omnix Navigation Components
 Navigation components including sidebar and tab navigation.
 """
 
-from typing import Callable, List, Optional
-
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import (
-    QButtonGroup,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QVBoxLayout,
     QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QFrame,
+    QButtonGroup,
 )
-
-from ..tokens import COLORS, RADIUS, SPACING, TYPOGRAPHY
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtGui import QCursor
+from typing import Optional, List, Callable
+from ..tokens import COLORS, SPACING, RADIUS, TYPOGRAPHY
 
 
 class OmnixSidebarButton(QPushButton):
@@ -60,29 +59,25 @@ class OmnixSidebarButton(QPushButton):
         if icon_text:
             icon_label = QLabel(icon_text)
             icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            icon_label.setStyleSheet(
-                f"""
+            icon_label.setStyleSheet(f"""
                 QLabel {{
                     color: {COLORS.text_secondary};
                     font-size: {TYPOGRAPHY.size_2xl}pt;
                 }}
-            """
-            )
+            """)
             layout.addWidget(icon_label)
 
         # Text
         text_label = QLabel(text)
         text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         text_label.setWordWrap(True)
-        text_label.setStyleSheet(
-            f"""
+        text_label.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS.text_secondary};
                 font-size: {TYPOGRAPHY.size_sm}pt;
                 font-weight: {TYPOGRAPHY.weight_medium};
             }}
-        """
-        )
+        """)
         layout.addWidget(text_label)
 
         self.setLayout(layout)
@@ -92,8 +87,7 @@ class OmnixSidebarButton(QPushButton):
 
     def _update_style(self):
         """Update button style."""
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             OmnixSidebarButton {{
                 background-color: transparent;
                 border: none;
@@ -110,8 +104,7 @@ class OmnixSidebarButton(QPushButton):
             OmnixSidebarButton:checked QLabel {{
                 color: {COLORS.text_primary};
             }}
-        """
-        )
+        """)
 
 
 class OmnixSidebar(QWidget):
@@ -141,14 +134,12 @@ class OmnixSidebar(QWidget):
         super().__init__(parent)
 
         # Styling
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             OmnixSidebar {{
                 background-color: {COLORS.bg_primary_alt};
                 border-right: 1px solid {COLORS.border_subtle};
             }}
-        """
-        )
+        """)
 
         # Layout
         layout = QVBoxLayout(self)
@@ -243,14 +234,12 @@ class OmnixHeaderBar(QWidget):
         super().__init__(parent)
 
         # Styling
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             OmnixHeaderBar {{
                 background-color: {COLORS.bg_primary_alt};
                 border-bottom: 1px solid {COLORS.border_subtle};
             }}
-        """
-        )
+        """)
 
         # Fixed height
         self.setFixedHeight(60)
@@ -263,27 +252,23 @@ class OmnixHeaderBar(QWidget):
 
         # Logo
         logo_label = QLabel(logo_text)
-        logo_label.setStyleSheet(
-            f"""
+        logo_label.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS.accent_primary};
                 font-size: {TYPOGRAPHY.size_3xl}pt;
             }}
-        """
-        )
+        """)
         layout.addWidget(logo_label)
 
         # Title
         title_label = QLabel(title)
-        title_label.setStyleSheet(
-            f"""
+        title_label.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS.text_primary};
                 font-size: {TYPOGRAPHY.size_xl}pt;
                 font-weight: {TYPOGRAPHY.weight_bold};
             }}
-        """
-        )
+        """)
         layout.addWidget(title_label)
 
         # Stretch
@@ -296,14 +281,12 @@ class OmnixHeaderBar(QWidget):
 
         # Status text
         self.status_text = QLabel("Offline")
-        self.status_text.setStyleSheet(
-            f"""
+        self.status_text.setStyleSheet(f"""
             QLabel {{
                 color: {COLORS.text_muted};
                 font-size: {TYPOGRAPHY.size_sm}pt;
             }}
-        """
-        )
+        """)
         layout.addWidget(self.status_text)
 
         # Set default status
@@ -328,21 +311,17 @@ class OmnixHeaderBar(QWidget):
 
         color = status_colors.get(status, COLORS.info)
 
-        self.status_indicator.setStyleSheet(
-            f"""
+        self.status_indicator.setStyleSheet(f"""
             QLabel {{
                 background-color: {color};
                 border-radius: 5px;
             }}
-        """
-        )
+        """)
 
-        self.status_text.setStyleSheet(
-            f"""
+        self.status_text.setStyleSheet(f"""
             QLabel {{
                 color: {color};
                 font-size: {TYPOGRAPHY.size_sm}pt;
                 font-weight: {TYPOGRAPHY.weight_medium};
             }}
-        """
-        )
+        """)

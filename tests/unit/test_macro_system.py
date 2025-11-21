@@ -3,11 +3,9 @@ Unit tests for macro and keybind system
 
 Tests macro creation, storage, execution, and keybind management.
 """
-
-
-
-
 import pytest
+import json
+from pathlib import Path
 
 
 @pytest.mark.unit
@@ -18,7 +16,11 @@ class TestMacroStep:
         """Test creating a key press step"""
         from macro_manager import MacroStep, MacroStepType
 
-        step = MacroStep(type=MacroStepType.KEY_PRESS.value, key="a", duration_ms=0)
+        step = MacroStep(
+            type=MacroStepType.KEY_PRESS.value,
+            key="a",
+            duration_ms=0
+        )
 
         assert step.type == "key_press"
         assert step.key == "a"
@@ -27,7 +29,12 @@ class TestMacroStep:
         """Test creating a mouse click step"""
         from macro_manager import MacroStep, MacroStepType
 
-        step = MacroStep(type=MacroStepType.MOUSE_CLICK.value, button="left", x=100, y=200)
+        step = MacroStep(
+            type=MacroStepType.MOUSE_CLICK.value,
+            button="left",
+            x=100,
+            y=200
+        )
 
         assert step.button == "left"
         assert step.x == 100
@@ -37,7 +44,11 @@ class TestMacroStep:
         """Test creating a delay step"""
         from macro_manager import MacroStep, MacroStepType
 
-        step = MacroStep(type=MacroStepType.DELAY.value, duration_ms=500, delay_jitter_ms=100)
+        step = MacroStep(
+            type=MacroStepType.DELAY.value,
+            duration_ms=500,
+            delay_jitter_ms=100
+        )
 
         assert step.duration_ms == 500
         assert step.delay_jitter_ms == 100
@@ -46,7 +57,10 @@ class TestMacroStep:
         """Test MacroStep serialization"""
         from macro_manager import MacroStep, MacroStepType
 
-        step = MacroStep(type=MacroStepType.KEY_PRESS.value, key="b")
+        step = MacroStep(
+            type=MacroStepType.KEY_PRESS.value,
+            key="b"
+        )
 
         # Serialize
         data = step.to_dict()
@@ -114,13 +128,15 @@ class TestMacro:
             id="test_macro",
             name="Test",
             description="Test macro",
-            steps=[MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")],
+            steps=[
+                MacroStep(type=MacroStepType.KEY_PRESS.value, key="a")
+            ]
         )
 
         # Serialize
         macro_dict = macro.to_dict()
         assert isinstance(macro_dict, dict)
-        assert macro_dict["id"] == "test_macro"
+        assert macro_dict['id'] == 'test_macro'
 
         # Deserialize
         restored = Macro.from_dict(macro_dict)
@@ -154,9 +170,9 @@ class TestMacro:
                 MacroStep(type=MacroStepType.KEY_PRESS.value, key="a"),
                 MacroStep(type=MacroStepType.DELAY.value, duration_ms=100),
                 MacroStep(type=MacroStepType.KEY_PRESS.value, key="b"),
-                MacroStep(type=MacroStepType.DELAY.value, duration_ms=200),
+                MacroStep(type=MacroStepType.DELAY.value, duration_ms=200)
             ],
-            repeat=2,
+            repeat=2
         )
 
         duration = macro.get_total_duration()
@@ -170,8 +186,8 @@ class TestMacroStore:
 
     def test_save_and_load_macro(self, temp_dir):
         """Test saving and loading a macro"""
-        from macro_manager import Macro, MacroStep, MacroStepType
         from macro_store import MacroStore
+        from macro_manager import Macro, MacroStep, MacroStepType
 
         store = MacroStore(temp_dir)
 
@@ -181,8 +197,8 @@ class TestMacroStore:
             description="For testing",
             steps=[
                 MacroStep(type=MacroStepType.KEY_PRESS.value, key="a"),
-                MacroStep(type=MacroStepType.DELAY.value, duration_ms=100),
-            ],
+                MacroStep(type=MacroStepType.DELAY.value, duration_ms=100)
+            ]
         )
 
         assert store.save_macro(macro) is True
@@ -194,12 +210,16 @@ class TestMacroStore:
 
     def test_delete_macro(self, temp_dir):
         """Test deleting a macro"""
-        from macro_manager import Macro
         from macro_store import MacroStore
+        from macro_manager import Macro
 
         store = MacroStore(temp_dir)
 
-        macro = Macro(id="delete_test", name="Delete Test", description="Test")
+        macro = Macro(
+            id="delete_test",
+            name="Delete Test",
+            description="Test"
+        )
 
         store.save_macro(macro)
         assert store.delete_macro("delete_test") is True
@@ -209,15 +229,15 @@ class TestMacroStore:
 
     def test_search_macros(self, temp_dir):
         """Test searching macros"""
-        from macro_manager import Macro
         from macro_store import MacroStore
+        from macro_manager import Macro
 
         store = MacroStore(temp_dir)
 
         macros = [
             Macro(id="m1", name="Quick Attack", description="Fast attack combo"),
             Macro(id="m2", name="Dodge Roll", description="Roll away"),
-            Macro(id="m3", name="Quick Heal", description="Use healing spell"),
+            Macro(id="m3", name="Quick Heal", description="Use healing spell")
         ]
 
         for m in macros:
@@ -245,7 +265,7 @@ class TestKeybinds:
             keys="ctrl+shift+g",
             description="Toggle overlay",
             enabled=True,
-            system_wide=True,
+            system_wide=True
         )
 
         assert keybind.action == "toggle_overlay"
@@ -256,7 +276,9 @@ class TestKeybinds:
         from keybind_manager import Keybind, KeybindAction
 
         keybind = Keybind(
-            action=KeybindAction.TOGGLE_OVERLAY.value, keys="ctrl+shift+g", description="Toggle"
+            action=KeybindAction.TOGGLE_OVERLAY.value,
+            keys="ctrl+shift+g",
+            description="Toggle"
         )
 
         data = keybind.to_dict()
@@ -269,7 +291,9 @@ class TestKeybinds:
         from keybind_manager import MacroKeybind
 
         macro_keybind = MacroKeybind(
-            macro_id="attack_combo", keys="alt+1", description="Execute attack combo"
+            macro_id="attack_combo",
+            keys="alt+1",
+            description="Execute attack combo"
         )
 
         assert macro_keybind.macro_id == "attack_combo"
@@ -277,13 +301,21 @@ class TestKeybinds:
 
     def test_keybind_conflict_detection(self):
         """Test keybind conflict detection"""
-        from keybind_manager import Keybind, KeybindManager
+        from keybind_manager import KeybindManager, Keybind
 
         manager = KeybindManager()
 
-        keybind1 = Keybind(action="action1", keys="ctrl+shift+g", description="First")
+        keybind1 = Keybind(
+            action="action1",
+            keys="ctrl+shift+g",
+            description="First"
+        )
 
-        keybind2 = Keybind(action="action2", keys="ctrl+shift+g", description="Second (same keys)")
+        keybind2 = Keybind(
+            action="action2",
+            keys="ctrl+shift+g",
+            description="Second (same keys)"
+        )
 
         # Register first
         assert manager.register_keybind(keybind1, lambda: None) is True
@@ -301,7 +333,7 @@ class TestMacroRunner:
 
     def test_runner_initialization(self):
         """Test macro runner initialization"""
-        from macro_runner import MacroExecutionState, MacroRunner
+        from macro_runner import MacroRunner, MacroExecutionState
 
         runner = MacroRunner(enabled=True)
 

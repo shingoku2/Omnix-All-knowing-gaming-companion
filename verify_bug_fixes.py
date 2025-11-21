@@ -5,14 +5,13 @@ Bug Fix Verification Script
 Verifies that all critical bug fixes are implemented and working correctly.
 """
 
-
 import sys
+import pickle
 import tempfile
 from pathlib import Path
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
-
 
 def test_fix_1_knowledge_index_persistence():
     """
@@ -23,14 +22,13 @@ def test_fix_1_knowledge_index_persistence():
 
     Fix: _save_index() now saves both index and embedding_provider
     """
-    print("\n" + "=" * 70)
+    print("\n" + "="*70)
     print("TEST 1: Knowledge Index TF-IDF Model Persistence")
-    print("=" * 70)
+    print("="*70)
 
-    from datetime import datetime
-
-    from knowledge_index import KnowledgeIndex, SimpleTFIDFEmbedding
+    from knowledge_index import SimpleTFIDFEmbedding, KnowledgeIndex
     from knowledge_pack import KnowledgePack, KnowledgeSource
+    from datetime import datetime
 
     # Create a temporary directory for testing
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -49,12 +47,12 @@ def test_fix_1_knowledge_index_persistence():
                     type="note",
                     title="Test Note",
                     content="The strategy for defeating the boss involves dodging attacks and using fire magic.",
-                    tags=["strategy"],
+                    tags=["strategy"]
                 )
             ],
             enabled=True,
             created_at=datetime.now(),
-            updated_at=datetime.now(),
+            updated_at=datetime.now()
         )
 
         # Index the pack (this should fit the TF-IDF model)
@@ -121,20 +119,19 @@ def test_fix_2_session_token_leakage():
 
     Fix: Config.save_to_env() now removes session token entries
     """
-    print("\n" + "=" * 70)
+    print("\n" + "="*70)
     print("TEST 2: Session Token Leakage Prevention")
-    print("=" * 70)
-
-    import os
+    print("="*70)
 
     from config import Config
+    import os
 
     # Create a temporary .env file
     with tempfile.TemporaryDirectory() as tmpdir:
         env_file = Path(tmpdir) / ".env"
 
         # Create a .env file with legacy session data
-        with open(env_file, "w") as f:
+        with open(env_file, 'w') as f:
             f.write("AI_PROVIDER=anthropic\n")
             f.write("OPENAI_SESSION_DATA={'token': 'secret123'}\n")
             f.write("ANTHROPIC_SESSION_DATA={'token': 'secret456'}\n")
@@ -148,11 +145,12 @@ def test_fix_2_session_token_leakage():
         try:
             os.chdir(tmpdir)
             Config.save_to_env(
-                provider="anthropic", session_tokens=None  # Session tokens parameter is deprecated
+                provider="anthropic",
+                session_tokens=None  # Session tokens parameter is deprecated
             )
 
             # Read the file back
-            with open(env_file, "r") as f:
+            with open(env_file, 'r') as f:
                 content = f.read()
 
             # Check that session tokens are NOT in the file
@@ -188,16 +186,15 @@ def test_fix_3_game_watcher_performance():
 
     Fix: PID caching to avoid redundant process scans
     """
-    print("\n" + "=" * 70)
+    print("\n" + "="*70)
     print("TEST 3: Game Watcher Performance Optimization")
-    print("=" * 70)
+    print("="*70)
+
+    from game_watcher import GameWatcher
+    import platform
 
     # Check if the fix is in the code
     import inspect
-    import platform
-
-    from game_watcher import GameWatcher
-
     source = inspect.getsource(GameWatcher._get_foreground_executable)
 
     if "last_known_pid" in source:
@@ -208,7 +205,7 @@ def test_fix_3_game_watcher_performance():
 
     # Check if the attribute is initialized
     watcher = GameWatcher()
-    if hasattr(watcher, "last_known_pid"):
+    if hasattr(watcher, 'last_known_pid'):
         print("✓ last_known_pid attribute initialized")
     else:
         print("✗ last_known_pid attribute not found")
@@ -237,9 +234,9 @@ def test_fix_4_text_chunking():
 
     Fix: Word-based chunking that respects word boundaries
     """
-    print("\n" + "=" * 70)
+    print("\n" + "="*70)
     print("TEST 4: Word-Boundary Text Chunking")
-    print("=" * 70)
+    print("="*70)
 
     from knowledge_index import KnowledgeIndex
 
@@ -264,7 +261,7 @@ def test_fix_4_text_chunking():
                 print(f"✗ Chunk {i} contains empty words")
                 all_chunks_valid = False
 
-        print(f'  Chunk {i}: "{chunk}"')
+        print(f"  Chunk {i}: \"{chunk}\"")
 
         # Verify the word "strategy" is not split
         if "strat" in chunk.lower() and "strategy" not in chunk.lower():
@@ -295,9 +292,9 @@ def test_fix_4_text_chunking():
 
 def main():
     """Run all verification tests"""
-    print("\n" + "=" * 70)
+    print("\n" + "="*70)
     print("BUG FIX VERIFICATION SUITE")
-    print("=" * 70)
+    print("="*70)
     print("\nThis script verifies that all critical bug fixes are implemented")
     print("and working correctly in the Omnix Gaming Companion codebase.")
 
@@ -308,7 +305,6 @@ def main():
     except Exception as e:
         print(f"\n✗ TEST 1 FAILED WITH EXCEPTION: {e}")
         import traceback
-
         traceback.print_exc()
         results.append(("Knowledge Index Persistence", False))
 
@@ -317,7 +313,6 @@ def main():
     except Exception as e:
         print(f"\n✗ TEST 2 FAILED WITH EXCEPTION: {e}")
         import traceback
-
         traceback.print_exc()
         results.append(("Session Token Leakage", False))
 
@@ -326,7 +321,6 @@ def main():
     except Exception as e:
         print(f"\n✗ TEST 3 FAILED WITH EXCEPTION: {e}")
         import traceback
-
         traceback.print_exc()
         results.append(("Game Watcher Performance", False))
 
@@ -335,14 +329,13 @@ def main():
     except Exception as e:
         print(f"\n✗ TEST 4 FAILED WITH EXCEPTION: {e}")
         import traceback
-
         traceback.print_exc()
         results.append(("Text Chunking", False))
 
     # Print summary
-    print("\n" + "=" * 70)
+    print("\n" + "="*70)
     print("VERIFICATION SUMMARY")
-    print("=" * 70)
+    print("="*70)
 
     for name, passed in results:
         status = "✅ PASS" if passed else "❌ FAIL"
@@ -351,9 +344,9 @@ def main():
     all_passed = all(passed for _, passed in results)
 
     if all_passed:
-        print("\n" + "=" * 70)
+        print("\n" + "="*70)
         print("🎉 ALL BUG FIXES VERIFIED SUCCESSFULLY!")
-        print("=" * 70)
+        print("="*70)
         print("\nThe following critical fixes are confirmed working:")
         print("  1. Knowledge index TF-IDF model persistence")
         print("  2. Session token security (no leakage to .env)")
@@ -361,9 +354,9 @@ def main():
         print("  4. Word-boundary text chunking")
         return 0
     else:
-        print("\n" + "=" * 70)
+        print("\n" + "="*70)
         print("⚠️  SOME TESTS FAILED")
-        print("=" * 70)
+        print("="*70)
         return 1
 
 

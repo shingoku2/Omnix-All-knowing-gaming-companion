@@ -5,11 +5,10 @@ Omnix Button Components
 Button components following the Omnix design system.
 """
 
-from typing import Optional
-
-from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QCursor
+from typing import Optional
 
 
 class OmnixButton(QPushButton):
