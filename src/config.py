@@ -78,6 +78,7 @@ class Config:
         self.gemini_api_key = credentials.get('GEMINI_API_KEY') or os.getenv('GEMINI_API_KEY')
         self.ollama_api_key = credentials.get('OLLAMA_API_KEY') or os.getenv('OLLAMA_API_KEY')
         self.ollama_host = os.getenv('OLLAMA_HOST') or os.getenv('OLLAMA_BASE_URL') or 'http://localhost:11434'
+        self.ollama_model = os.getenv('OLLAMA_MODEL', 'llama3')
 
         # Session tokens - load from secure storage instead of .env
         self.session_tokens: Dict[str, dict] = {}
