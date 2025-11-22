@@ -1,9 +1,11 @@
 @echo off
-REM Gaming AI Assistant - Windows Executable Builder (Enhanced)
+REM Omnix Gaming Companion - Windows Executable Builder (Enhanced)
+REM Version 1.3+ (November 2025)
 REM Run this on your Windows machine to create the .exe
 
 echo ======================================================================
-echo GAMING AI ASSISTANT - WINDOWS EXECUTABLE BUILDER
+echo OMNIX GAMING COMPANION - WINDOWS EXECUTABLE BUILDER
+echo Version 1.3+ (November 2025)
 echo ======================================================================
 echo.
 
@@ -118,7 +120,8 @@ copy "WINDOWS_RELEASE_README.md" "dist\GamingAIAssistant\WINDOWS_README.md" >nul
 REM Create quick start instructions
 (
 echo =====================================================
-echo GAMING AI ASSISTANT - QUICK START
+echo OMNIX GAMING COMPANION - QUICK START
+echo Version 1.3+ (November 2025)
 echo =====================================================
 echo.
 echo STEP 1: First Run - Setup Wizard
@@ -149,6 +152,15 @@ echo.
 echo For detailed setup, see SETUP.md
 echo.
 echo =====================================================
+echo NEW IN VERSION 1.3+
+echo =====================================================
+echo - CI/CD Pipeline with automated testing
+echo - Fixed knowledge index persistence bug
+echo - Unified theme system with real-time updates
+echo - Enhanced security and performance
+echo - Improved macro system and keybind management
+echo.
+echo =====================================================
 ) > "dist\GamingAIAssistant\START_HERE.txt"
 
 echo    [✓] Files copied to dist folder
@@ -176,6 +188,12 @@ echo    - They extract and run GamingAIAssistant.exe
 echo    - Each user runs the Setup Wizard with their own API keys
 echo.
 echo SECURITY: API keys are stored encrypted in CredentialStore, NOT in .env files!
+echo.
+echo NEW IN VERSION 1.3+:
+echo   - CI/CD Pipeline with automated testing and staging deployment
+echo   - Fixed knowledge index persistence (no more random search results)
+echo   - Unified theme system with per-token customization
+echo   - Enhanced security and performance improvements
 echo.
 echo ======================================================================
 echo.

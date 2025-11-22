@@ -1,5 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
-
+# Omnix Gaming Companion - DEBUG Build Specification
+# Version 1.3+ (November 2025)
+#
+# This debug build includes console output for troubleshooting
+#
+# Recent Updates:
+# - CI/CD Pipeline integration (2025-11-20)
+# - Knowledge index persistence fix (2025-11-19)
+# - Unified theme system (2025-11-17)
+# - Removed PyQt6-WebEngine dependency (2025-11-17)
 
 a = Analysis(
     ['main.py'],
