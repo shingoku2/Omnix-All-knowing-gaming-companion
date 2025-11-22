@@ -47,10 +47,16 @@ class AIRouter:
 
             if api_key or base_url or provider_name == "ollama":
                 try:
+                    # Add default_model for Ollama
+                    kwargs = {}
+                    if provider_name == "ollama" and hasattr(self.config, 'ollama_model'):
+                        kwargs['default_model'] = self.config.ollama_model
+
                     self._providers[provider_name] = create_provider(
                         provider_name,
                         api_key=api_key,
                         base_url=base_url,
+                        **kwargs
                     )
                     logger.debug(f"Initialized provider: {provider_name}")
                 except Exception as e:

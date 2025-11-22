@@ -190,6 +190,47 @@ class ProvidersTab(QWidget):
             key_optional=True,
             default_base_url=self.ollama_host
         )
+
+        # Add model selector to Ollama section
+        ollama_layout = ollama_section.layout()
+        model_layout = QHBoxLayout()
+        model_layout.addWidget(QLabel("Model:"))
+
+        self.ollama_model_combo = QComboBox()
+        self.ollama_model_combo.setEditable(True)
+        self.ollama_model_combo.addItem(self.config.ollama_model or "llama3")
+        self.ollama_model_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #2a2a2a;
+                color: #ffffff;
+                border: 1px solid #3a3a3a;
+                border-radius: 5px;
+                padding: 6px;
+                font-size: 10pt;
+            }
+        """)
+        model_layout.addWidget(self.ollama_model_combo, stretch=3)
+
+        # Refresh models button
+        refresh_button = QPushButton("🔄 Refresh Models")
+        refresh_button.clicked.connect(self.refresh_ollama_models)
+        refresh_button.setStyleSheet("""
+            QPushButton {
+                background-color: #374151;
+                border: 1px solid #4b5563;
+                border-radius: 3px;
+                padding: 5px 10px;
+                color: #ffffff;
+            }
+            QPushButton:hover {
+                background-color: #4b5563;
+            }
+        """)
+        model_layout.addWidget(refresh_button)
+
+        # Insert model selector before action buttons
+        ollama_layout.insertLayout(ollama_layout.count() - 1, model_layout)
+
         layout.addWidget(ollama_section)
 
         layout.addStretch()
@@ -444,6 +485,66 @@ class ProvidersTab(QWidget):
             # User cleared the field
             self.modified_keys[provider_id] = None
 
+    def refresh_ollama_models(self):
+        """Refresh the list of available Ollama models"""
+        try:
+            import ollama
+
+            # Get base URL from input or use default
+            base_url = self.provider_sections.get('ollama', {}).get('base_url_input')
+            if base_url:
+                base_url = base_url.text().strip() or self.ollama_host
+            else:
+                base_url = self.ollama_host
+
+            # Fetch models
+            client = ollama.Client(host=base_url)
+            models_response = client.list()
+            models = models_response.get("models", [])
+
+            # Clear and repopulate combo box
+            current_model = self.ollama_model_combo.currentText()
+            self.ollama_model_combo.clear()
+
+            if models:
+                for model in models:
+                    model_name = model.get("name", "")
+                    if model_name:
+                        self.ollama_model_combo.addItem(model_name)
+
+                # Try to restore previous selection
+                index = self.ollama_model_combo.findText(current_model)
+                if index >= 0:
+                    self.ollama_model_combo.setCurrentIndex(index)
+
+                QMessageBox.information(
+                    self,
+                    "Models Refreshed",
+                    f"Found {len(models)} Ollama models:\n\n" + "\n".join([m.get("name", "") for m in models])
+                )
+            else:
+                self.ollama_model_combo.addItem(current_model or "llama3")
+                QMessageBox.information(
+                    self,
+                    "No Models Found",
+                    "No models found. You may need to pull a model first:\n\n"
+                    "ollama pull llama3"
+                )
+
+        except ImportError:
+            QMessageBox.warning(
+                self,
+                "Ollama Not Installed",
+                "The Ollama library is not installed. Please install it with:\n\n"
+                "pip install ollama"
+            )
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Refresh Failed",
+                f"Failed to refresh Ollama models:\n\n{str(e)}"
+            )
+
     def test_connection(self, provider_id: str):
         """Test connection for a provider"""
         # Use modified key if available, otherwise use current key
@@ -663,6 +764,12 @@ class ProvidersTab(QWidget):
                 host_value = ollama_section['base_url_input'].text().strip() or self.ollama_host
                 self.config.ollama_host = host_value
                 self.provider_base_urls['ollama'] = host_value
+
+            # Save Ollama model selection
+            if hasattr(self, 'ollama_model_combo'):
+                ollama_model = self.ollama_model_combo.currentText().strip()
+                if ollama_model:
+                    self.config.ollama_model = ollama_model
 
             # Persist configuration to .env file
             try:

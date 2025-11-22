@@ -139,10 +139,10 @@ class ChatWidget(QWidget):
         self._seed_intro()
 
     def _build_message_list(self, main_layout: QVBoxLayout) -> None:
-        scroll = QScrollArea()
-        scroll.setObjectName("ChatScroll")
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setObjectName("ChatScroll")
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         container = QWidget()
         self.messages_layout = QVBoxLayout(container)
@@ -150,8 +150,8 @@ class ChatWidget(QWidget):
         self.messages_layout.setSpacing(10)
         self.messages_layout.addStretch()
 
-        scroll.setWidget(container)
-        main_layout.addWidget(scroll, 1)
+        self.scroll_area.setWidget(container)
+        main_layout.addWidget(self.scroll_area, 1)
 
     def _build_quick_responses(self, main_layout: QVBoxLayout) -> None:
         title = QLabel("Quick responses")
@@ -202,6 +202,17 @@ class ChatWidget(QWidget):
 
         insert_index = max(self.messages_layout.count() - 1, 0)
         self.messages_layout.insertWidget(insert_index, bubble)
+
+        # Auto-scroll to show the new message
+        self._scroll_to_bottom()
+
+    def _scroll_to_bottom(self) -> None:
+        """Scroll the chat to the bottom to show latest messages"""
+        # Use QTimer.singleShot to ensure the scroll happens after layout updates
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(0, lambda: self.scroll_area.verticalScrollBar().setValue(
+            self.scroll_area.verticalScrollBar().maximum()
+        ))
 
     def _on_submit(self) -> None:
         text = self.input_field.text().strip()
@@ -423,9 +434,11 @@ class SettingsPanel(NeonCard):
     """Right side panel with quick settings and provider selection."""
 
     settings_requested = pyqtSignal(int)  # Signal to open settings dialog at specific tab
+    provider_changed = pyqtSignal(str)  # Signal when user changes provider
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, config: Config = None, parent: Optional[QWidget] = None):
         super().__init__(parent)
+        self.config = config
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
@@ -462,8 +475,8 @@ class SettingsPanel(NeonCard):
         provider_row1 = QHBoxLayout()
         self.provider_openai = NeonButton("OpenAI", variant="provider", checkable=True)
         self.provider_anthropic = NeonButton("Anthropic", variant="provider", checkable=True)
-        self.provider_openai.clicked.connect(lambda: self._open_providers_settings())
-        self.provider_anthropic.clicked.connect(lambda: self._open_providers_settings())
+        self.provider_openai.clicked.connect(lambda: self._switch_provider("openai"))
+        self.provider_anthropic.clicked.connect(lambda: self._switch_provider("anthropic"))
         provider_row1.addWidget(self.provider_openai)
         provider_row1.addWidget(self.provider_anthropic)
         layout.addLayout(provider_row1)
@@ -472,13 +485,47 @@ class SettingsPanel(NeonCard):
         provider_row2 = QHBoxLayout()
         self.provider_gemini = NeonButton("Gemini", variant="provider", checkable=True)
         self.provider_ollama = NeonButton("Ollama", variant="provider", checkable=True)
-        self.provider_gemini.clicked.connect(lambda: self._open_providers_settings())
-        self.provider_ollama.clicked.connect(lambda: self._open_providers_settings())
+        self.provider_gemini.clicked.connect(lambda: self._switch_provider("gemini"))
+        self.provider_ollama.clicked.connect(lambda: self._switch_provider("ollama"))
         provider_row2.addWidget(self.provider_gemini)
         provider_row2.addWidget(self.provider_ollama)
         layout.addLayout(provider_row2)
 
         layout.addStretch()
+
+    def _switch_provider(self, provider: str) -> None:
+        """Switch to a different AI provider"""
+        if self.config:
+            # Update config
+            self.config.ai_provider = provider
+            # Save to .env
+            try:
+                Config.save_to_env(
+                    provider=provider,
+                    overlay_hotkey=self.config.overlay_hotkey,
+                    check_interval=self.config.check_interval,
+                    overlay_x=self.config.overlay_x,
+                    overlay_y=self.config.overlay_y,
+                    overlay_width=self.config.overlay_width,
+                    overlay_height=self.config.overlay_height,
+                    overlay_minimized=self.config.overlay_minimized,
+                    overlay_opacity=self.config.overlay_opacity
+                )
+                logger.info(f"Switched to provider: {provider}")
+            except Exception as e:
+                logger.error(f"Failed to save provider change: {e}")
+
+        # Update button states
+        self._update_provider_buttons(provider)
+        # Emit signal
+        self.provider_changed.emit(provider)
+
+    def _update_provider_buttons(self, provider: str) -> None:
+        """Update provider button checked states"""
+        self.provider_openai.setChecked(provider == "openai")
+        self.provider_anthropic.setChecked(provider == "anthropic")
+        self.provider_gemini.setChecked(provider == "gemini")
+        self.provider_ollama.setChecked(provider == "ollama")
 
     def _open_providers_settings(self) -> None:
         """Open full settings dialog at providers tab"""
@@ -816,6 +863,9 @@ class MainWindow(QMainWindow):
         layout.addLayout(self._build_main_grid())
         layout.addLayout(self._build_footer())
 
+        # Initialize provider button states
+        self._update_provider_display(self.config.ai_provider)
+
         # Start game detection if available
         if self.game_detector:
             self._start_game_detection()
@@ -845,8 +895,9 @@ class MainWindow(QMainWindow):
         self.game_status_panel = GameStatusPanel()
         row.addWidget(self.game_status_panel, 2)
 
-        self.settings_panel = SettingsPanel()
+        self.settings_panel = SettingsPanel(config=self.config)
         self.settings_panel.settings_requested.connect(self._open_settings_at_tab)
+        self.settings_panel.provider_changed.connect(self._on_provider_switched)
         row.addWidget(self.settings_panel, 2)
 
         return row
@@ -904,18 +955,33 @@ class MainWindow(QMainWindow):
             self._update_provider_display(settings['default_provider'])
 
     def _on_provider_changed(self, provider: str, credentials: dict) -> None:
-        """Handle AI provider configuration change"""
+        """Handle AI provider configuration change from settings dialog"""
         logger.info(f"Provider changed to: {provider}")
         self._update_provider_display(provider)
-        # Reinitialize AI assistant if needed
-        # This would require restarting or recreating the assistant
+        self._reinitialize_ai_assistant()
+
+    def _on_provider_switched(self, provider: str) -> None:
+        """Handle provider switched from quick settings buttons"""
+        logger.info(f"Provider switched to: {provider}")
+        self._reinitialize_ai_assistant()
+
+    def _reinitialize_ai_assistant(self) -> None:
+        """Reinitialize AI assistant with new provider"""
+        try:
+            # Reinitialize the AI router with updated config
+            from src.ai_router import AIRouter
+            ai_router = AIRouter(self.config)
+
+            # Update the assistant's provider
+            if hasattr(self.ai_assistant, 'router'):
+                self.ai_assistant.router = ai_router
+                logger.info("AI assistant reinitialized with new provider")
+        except Exception as e:
+            logger.error(f"Failed to reinitialize AI assistant: {e}")
 
     def _update_provider_display(self, provider: str) -> None:
         """Update provider button states in settings panel"""
-        self.settings_panel.provider_openai.setChecked(provider == "openai")
-        self.settings_panel.provider_anthropic.setChecked(provider == "anthropic")
-        self.settings_panel.provider_gemini.setChecked(provider == "gemini")
-        self.settings_panel.provider_ollama.setChecked(provider == "ollama")
+        self.settings_panel._update_provider_buttons(provider)
 
     def _start_game_detection(self) -> None:
         """Start periodic game detection"""
