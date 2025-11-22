@@ -1,8 +1,11 @@
 @echo off
+REM Omnix Gaming Companion - DEBUG Builder
+REM Version 1.3+ (November 2025)
 REM Build DEBUG version with console to see errors
 
 echo ====================================
-echo Building DEBUG version with console
+echo Omnix Gaming Companion - DEBUG Builder
+echo Version 1.3+ (November 2025)
 echo ====================================
 echo.
 
@@ -58,5 +61,11 @@ echo 3. Your API keys will be stored securely (encrypted)
 echo.
 echo This debug version shows a console window with detailed error messages.
 echo Use it to diagnose issues or see what's happening under the hood.
+echo.
+echo NEW IN VERSION 1.3+:
+echo   - CI/CD Pipeline with automated testing
+echo   - Fixed knowledge index persistence bug
+echo   - Unified theme system with real-time updates
+echo   - Enhanced security and performance
 echo.
 pause

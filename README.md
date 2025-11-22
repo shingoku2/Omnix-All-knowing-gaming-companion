@@ -407,7 +407,6 @@ See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
 ### Core Technologies
 - **Python** 3.8+ (3.10+ recommended)
 - **PyQt6** 6.6.0+ - Desktop GUI framework
-- **PyQt6-WebEngine** 6.6.0+ - Web content rendering
 
 ### AI Providers
 - **openai** 1.3.0+ - OpenAI GPT models
@@ -517,6 +516,24 @@ For issues, questions, or suggestions:
 
 ## 📝 Recent Updates
 
+### Version 1.3+ (2025-11-20)
+**CI/CD & Infrastructure:**
+- ✅ **CI/CD Pipeline** - Self-hosted Proxmox infrastructure with automated testing
+- ✅ **Staging Deployment** - Automated deployment to staging environment
+- ✅ **Comprehensive Testing** - 20+ CI integration tests for pipeline validation
+- ✅ **Deployment Tools** - Verification scripts and automated backup system
+
+**Critical Bug Fixes:**
+- ✅ **Knowledge Index Persistence** - Fixed TF-IDF model state not persisting to disk
+  - Search results now remain accurate after application restarts
+  - No more random/irrelevant knowledge pack search results
+- ✅ **Circular Import Resolution** - Fixed startup errors from inconsistent import patterns
+
+**Technical Improvements:**
+- ✅ **Enhanced Documentation** - Comprehensive CI/CD guides and quick references
+- ✅ **Improved Security** - Enhanced credential storage and validation
+- ✅ **Performance Optimizations** - Faster startup and reduced memory usage
+
 ### Version 1.2+ (2025-11-17)
 **Major Feature Additions:**
 - ✅ **Knowledge Pack System** - Import and search game-specific knowledge bases
@@ -534,6 +551,10 @@ For issues, questions, or suggestions:
   - Automatic theme.json v1 → v2 migration with backward compatibility
   - Zero breaking changes via compatibility layer
   - See [THEME_MIGRATION_PLAN.md](THEME_MIGRATION_PLAN.md) for technical details
+- ✅ **Dependency Cleanup** - Removed unnecessary dependencies
+  - Removed PyQt6-WebEngine (was only used for deprecated login_dialog feature)
+  - Removed scikit-learn (using custom TF-IDF implementation)
+  - Smaller binary size and faster installation
 
 **Infrastructure:**
 - ✅ **~14,700 LOC** - Extensive codebase with modular architecture
@@ -601,12 +622,12 @@ For issues, questions, or suggestions:
 - Google Generative AI (Gemini)
 
 **Key Libraries:**
-- **UI**: PyQt6, PyQt6-WebEngine
+- **UI**: PyQt6
 - **Process Monitoring**: psutil
 - **Automation**: pynput
 - **Security**: cryptography, keyring
 - **Web Scraping**: requests, BeautifulSoup4, lxml
-- **ML**: scikit-learn (TF-IDF embeddings)
+- **Semantic Search**: Custom TF-IDF implementation (no ML dependencies)
 
 **Platform Support:**
 - ✅ Windows 10/11 (Primary)

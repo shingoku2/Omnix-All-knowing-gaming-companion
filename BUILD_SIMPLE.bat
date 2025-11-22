@@ -1,9 +1,11 @@
 @echo off
-REM Simple Gaming AI Assistant Builder
+REM Omnix Gaming Companion - Simple Builder
+REM Version 1.3+ (November 2025)
 REM This version checks Python first
 
 echo ====================================
-echo Gaming AI Assistant - Simple Builder
+echo Omnix Gaming Companion - Simple Builder
+echo Version 1.3+ (November 2025)
 echo ====================================
 echo.
 
@@ -107,5 +109,11 @@ echo Get your API key from:
 echo   - Anthropic: https://console.anthropic.com/
 echo   - OpenAI: https://platform.openai.com/api-keys
 echo   - Gemini: https://aistudio.google.com/app/apikey
+echo.
+echo NEW IN VERSION 1.3+:
+echo   - CI/CD Pipeline with automated testing
+echo   - Fixed knowledge index persistence bug
+echo   - Unified theme system with real-time updates
+echo   - Enhanced security and performance
 echo.
 pause
