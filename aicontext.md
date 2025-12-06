@@ -1,15 +1,15 @@
 # AI Context - Omnix Gaming Companion
 
 **Quick Reference for AI Assistants**
-**Last Updated:** 2025-11-20
+**Last Updated:** 2025-12-06
 
 ---
 
 ## Project Summary
 
-**Omnix** is a desktop AI gaming companion built with Python and PyQt6 that provides real-time assistance for gamers using multiple AI providers (OpenAI, Anthropic, Google Gemini). A new React/TypeScript web frontend with Tailwind CSS is now available for a modern Sci-Fi/Cyberpunk UI experience.
+**Omnix** is a desktop AI gaming companion built with Python and PyQt6 that provides real-time assistance for gamers using Ollama for local/remote LLM inference. A new React/TypeScript web frontend with Tailwind CSS is now available for a modern Sci-Fi/Cyberpunk UI experience.
 
-**Backend Tech Stack:** Python 3.8+, PyQt6, psutil, OpenAI/Anthropic/Gemini APIs
+**Backend Tech Stack:** Python 3.8+, PyQt6, psutil, Ollama API
 **Frontend Tech Stack:** React 18, TypeScript, Tailwind CSS, Vite, Lucide Icons
 **LOC:** ~14,700 lines (backend) + frontend code
 **Test Coverage:** 272 test functions, 3,196 lines of test code
@@ -98,6 +98,35 @@ scripts/                 # Automation scripts
 ---
 
 ## Recent Changes
+
+### 2025-12-06: Ollama-Only Migration (MAJOR REFACTOR)
+- ✅ **Simplified to Ollama exclusively** - Removed OpenAI, Anthropic, Gemini providers
+- ✅ **No API keys required** - Ollama runs locally without external dependencies
+- ✅ **Privacy-first architecture** - All inference happens locally by default
+- ✅ **Model freedom** - Use any Ollama model (llama3, mistral, codellama, etc.)
+- ✅ **Automatic model discovery** - UI shows available models from Ollama
+- ✅ **Connection testing** - Validates Ollama daemon availability
+- ✅ **Parameter translation** - Maps common params (max_tokens → num_predict)
+- ✅ **Flexible hosting** - Supports both local and remote Ollama instances
+
+**Migration:**
+```bash
+# Install Ollama
+curl https://ollama.ai/install.sh | sh
+
+# Pull a model
+ollama pull llama3
+
+# Run Omnix
+python main.py
+```
+
+**Configuration (.env):**
+```
+AI_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434  # Optional
+OLLAMA_MODEL=llama3  # Optional
+```
 
 ### 2025-11-20: React/TypeScript Frontend (MAJOR UI UPGRADE)
 - ✅ Created complete React/TypeScript frontend with Tailwind CSS
@@ -309,10 +338,10 @@ worker.start()
 **DON'T:**
 - ❌ Block the GUI thread with long operations
 - ❌ Hardcode styles (use design tokens)
-- ❌ Store API keys in .env (use credential_store)
 - ❌ Use inconsistent import patterns
 - ❌ Modify built-in game profiles
 - ❌ Commit sensitive data
+- ❌ Assume API keys are required (Ollama doesn't need them)
 
 ### Common Tasks
 
@@ -320,10 +349,11 @@ worker.start()
 1. Update `game_detector.py` with exe names
 2. Create profile in `game_profile.py` or via UI
 
-**Add AI provider:**
-1. Implement in `providers.py`
-2. Register in `ai_router.py`
-3. Add UI in `providers_tab.py`
+**Configure Ollama:**
+1. Install Ollama: `curl https://ollama.ai/install.sh | sh`
+2. Pull models: `ollama pull llama3`
+3. Configure in .env (optional): `OLLAMA_BASE_URL`, `OLLAMA_MODEL`
+4. Test connection via Setup Wizard or providers tab
 
 **Add tests:**
 1. Unit tests → `tests/unit/`
@@ -345,8 +375,10 @@ worker.start()
 - **Test Files:** 20
 - **CI Workflows:** 2
 - **Supported Games:** 15 built-in + custom
-- **AI Providers:** 3 (OpenAI, Anthropic, Gemini)
+- **AI Provider:** Ollama (local/remote, any model)
 - **Platforms:** Windows, macOS, Linux
+- **Default Model:** llama3
+- **Default Base URL:** http://localhost:11434
 
 ---
 
@@ -505,3 +537,39 @@ npm run lint            # ESLint checks
 ### Tests
 - `QT_QPA_PLATFORM=offscreen pytest tests/test_gui.py test_core_functionality.py::test_gui_creation -q` (skipped due to missing libGL/OpenGL runtime).
 - `python -m py_compile src/gui.py`.
+
+## 2025-12-06 Context Files Update
+- **Updated CLAUDE.md** - Comprehensive update to reflect Ollama-only architecture
+  - Changed version to 2.0+ (Ollama-only)
+  - Updated all AI provider references from multi-provider to Ollama exclusive
+  - Added detailed Ollama migration guide with installation and configuration
+  - Updated Technology Stack section to show Ollama instead of OpenAI/Anthropic/Gemini
+  - Added "Why Ollama?" section explaining privacy-first, local-first approach
+  - Updated credential_store documentation (now optional for secured endpoints)
+  - Updated all code examples to use Ollama configuration
+  - Updated branch reference to `claude/update-context-files-014mNueuX6ktLe9z76DJrpY9`
+  - Updated last modified date to 2025-12-06
+
+- **Updated aicontext.md** - Quick reference update for Ollama migration
+  - Added Ollama-Only Migration section at top of Recent Changes
+  - Updated project summary to mention Ollama instead of multiple providers
+  - Updated backend tech stack to "Ollama API"
+  - Updated Quick Stats to show single AI Provider (Ollama)
+  - Added default model (llama3) and base URL (http://localhost:11434)
+  - Updated common tasks section with Ollama configuration steps
+  - Updated DON'T list to clarify API keys not required
+  - Updated last modified date to 2025-12-06
+
+**Key Changes Documented:**
+- Migration from multi-provider (OpenAI/Anthropic/Gemini) to Ollama-only
+- No API keys required (privacy-first, local-first)
+- Model discovery and automatic dropdown population
+- Connection testing for Ollama daemon
+- Parameter translation (max_tokens → num_predict)
+- Flexible hosting (local/remote Ollama instances)
+
+**Commits Referenced:**
+- `aa9794e` - Simplify to Ollama-only AI provider
+- `8de03a6` - Translate chat params for Ollama
+- `fee2059` - Add automatic Ollama model dropdown population
+- `bf9d8fb` - Fix AI provider selection and Ollama integration

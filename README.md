@@ -14,11 +14,11 @@ A sophisticated desktop AI gaming companion that automatically detects what game
 
 ### Core Features
 - **🎯 Automatic Game Detection** - Monitors 15 pre-configured games with custom profile support
-- **🤖 Multi-Provider AI** - Seamlessly switch between OpenAI, Anthropic, Google Gemini, and Ollama (local)
+- **🤖 Ollama AI Integration** - Local/remote LLM inference without API keys
 - **📚 Knowledge System** - Per-game knowledge packs with semantic search (TF-IDF)
 - **⌨️ Macro & Automation** - Record and execute keyboard/mouse macros with hotkey support
 - **📊 Session Coaching** - AI-powered gameplay insights and improvement tips
-- **🔐 Secure Credentials** - Encrypted API key storage in system keyring
+- **🔒 Privacy First** - All AI inference runs locally by default
 
 ### User Interface
 - **🎨 Modern Design System** - Consistent UI with design tokens and reusable components
@@ -47,11 +47,7 @@ The assistant automatically:
 ### Prerequisites
 
 - Python 3.8 or higher
-- **One of the following AI providers:**
-  - [Anthropic (Claude)](https://www.anthropic.com/) - Cloud API (recommended)
-  - [OpenAI (GPT)](https://platform.openai.com/) - Cloud API
-  - [Google (Gemini)](https://aistudio.google.com/app/apikey) - Cloud API
-  - [Ollama](https://ollama.com/) - Local models (free, no API key required)
+- **[Ollama](https://ollama.com/)** - Local/remote AI models (free, no API key required)
 
 ### Installation
 
@@ -66,15 +62,28 @@ The assistant automatically:
    pip install -r requirements.txt
    ```
 
-3. **Run the application**
+3. **Install and configure Ollama**
+   ```bash
+   # Install Ollama from https://ollama.com
+
+   # Pull a model (choose one):
+   ollama pull llama3       # Recommended - fast and capable
+   ollama pull mistral      # Alternative - fast and efficient
+   ollama pull codellama    # Optimized for coding/technical content
+
+   # Verify Ollama is running:
+   ollama list
+   ```
+
+4. **Run the application**
    ```bash
    python main.py
    ```
 
    **The Setup Wizard will appear on first run** and guide you through:
-   - Selecting your AI provider (Anthropic, OpenAI, Google Gemini, or Ollama)
-   - Entering your API key (or configuring Ollama host for local models)
-   - Testing the connection
+   - Configuring Ollama connection (base URL, model selection)
+   - Testing the connection to Ollama daemon
+   - Selecting your preferred model from available options
    - Saving your configuration
 
 ### Manual Configuration (Optional)
@@ -85,65 +94,54 @@ If you prefer to skip the Setup Wizard, configure `.env` manually:
 # Copy the example environment file
 cp .env.example .env
 
-# Edit .env and add your API key
-# For Anthropic (recommended):
-ANTHROPIC_API_KEY=your_api_key_here
-AI_PROVIDER=anthropic
-
-# OR for OpenAI:
-OPENAI_API_KEY=your_api_key_here
-AI_PROVIDER=openai
-
-# OR for Google Gemini:
-GEMINI_API_KEY=your_api_key_here
-AI_PROVIDER=gemini
-
-# OR for Ollama (local models - no API key required):
+# Edit .env to configure Ollama
 AI_PROVIDER=ollama
-OLLAMA_HOST=http://localhost:11434  # Default Ollama host
+OLLAMA_BASE_URL=http://localhost:11434  # Default Ollama host (optional)
+OLLAMA_MODEL=llama3  # Default model (optional, can be changed in UI)
+
+# For remote Ollama instances:
+# OLLAMA_BASE_URL=http://your-server-ip:11434
 ```
 
-### 🦙 Using Ollama (Local AI Models)
+### 🦙 About Ollama
 
-Ollama allows you to run AI models **completely offline and for free** on your own computer! Perfect for privacy-conscious users or those who want unlimited usage without API costs.
+Omnix now uses **Ollama exclusively** for AI inference, allowing you to run AI models **completely locally and for free** on your own computer!
 
-**Prerequisites:**
-1. Install Ollama from [ollama.com](https://ollama.com/)
-2. Pull at least one model (e.g., `ollama pull llama3`)
+**Why Ollama?**
+- ✅ **100% Free** - No API costs, no subscriptions
+- ✅ **Privacy First** - All data stays on your machine
+- ✅ **Offline Capable** - Works without internet
+- ✅ **No Rate Limits** - Use as much as you want
+- ✅ **Open Source** - Fully transparent, community-driven
+- ✅ **Model Freedom** - Use any Ollama model (llama3, mistral, codellama, etc.)
 
-**Setup Steps:**
+**Hardware Requirements:**
+- **Minimum:** 8GB RAM
+- **Recommended:** 16GB+ RAM, dedicated GPU
+- **Storage:** 4-8GB per model
 
+**Recommended Models:**
 ```bash
-# 1. Install Ollama (if not already installed)
-# Visit https://ollama.com/ and download the installer for your OS
+# General gaming assistance (recommended):
+ollama pull llama3          # 4.7GB - Fast, general-purpose
+ollama pull llama3.1        # 4.7GB - Improved reasoning
 
-# 2. Pull a recommended model (choose one):
-ollama pull llama3          # Fast, general-purpose (recommended)
-ollama pull llama3.1        # Improved version of llama3
-ollama pull mistral         # Alternative, fast and efficient
-ollama pull codellama       # Optimized for coding assistance
+# Alternatives:
+ollama pull mistral         # 4.1GB - Fast and efficient
+ollama pull gemma2:9b       # 5.4GB - Google's compact model
 
-# 3. Verify Ollama is running:
-ollama list                 # Should show your installed models
-
-# 4. Configure Omnix to use Ollama:
-# - Open Omnix Settings > AI Providers tab
-# - Select "Ollama (Local)" from the dropdown
-# - Base URL should be: http://localhost:11434 (default)
-# - Click "Test Connection" to verify
-# - Click "Save" to apply changes
+# Specialized:
+ollama pull codellama       # 3.8GB - Optimized for technical content
 ```
 
-**Advantages:**
-- ✅ **Free** - No API costs
-- ✅ **Private** - All data stays on your machine
-- ✅ **Offline** - Works without internet
-- ✅ **No rate limits** - Use as much as you want
+**Remote Ollama:**
+You can also connect to a remote Ollama instance running on another machine:
+```bash
+# .env configuration
+OLLAMA_BASE_URL=http://192.168.1.100:11434
 
-**Disadvantages:**
-- ⚠️ Requires decent hardware (8GB+ RAM recommended)
-- ⚠️ Slower than cloud APIs (depends on your hardware)
-- ⚠️ May produce lower quality responses than GPT-4 or Claude
+# Or use the UI: Settings > AI Providers > Base URL
+```
 
 ## 📖 Usage
 
@@ -281,7 +279,7 @@ Omnix-All-knowing-gaming-companion/
     ├── AI Integration
     ├── ai_assistant.py          # High-level AI interface
     ├── ai_router.py             # Multi-provider routing
-    ├── providers.py             # OpenAI, Anthropic, Gemini
+    ├── providers.py             # Ollama provider implementation
     │
     ├── Knowledge System
     ├── knowledge_pack.py        # Knowledge data structures
@@ -455,10 +453,8 @@ See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
 - **Python** 3.8+ (3.10+ recommended)
 - **PyQt6** 6.6.0+ - Desktop GUI framework
 
-### AI Providers
-- **openai** 1.3.0+ - OpenAI GPT models
-- **anthropic** 0.7.0+ - Anthropic Claude models
-- **google-generativeai** 0.3.0+ - Google Gemini models
+### AI Provider
+- **ollama** 0.1.0+ - Local/remote LLM inference (required)
 
 ### System Integration
 - **psutil** 5.9.0+ - Process monitoring for game detection
@@ -551,7 +547,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🙏 Acknowledgments
 
 - Gaming wikis and communities for game information
-- OpenAI, Anthropic, Google, and Ollama for AI capabilities
+- Ollama for local/remote AI inference
 - The gaming community for inspiration
 
 ## 🤝 Support
@@ -624,16 +620,21 @@ For issues, questions, or suggestions:
 
 ### Version 1.1 (2025-11-13)
 **Provider Streamlining:**
-- ✅ **Removed Ollama/Open WebUI** - Focus on mainstream cloud providers
-- ✅ **Fixed API key handling** - Resolved pre-loaded test keys issue
-- ✅ **Improved Setup Wizard** - Better provider switching
-- ✅ **Test Suite Cleanup** - Removed 1,000+ lines of deprecated code
+### v2.0.0 - Ollama-Only Migration (2025-12-06)
+- ✅ **Simplified to Ollama exclusively** - Removed cloud provider dependencies
+- ✅ **No API keys required** - Privacy-first, local-first architecture
+- ✅ **Model freedom** - Use any Ollama model (llama3, mistral, codellama, etc.)
+- ✅ **Automatic model discovery** - UI shows available models from Ollama daemon
+- ✅ **Connection testing** - Validates Ollama availability
+- ✅ **Parameter translation** - Maps common parameters (max_tokens → num_predict)
+- ✅ **Flexible hosting** - Supports both local and remote Ollama instances
 
-### Supported AI Providers
-- ✅ **Anthropic Claude** - Opus, Sonnet, Haiku models (cloud API)
-- ✅ **OpenAI GPT** - GPT-4, GPT-3.5-turbo (cloud API)
-- ✅ **Google Gemini** - Gemini Pro, Gemini Pro Vision (cloud API)
-- ✅ **Ollama** - llama3, mistral, codellama, and more (local, free)
+### Supported AI Models (via Ollama)
+- ✅ **llama3** - Fast, general-purpose (recommended)
+- ✅ **mistral** - Fast and efficient alternative
+- ✅ **codellama** - Optimized for technical content
+- ✅ **gemma2** - Google's compact model
+- ✅ **...and any other Ollama model** - Full flexibility
 
 ## 🗺️ Roadmap
 
@@ -670,9 +671,8 @@ For issues, questions, or suggestions:
 - PyQt6 for desktop GUI
 
 **AI Integration:**
-- OpenAI API (GPT-4, GPT-3.5)
-- Anthropic API (Claude 3)
-- Google Generative AI (Gemini)
+- Ollama (local/remote LLM inference)
+- Supports any Ollama model (llama3, mistral, codellama, etc.)
 
 **Key Libraries:**
 - **UI**: PyQt6

@@ -1,7 +1,7 @@
 # CLAUDE.md - AI Assistant Guide for Omnix Gaming Companion
 
-**Last Updated:** 2025-11-20
-**Codebase Version:** 1.3+
+**Last Updated:** 2025-12-06
+**Codebase Version:** 2.0+ (Ollama-only)
 **Total LOC:** ~14,700 (src) + 3,196 (tests)
 
 ---
@@ -28,7 +28,7 @@
 
 Omnix is a sophisticated desktop AI gaming companion that:
 - **Automatically detects** what game you're playing via process monitoring
-- **Provides AI-powered assistance** using OpenAI, Anthropic, or Google Gemini
+- **Provides AI-powered assistance** using Ollama (local/remote LLM inference)
 - **Integrates game knowledge** from wikis, guides, and custom knowledge packs
 - **Supports macros & automation** with keyboard/mouse input simulation
 - **Tracks gaming sessions** with AI-powered coaching and insights
@@ -37,11 +37,11 @@ Omnix is a sophisticated desktop AI gaming companion that:
 ### Key Features
 
 - 🎯 **Automatic Game Detection** - 15 pre-configured games with custom profile support
-- 🤖 **Multi-Provider AI** - OpenAI, Anthropic, Google Gemini with easy switching
+- 🤖 **Ollama AI Integration** - Local/remote LLM inference without API keys
 - 📚 **Knowledge System** - Per-game knowledge packs with semantic search (TF-IDF)
 - ⌨️ **Macro System** - Record, create, and execute keyboard/mouse macros
 - 🎨 **Design System** - Consistent UI with design tokens and reusable components
-- 💾 **Secure Credentials** - Encrypted API key storage in system keyring
+- 🔧 **Flexible Configuration** - Connect to local or remote Ollama instances
 - 📊 **Session Coaching** - AI-powered gameplay insights and improvement tips
 - 🪟 **Overlay Window** - Movable, resizable, minimizable with auto-save
 
@@ -244,15 +244,12 @@ GUI Display (gui.py) → User Response
 ```python
 class Config:
     # AI Provider
-    ai_provider: str  # "anthropic" | "openai" | "gemini"
+    ai_provider: str  # "ollama" (only supported provider)
 
-    # API Keys (stored in credential_store, not here)
-    openai_api_key: str
-    anthropic_api_key: str
-    gemini_api_key: str
-
-    # Session Tokens (for embedded login)
-    session_tokens: Dict[str, dict]
+    # Ollama Configuration
+    ollama_base_url: str  # Default: "http://localhost:11434"
+    ollama_model: str     # Default: "llama3"
+    ollama_api_key: str   # Optional (for secured endpoints)
 
     # Application Settings
     overlay_hotkey: str  # Default: "ctrl+shift+g"
@@ -284,7 +281,9 @@ class Config:
 - `load_extended_settings()` - Load JSON configuration files
 
 #### **credential_store.py** (250 LOC)
-**Purpose:** Secure API key storage using system keyring
+**Purpose:** Secure credential storage using system keyring
+
+**Note:** With the migration to Ollama, API key storage is **optional** and only needed if connecting to a secured Ollama endpoint.
 
 **Security Features:**
 - AES-256 encryption (Fernet from cryptography library)
@@ -304,11 +303,11 @@ class CredentialStore:
     def delete_credential(service: str, key: str)
 ```
 
-**Usage:**
+**Usage (Optional - for secured Ollama endpoints):**
 ```python
 store = CredentialStore()
-store.set_credential("omnix.ai", "openai_api_key", "sk-...")
-api_key = store.get_credential("omnix.ai", "openai_api_key")
+store.set_credential("omnix.ai", "ollama_api_key", "your-key...")
+api_key = store.get_credential("omnix.ai", "ollama_api_key")
 ```
 
 ### Game Detection Layer
@@ -377,7 +376,7 @@ class GameProfile:
     display_name: str                 # Human-readable name
     exe_names: List[str]              # Executable names to match
     system_prompt: str                # AI behavior customization
-    default_provider: str             # "anthropic" | "openai" | "gemini"
+    default_provider: str             # "ollama" (only supported provider)
     default_model: Optional[str]      # Model override (e.g., "gpt-4")
     overlay_mode_default: str         # "compact" | "full"
     extra_settings: Dict              # Extensible settings
@@ -393,7 +392,8 @@ profile = GameProfile(
     display_name="My Game",
     exe_names=["mygame.exe"],
     system_prompt="You are an expert at My Game...",
-    default_provider="anthropic",
+    default_provider="ollama",
+    default_model="llama3",  # or any installed Ollama model
     is_builtin=False
 )
 profile_store.save_profile(profile)
@@ -418,8 +418,8 @@ class AIRouter:
     def route_request(messages, model=None, **kwargs) -> Dict
 ```
 
-#### **providers.py** (550 LOC)
-**Purpose:** Multi-provider AI implementations
+#### **providers.py** (400 LOC)
+**Purpose:** Ollama AI provider implementation
 
 **Provider Protocol:**
 ```python
@@ -428,28 +428,31 @@ class AIProvider(Protocol):
 
     def is_configured() -> bool
     def test_connection() -> ProviderHealth
-    async def chat(messages: List[Dict], model: str = None, **kwargs) -> Dict[str, Any]
+    def chat(messages: List[Dict], model: str = None, **kwargs) -> Dict[str, Any]
 ```
 
-**Implementations:**
-- `OpenAIProvider` - GPT-4, GPT-3.5 with streaming support
-- `AnthropicProvider` - Claude 3 Opus, Sonnet with extended context
-- `GoogleGeminiProvider` - Gemini Pro, Gemini Pro Vision
+**Implementation:**
+- `OllamaProvider` - Local/remote Ollama inference with model management
+  - Default model: llama3
+  - Default base URL: http://localhost:11434
+  - No API key required (unless using secured endpoint)
+  - Dynamic model listing via `list_models()`
+  - Parameter translation for compatibility (max_tokens → num_predict, etc.)
 
 **Error Classification:**
 ```python
 class ProviderError(Exception): pass
-class ProviderAuthError(ProviderError): pass
-class ProviderQuotaError(ProviderError): pass
-class ProviderRateLimitError(ProviderError): pass
-class ProviderConnectionError(ProviderError): pass
+class ProviderAuthError(ProviderError): pass  # Kept for compatibility
+class ProviderQuotaError(ProviderError): pass  # Kept for compatibility
+class ProviderRateLimitError(ProviderError): pass  # Kept for compatibility
+class ProviderConnectionError(ProviderError): pass  # Used for Ollama connection errors
 ```
 
-**Adding a New Provider:**
-1. Create provider class in `providers.py`
-2. Implement `AIProvider` protocol
-3. Add to `ai_router.py` provider registry
-4. Add UI configuration in `providers_tab.py`
+**Ollama-Specific Features:**
+- **Model Discovery:** Automatic detection of installed Ollama models
+- **Connection Testing:** Validates Ollama daemon availability
+- **Flexible Hosting:** Supports both local and remote Ollama instances
+- **No API Keys:** Works out-of-the-box without authentication (optional API key for secured endpoints)
 
 #### **ai_assistant.py** (400 LOC)
 **Purpose:** High-level AI interaction interface
@@ -961,9 +964,9 @@ from ui.components.dashboard_button import OmnixDashboardButton
 
 | Provider | Library | Version | Models |
 |----------|---------|---------|--------|
-| **OpenAI** | openai | 1.3.0+ | GPT-4, GPT-3.5-turbo |
-| **Anthropic** | anthropic | 0.7.0+ | Claude 3 Opus, Sonnet, Haiku |
-| **Google** | google-generativeai | 0.3.0+ | Gemini Pro, Gemini Pro Vision |
+| **Ollama** | ollama | 0.1.0+ | llama3, mistral, codellama, etc. (any Ollama model) |
+
+**Note:** Ollama runs models locally without requiring API keys. Can also connect to remote Ollama instances via base URL configuration.
 
 ### System Integration
 
@@ -1014,9 +1017,10 @@ pip install -r requirements.txt
 # Copy environment template
 cp .env.example .env
 
-# Edit .env and add API keys (or use Setup Wizard on first run)
-# ANTHROPIC_API_KEY=sk-ant-...
-# AI_PROVIDER=anthropic
+# Edit .env and configure Ollama (or use Setup Wizard on first run)
+# AI_PROVIDER=ollama
+# OLLAMA_BASE_URL=http://localhost:11434  # Optional: override default
+# OLLAMA_MODEL=llama3  # Optional: override default model
 ```
 
 ### Running the Application
@@ -1026,10 +1030,16 @@ cp .env.example .env
 python main.py
 
 # The Setup Wizard will guide first-time setup:
-# 1. Select AI provider
-# 2. Enter API key
-# 3. Test connection
+# 1. Configure Ollama connection (base URL, model)
+# 2. Test connection to Ollama daemon
+# 3. Select preferred model from available models
 # 4. Save configuration
+
+# Make sure Ollama is installed and running:
+# Visit: https://ollama.ai
+# Or run: curl https://ollama.ai/install.sh | sh
+# Start Ollama: ollama serve
+# Pull a model: ollama pull llama3
 ```
 
 ### Running Tests
@@ -1090,7 +1100,7 @@ git push -u origin claude/feature-name
 gh pr create --title "Feature: description" --body "Details..."
 ```
 
-**Important:** For this session, always use branch: `claude/proxmox-staging-cicd-01EfJQvejjX64Rs7vD4sFpzq`
+**Important:** For this session, always use branch: `claude/update-context-files-014mNueuX6ktLe9z76DJrpY9`
 
 ### CI/CD Pipeline (NEW - 2025-11-20)
 
@@ -1650,66 +1660,59 @@ profile = GameProfile(
 profile_store.save_profile(profile)
 ```
 
-### Adding a New AI Provider
+### Configuring Ollama
 
-**1. Implement provider class:**
-```python
-# src/providers.py
-class NewProvider:
-    name = "newprovider"
+**Current Architecture:** Omnix now uses Ollama exclusively. There is no support for adding other AI providers.
 
-    def __init__(self, api_key: str, session_tokens: Dict = None):
-        self.api_key = api_key
-        self.client = NewProviderClient(api_key=api_key)
+**Ollama Configuration:**
 
-    def is_configured(self) -> bool:
-        return bool(self.api_key)
+**1. Install Ollama:**
+```bash
+# Linux/Mac
+curl https://ollama.ai/install.sh | sh
 
-    def test_connection(self) -> ProviderHealth:
-        try:
-            # Test API connection
-            self.client.test()
-            return ProviderHealth(healthy=True, message="Connected")
-        except Exception as e:
-            return ProviderHealth(healthy=False, message=str(e))
-
-    async def chat(self, messages: List[Dict], model: str = None, **kwargs) -> Dict:
-        response = await self.client.chat.completions.create(
-            model=model or "default-model",
-            messages=messages
-        )
-        return {
-            "content": response.choices[0].message.content,
-            "model": response.model,
-            "usage": response.usage
-        }
+# Or visit https://ollama.ai for manual installation
 ```
 
-**2. Register in AI router:**
+**2. Configure Base URL (Optional):**
 ```python
-# src/ai_router.py
-def get_provider(self, provider_name: str) -> Optional[AIProvider]:
-    if provider_name == "newprovider":
-        api_key = self.config.newprovider_api_key
-        return NewProvider(api_key=api_key)
-    # ... existing providers
+# .env file
+OLLAMA_BASE_URL=http://localhost:11434  # Default
+# Or use remote Ollama instance:
+# OLLAMA_BASE_URL=http://your-server:11434
 ```
 
-**3. Add configuration:**
+**3. Set Default Model (Optional):**
 ```python
-# src/config.py
-class Config:
-    def __init__(self):
-        # ...
-        self.newprovider_api_key = os.getenv("NEWPROVIDER_API_KEY", "")
+# .env file
+OLLAMA_MODEL=llama3  # Default
+# Or use any installed model:
+# OLLAMA_MODEL=mistral
+# OLLAMA_MODEL=codellama
 ```
 
-**4. Add UI support:**
+**4. Pull Models:**
+```bash
+# Pull models you want to use
+ollama pull llama3
+ollama pull mistral
+ollama pull codellama
+
+# List available models
+ollama list
+```
+
+**5. Test Connection:**
 ```python
-# src/providers_tab.py
-# Add provider option to dropdown
-# Add API key input field
-# Add connection test button
+from src.providers import OllamaProvider
+
+provider = OllamaProvider()
+health = provider.test_connection()
+print(health.message)
+
+# List available models
+models = provider.list_models()
+print(f"Available models: {models}")
 ```
 
 ### Creating a Knowledge Pack
@@ -1920,10 +1923,10 @@ Always provide:
 profile_store.save_profile(profile)
 ```
 
-**2. Set preferred AI provider:**
+**2. Set preferred model:**
 ```python
-profile.default_provider = "anthropic"  # or "openai", "gemini"
-profile.default_model = "claude-3-5-sonnet-20241022"  # Specific model
+profile.default_provider = "ollama"  # Only supported provider
+profile.default_model = "llama3"  # or "mistral", "codellama", etc.
 profile_store.save_profile(profile)
 ```
 
@@ -2372,9 +2375,61 @@ theme_mgr = ThemeManager()
 
 #### ✅ Recent Enhancements & Fixes
 
-**Status:** Latest enhancement completed 2025-11-20
+**Status:** Latest update 2025-12-06
 
-**1. CI/CD Pipeline Enhancement (2025-11-20)** ⭐ **NEW**
+**1. Ollama-Only Migration (2025-12-06)** ⭐ **MAJOR REFACTOR**
+
+Complete architectural simplification to use Ollama exclusively for AI inference.
+
+**Why Ollama?**
+- **Privacy First:** All models run locally by default
+- **No API Keys:** No cost, no rate limits, no external dependencies
+- **Flexibility:** Supports both local and remote Ollama instances
+- **Model Freedom:** Use any Ollama model (llama3, mistral, codellama, etc.)
+- **Open Source:** Fully open-source stack
+
+**Changes:**
+- ✅ Removed OpenAI, Anthropic, and Google Gemini providers
+- ✅ Simplified to single OllamaProvider implementation
+- ✅ No API key storage/management needed (unless using secured endpoints)
+- ✅ Added automatic model discovery and selection
+- ✅ Added connection testing for Ollama daemon
+- ✅ Updated UI to show available Ollama models in dropdown
+- ✅ Maintained backward compatibility for error types
+- ✅ Added parameter translation (max_tokens → num_predict, etc.)
+
+**Migration Guide:**
+```bash
+# 1. Install Ollama
+curl https://ollama.ai/install.sh | sh
+
+# 2. Start Ollama service
+ollama serve
+
+# 3. Pull a model
+ollama pull llama3
+
+# 4. Run Omnix (will auto-detect Ollama)
+python main.py
+```
+
+**Configuration:**
+```python
+# .env file
+AI_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434  # Optional
+OLLAMA_MODEL=llama3  # Optional
+```
+
+**Commits:**
+- `aa9794e` - Simplify to Ollama-only AI provider
+- `8de03a6` - Translate chat params for Ollama
+- `fee2059` - Add automatic Ollama model dropdown population
+- `bf9d8fb` - Fix AI provider selection and Ollama integration
+
+---
+
+**2. CI/CD Pipeline Enhancement (2025-11-20)**
 
 Comprehensive CI/CD pipeline implementation with self-hosted infrastructure, automated testing, and staging deployment.
 
@@ -2688,14 +2743,16 @@ git push -u origin claude/feature # Push branch
 ### Contact & Resources
 
 - **Repository:** https://github.com/shingoku2/Omnix-All-knowing-gaming-companion
-- **Current Branch:** `claude/claude-md-mi0udx5q25azj8gs-014ci8Xyu9DvRRXC76VYQcE5`
+- **Current Branch:** `claude/update-context-files-014mNueuX6ktLe9z76DJrpY9`
 - **Issues:** GitHub Issues
 - **Documentation:** README.md, SETUP.md, this file
+- **Ollama:** https://ollama.ai - Download and documentation
 
 ---
 
-**Last Updated:** 2025-11-15
+**Last Updated:** 2025-12-06
 **Maintained by:** AI assistants working on Omnix
+**Current Branch:** `claude/update-context-files-014mNueuX6ktLe9z76DJrpY9`
 
 ---
 
