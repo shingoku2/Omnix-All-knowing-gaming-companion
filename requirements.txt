@@ -6,8 +6,11 @@ requests>=2.31.0
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
 
-# AI Integration (Ollama only - local inference)
+# AI Integration
 ollama>=0.3.0
+openai>=1.33.0
+anthropic>=0.25.2
+google-generativeai>=0.5.4
 
 # GUI
 PyQt6>=6.6.0

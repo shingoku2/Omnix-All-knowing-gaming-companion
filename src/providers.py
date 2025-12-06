@@ -219,8 +219,36 @@ class OllamaProvider:
 
         model_name = model or self.default_model
 
+        options = kwargs.pop("options", {}) or {}
+        if not isinstance(options, dict):
+            options = {"value": options}
+
+        # Map common chat parameters to Ollama options
+        if (max_tokens := kwargs.pop("max_tokens", None)) is not None:
+            options.setdefault("num_predict", max_tokens)
+        if (temperature := kwargs.pop("temperature", None)) is not None:
+            options.setdefault("temperature", temperature)
+        for opt_key in ("top_p", "top_k", "presence_penalty", "frequency_penalty", "stop"):
+            if (value := kwargs.pop(opt_key, None)) is not None:
+                options.setdefault(opt_key, value)
+
+        client_kwargs = {
+            "model": model_name,
+            "messages": messages,
+        }
+
+        if options:
+            client_kwargs["options"] = options
+
+        for key in ("format", "stream", "keep_alive"):
+            if (value := kwargs.pop(key, None)) is not None:
+                client_kwargs[key] = value
+
+        if kwargs:
+            logger.debug(f"Ignoring unsupported Ollama chat kwargs: {list(kwargs.keys())}")
+
         try:
-            response = self.client.chat(model=model_name, messages=messages, **kwargs)
+            response = self.client.chat(**client_kwargs)
             message = response.get("message", {})
             return AwaitableDict({
                 "content": message.get("content", ""),
