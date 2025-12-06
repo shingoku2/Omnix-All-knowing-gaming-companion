@@ -32,7 +32,7 @@ class GameProfileDialog(QDialog):
         """
         super().__init__(parent)
         self.profile = profile
-        self.available_providers = available_providers or ["anthropic", "openai", "gemini"]
+        self.available_providers = available_providers or ["ollama"]
         self.setWindowTitle(f"{'Edit' if profile else 'Create'} Game Profile")
         self.setMinimumWidth(600)
         self.setup_ui()
@@ -171,7 +171,7 @@ class GameProfilesTab(QWidget):
         """
         super().__init__(parent)
         self.store = get_profile_store()
-        self.available_providers = available_providers or ["anthropic", "openai", "gemini"]
+        self.available_providers = available_providers or ["ollama"]
         self.setup_ui()
         self.refresh_profile_list()
 

@@ -1,6 +1,8 @@
 """
 Configuration Module
 Handles application configuration and settings
+
+Simplified for Ollama-only - no API keys required.
 """
 
 import json
@@ -25,64 +27,52 @@ THEME_FILE = CONFIG_DIR / 'theme.json'
 
 
 class Config:
-    """Application configuration"""
+    """Application configuration (Ollama-only)"""
 
     def __init__(self, env_file: Optional[str] = None, require_keys: bool = False,
                  config_path: Optional[str] = None, config_dir: Optional[str] = None):
         """
-        Initialize configuration
+        Initialize configuration.
 
         Args:
             env_file: Path to .env file (optional)
-            require_keys: If True, raise error if API keys are missing (default: False)
-            config_path: Optional path for persisted config data (kept for compatibility)
-            config_dir: Optional configuration directory override (kept for compatibility)
+            require_keys: Ignored (kept for compatibility)
+            config_path: Optional path for persisted config data
+            config_dir: Optional configuration directory override
         """
         self.config_path = config_path
         self.config_dir = config_dir
         self._ensure_secure_directories()
+
         # Load environment variables
         if env_file and os.path.exists(env_file):
-            load_dotenv(env_file, override=True)  # Override existing env vars
+            load_dotenv(env_file, override=True)
             self._protect_file(Path(env_file))
         else:
-            # Try multiple locations for .env file
-            # This handles both development and PyInstaller bundled scenarios
             possible_paths = [
-                Path('.env'),  # Current working directory
-                Path(__file__).parent.parent / '.env',  # Relative to this file
-                Path(sys.executable).parent / '.env',  # Next to executable
+                Path('.env'),
+                Path(__file__).parent.parent / '.env',
+                Path(sys.executable).parent / '.env',
             ]
 
-            # For PyInstaller, also check sys._MEIPASS
             if getattr(sys, 'frozen', False):
-                # Running in a bundle
                 bundle_dir = Path(sys.executable).parent
                 possible_paths.insert(0, bundle_dir / '.env')
 
             for env_path in possible_paths:
                 if env_path.exists():
-                    load_dotenv(env_path, override=True)  # Override existing env vars
+                    load_dotenv(env_path, override=True)
                     logger.info("Loaded .env from: %s", env_path)
                     self._protect_file(env_path)
                     break
 
-        # Secure credential storage
+        # Credential storage (kept for potential secured Ollama endpoints)
         self.credential_store = CredentialStore()
-        credentials = self._load_secure_credentials()
 
-        # AI Configuration
-        self.ai_provider = os.getenv('AI_PROVIDER', 'anthropic').lower()
-        self.openai_api_key = credentials.get('OPENAI_API_KEY') or os.getenv('OPENAI_API_KEY')
-        self.anthropic_api_key = credentials.get('ANTHROPIC_API_KEY') or os.getenv('ANTHROPIC_API_KEY')
-        self.gemini_api_key = credentials.get('GEMINI_API_KEY') or os.getenv('GEMINI_API_KEY')
-        self.ollama_api_key = credentials.get('OLLAMA_API_KEY') or os.getenv('OLLAMA_API_KEY')
+        # AI Configuration - Ollama only
+        self.ai_provider = "ollama"  # Hardcoded to ollama
         self.ollama_host = os.getenv('OLLAMA_HOST') or os.getenv('OLLAMA_BASE_URL') or 'http://localhost:11434'
         self.ollama_model = os.getenv('OLLAMA_MODEL', 'llama3')
-
-        # Session tokens - load from secure storage instead of .env
-        self.session_tokens: Dict[str, dict] = {}
-        self._load_session_tokens_from_secure_storage(credentials)
 
         # Application Settings
         self.overlay_hotkey = os.getenv('OVERLAY_HOTKEY', 'ctrl+shift+g')
@@ -94,7 +84,6 @@ class Config:
         self.overlay_width = int(os.getenv('OVERLAY_WIDTH', '900'))
         self.overlay_height = int(os.getenv('OVERLAY_HEIGHT', '700'))
         self.overlay_minimized = os.getenv('OVERLAY_MINIMIZED', 'false').lower() == 'true'
-        # Validate opacity is in valid range [0.0, 1.0]
         opacity = float(os.getenv('OVERLAY_OPACITY', '0.95'))
         self.overlay_opacity = max(0.0, min(1.0, opacity))
 
@@ -102,12 +91,15 @@ class Config:
         self.macros_enabled = os.getenv('MACROS_ENABLED', 'false').lower() == 'true'
         self.macro_safety_understood = os.getenv('MACRO_SAFETY_UNDERSTOOD', 'false').lower() == 'true'
         self.max_macro_repeat = int(os.getenv('MAX_MACRO_REPEAT', '10'))
-        self.macro_execution_timeout = int(os.getenv('MACRO_EXECUTION_TIMEOUT', '30'))  # seconds
+        self.macro_execution_timeout = int(os.getenv('MACRO_EXECUTION_TIMEOUT', '30'))
 
         # Extended Settings (stored in separate JSON files)
         self.keybinds: Dict = {}
         self.macros: Dict = {}
         self.theme: Dict = {}
+
+        # Session tokens (kept for compatibility but not used)
+        self.session_tokens: Dict[str, dict] = {}
 
         # Load extended settings
         self._load_keybinds()
@@ -117,89 +109,25 @@ class Config:
         # Load from JSON config file if it exists
         self._load_from_file()
 
-        # Validate configuration (only if required)
-        if require_keys:
-            self._validate()
-
     def _ensure_secure_directories(self) -> None:
         """Create configuration directories with hardened permissions."""
         try:
             ensure_private_dir(CONFIG_DIR)
-        except Exception as exc:  # pragma: no cover - defensive guard
+        except Exception as exc:
             logger.warning("Failed to secure default config dir %s: %s", CONFIG_DIR, exc)
 
         if self.config_dir:
             try:
                 ensure_private_dir(Path(self.config_dir))
-            except Exception as exc:  # pragma: no cover - defensive guard
+            except Exception as exc:
                 logger.warning("Failed to secure custom config dir %s: %s", self.config_dir, exc)
 
     def _protect_file(self, path: Path) -> None:
         """Ensure a configuration file is restricted to the current user."""
         try:
             ensure_private_file(path)
-        except Exception as exc:  # pragma: no cover - defensive guard
+        except Exception as exc:
             logger.warning("Unable to harden permissions for %s: %s", path, exc)
-
-    def _load_session_tokens_from_secure_storage(self, credentials: Dict) -> None:
-        """
-        Load session tokens from secure credential store.
-
-        Args:
-            credentials: Dictionary of credentials from credential store
-        """
-        # Try to load consolidated session tokens JSON first
-        session_tokens_json = credentials.get('SESSION_TOKENS_JSON')
-        if session_tokens_json:
-            try:
-                self.session_tokens = json.loads(session_tokens_json)
-                logger.info("Loaded session tokens from secure storage")
-                return
-            except json.JSONDecodeError as e:
-                logger.warning(f"Failed to parse session tokens JSON: {e}")
-
-        # Fallback: Try loading individual provider tokens from .env (legacy support)
-        # This allows migration from old .env-based storage
-        # Only load from .env if not already present in secure storage (secure storage has priority)
-        for provider in ['openai', 'anthropic', 'gemini', 'ollama']:
-            if provider in self.session_tokens:
-                continue  # Skip if already loaded from secure storage
-
-            env_key = f'{provider.upper()}_SESSION_DATA'
-            raw_value = os.getenv(env_key)
-            if raw_value:
-                try:
-                    parsed = json.loads(raw_value.strip("'\""))
-                    if isinstance(parsed, dict):
-                        self.session_tokens[provider] = parsed
-                except json.JSONDecodeError:
-                    self.session_tokens[provider] = {"raw": raw_value}
-
-    def _validate(self):
-        """Validate configuration - raises ValueError if invalid"""
-        # Check if we have the required API key for the provider
-        if self.ai_provider == 'openai' and not self.openai_api_key:
-            raise ValueError("OpenAI API key not found. Please add it via the Settings dialog.")
-
-        if self.ai_provider == 'anthropic' and not self.anthropic_api_key:
-            raise ValueError("Anthropic API key not found. Please add it via the Settings dialog.")
-
-        if self.ai_provider == 'gemini' and not self.gemini_api_key:
-            raise ValueError("Gemini API key not found. Please add it via the Settings dialog.")
-
-        if self.ai_provider not in ['openai', 'anthropic', 'gemini', 'ollama']:
-            raise ValueError(f"Invalid AI provider: {self.ai_provider}. Must be 'openai', 'anthropic', 'gemini', or 'ollama'")
-
-    def _load_secure_credentials(self) -> dict:
-        """Load credentials from the encrypted store with graceful fallbacks."""
-        try:
-            return self.credential_store.load_credentials()
-        except CredentialDecryptionError as exc:
-            logger.error("Failed to decrypt stored credentials: %s", exc)
-            return {}
-        except CredentialStoreError as exc:
-            logger.warning("Unable to load credentials from secure store: %s", exc)
-            return {}
 
     def _load_keybinds(self):
         """Load keybinds from JSON file"""
@@ -247,22 +175,11 @@ class Config:
             self.theme = {}
 
     def save_keybinds(self, keybinds: Dict) -> bool:
-        """
-        Save keybinds to JSON file
-
-        Args:
-            keybinds: Dictionary of keybind data
-
-        Returns:
-            True if successful, False otherwise
-        """
+        """Save keybinds to JSON file"""
         try:
-            # Ensure config directory exists
             CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
             with open(KEYBINDS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(keybinds, f, indent=2)
-
             self.keybinds = keybinds
             self._protect_file(KEYBINDS_FILE)
             logger.info(f"Saved {len(keybinds)} keybinds to {KEYBINDS_FILE}")
@@ -272,22 +189,11 @@ class Config:
             return False
 
     def save_macros(self, macros: Dict) -> bool:
-        """
-        Save macros to JSON file
-
-        Args:
-            macros: Dictionary of macro data
-
-        Returns:
-            True if successful, False otherwise
-        """
+        """Save macros to JSON file"""
         try:
-            # Ensure config directory exists
             CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
             with open(MACROS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(macros, f, indent=2)
-
             self.macros = macros
             self._protect_file(MACROS_FILE)
             logger.info(f"Saved {len(macros)} macros to {MACROS_FILE}")
@@ -297,22 +203,11 @@ class Config:
             return False
 
     def save_theme(self, theme: Dict) -> bool:
-        """
-        Save theme to JSON file
-
-        Args:
-            theme: Dictionary of theme data
-
-        Returns:
-            True if successful, False otherwise
-        """
+        """Save theme to JSON file"""
         try:
-            # Ensure config directory exists
             CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
             with open(THEME_FILE, 'w', encoding='utf-8') as f:
                 json.dump(theme, f, indent=2)
-
             self.theme = theme
             self._protect_file(THEME_FILE)
             logger.info(f"Saved theme to {THEME_FILE}")
@@ -323,193 +218,49 @@ class Config:
 
     def is_configured(self) -> bool:
         """
-        Check if configuration has valid credentials (API keys or session tokens)
+        Check if Ollama is configured.
 
         Returns:
-            True if at least one API key or session token is configured, False otherwise
+            True if Ollama host is set (always true with defaults)
         """
-        # Check API keys
-        has_api_key = bool(
-            self.openai_api_key or
-            self.anthropic_api_key or
-            self.gemini_api_key or
-            self.ollama_api_key
-        )
-
-        # Check session tokens
-        has_session = bool(self.session_tokens.get('openai') or
-                          self.session_tokens.get('anthropic') or
-                          self.session_tokens.get('gemini') or
-                          self.session_tokens.get('ollama'))
-
-        return has_api_key or has_session or bool(self.ollama_host)
-
+        return bool(self.ollama_host)
 
     def get_api_key(self, provider: Optional[str] = None) -> Optional[str]:
         """
-        Get the API key for a specific provider or the currently selected provider.
+        Get API key - returns None as Ollama doesn't require keys.
 
         Args:
-            provider: Provider name ('openai', 'anthropic', 'gemini', 'ollama').
-                     If None, uses the current AI_PROVIDER setting.
+            provider: Ignored
 
         Returns:
-            API key if found, None otherwise
+            None (Ollama doesn't require API keys)
         """
-        target_provider = (provider or self.ai_provider).lower()
-
-        if target_provider == 'openai':
-            return self.openai_api_key
-        elif target_provider == 'anthropic':
-            return self.anthropic_api_key
-        elif target_provider == 'gemini':
-            return self.gemini_api_key
-        elif target_provider == 'ollama':
-            return self.ollama_api_key
         return None
 
     def set_api_key(self, provider: str, api_key: Optional[str]) -> None:
-        """
-        Set an API key for a provider and persist it to secure storage.
-
-        Args:
-            provider: Provider name ('openai', 'anthropic', 'gemini', 'ollama')
-            api_key: The API key to store (None to clear)
-        """
-        provider = provider.lower()
-
-        if api_key:
-            # Save to both in-memory and secure storage
-            if provider == 'openai':
-                self.openai_api_key = api_key
-            elif provider == 'anthropic':
-                self.anthropic_api_key = api_key
-            elif provider == 'gemini':
-                self.gemini_api_key = api_key
-            elif provider == 'ollama':
-                self.ollama_api_key = api_key
-            else:
-                logger.warning(f"Unknown provider: {provider}")
-                return
-
-            # Persist to secure credential store
-            try:
-                self.credential_store.save_credentials({f'{provider.upper()}_API_KEY': api_key})
-                logger.info(f"Saved API key for provider: {provider}")
-            except Exception as e:
-                logger.error(f"Failed to save API key for {provider}: {e}")
-        else:
-            # Clear the key
-            self.clear_api_key(provider)
-
-    def save_session_tokens(self) -> bool:
-        """
-        Save session tokens to secure credential store.
-
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            if self.session_tokens:
-                session_tokens_json = json.dumps(self.session_tokens)
-                self.credential_store.save_credentials({'SESSION_TOKENS_JSON': session_tokens_json})
-                logger.info("Saved session tokens to secure storage")
-                return True
-            else:
-                # Clear session tokens if empty
-                try:
-                    self.credential_store.delete('SESSION_TOKENS_JSON')
-                except Exception:
-                    pass  # Ignore if doesn't exist
-                return True
-        except Exception as e:
-            logger.error(f"Failed to save session tokens: {e}")
-            return False
+        """No-op - Ollama doesn't require API keys."""
+        pass
 
     def clear_api_key(self, provider: str) -> None:
-        """
-        Clear an API key for a provider.
-
-        Args:
-            provider: Provider name ('openai', 'anthropic', 'gemini', 'ollama')
-        """
-        provider = provider.lower()
-
-        # Clear from memory
-        if provider == 'openai':
-            self.openai_api_key = None
-        elif provider == 'anthropic':
-            self.anthropic_api_key = None
-        elif provider == 'gemini':
-            self.gemini_api_key = None
-        elif provider == 'ollama':
-            self.ollama_api_key = None
-        else:
-            logger.warning(f"Unknown provider: {provider}")
-            return
-
-        # Remove from secure storage
-        try:
-            self.credential_store.delete(f'{provider.upper()}_API_KEY')
-            logger.info(f"Cleared API key for provider: {provider}")
-        except Exception as e:
-            logger.error(f"Failed to clear API key for {provider}: {e}")
+        """No-op - Ollama doesn't require API keys."""
+        pass
 
     def get_effective_provider(self) -> str:
-        """
-        Get the effective provider to use.
-
-        Returns the currently selected provider if it has an API key configured,
-        otherwise returns the first available provider with a key.
-
-        Returns:
-            Provider name ('openai', 'anthropic', 'gemini', 'ollama')
-        """
-        # First check if current provider has a key
-        if self.has_provider_key(self.ai_provider):
-            return self.ai_provider
-
-        # Try other providers in order
-        for provider in ['anthropic', 'openai', 'gemini', 'ollama']:
-            if self.has_provider_key(provider):
-                return provider
-
-        # Fallback to configured provider even if no key
-        return self.ai_provider
+        """Returns 'ollama' always."""
+        return "ollama"
 
     def has_provider_key(self, provider: Optional[str] = None) -> bool:
         """
-        Check if a provider has valid credentials (API key or session token).
-
-        Args:
-            provider: Provider name. If None, checks the current AI_PROVIDER.
+        Check if Ollama is available.
 
         Returns:
-            True if the provider has an API key or session token, False otherwise
+            True if Ollama host is configured
         """
-        target_provider = (provider or self.ai_provider).lower()
-        has_api_key = False
-        has_session = bool(self.session_tokens.get(target_provider))
+        return bool(self.ollama_host)
 
-        if target_provider == 'openai':
-            has_api_key = bool(self.openai_api_key)
-        elif target_provider == 'anthropic':
-            has_api_key = bool(self.anthropic_api_key)
-        elif target_provider == 'gemini':
-            has_api_key = bool(self.gemini_api_key)
-        elif target_provider == 'ollama':
-            has_api_key = bool(self.ollama_api_key)
-            has_session = has_session or bool(self.ollama_host)
-
-        return has_api_key or has_session
-
-    def get_provider_endpoint(self, provider: str) -> Optional[str]:
-        """Get provider-specific endpoint or host configuration."""
-
-        provider = provider.lower()
-        if provider == 'ollama':
-            return self.ollama_host
-        return None
+    def get_provider_endpoint(self, provider: str = None) -> Optional[str]:
+        """Get the Ollama host URL."""
+        return self.ollama_host
 
     def set(self, key: str, value):
         """Set a configuration attribute dynamically."""
@@ -532,7 +283,8 @@ class Config:
 
         try:
             config_data = {
-                'ai_provider': self.ai_provider,
+                'ollama_host': self.ollama_host,
+                'ollama_model': self.ollama_model,
                 'overlay_hotkey': self.overlay_hotkey,
                 'check_interval': self.check_interval,
                 'overlay_x': self.overlay_x,
@@ -565,7 +317,6 @@ class Config:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            # Update attributes from loaded data
             for key, value in data.items():
                 if hasattr(self, key):
                     setattr(self, key, value)
@@ -578,7 +329,8 @@ class Config:
 
     def reset_to_defaults(self):
         """Reset configuration to default values"""
-        self.ai_provider = 'anthropic'
+        self.ollama_host = 'http://localhost:11434'
+        self.ollama_model = 'llama3'
         self.overlay_hotkey = 'ctrl+shift+g'
         self.check_interval = 5
         self.overlay_x = 100
@@ -593,43 +345,41 @@ class Config:
         self.macro_execution_timeout = 30
 
     @staticmethod
-    def save_to_env(provider: str,
-                    session_tokens: Optional[Dict[str, dict]] = None,
-                    overlay_hotkey: str = 'ctrl+shift+g', check_interval: int = 5,
-                    overlay_x: int = None, overlay_y: int = None,
-                    overlay_width: int = None, overlay_height: int = None,
-                    overlay_minimized: bool = None, overlay_opacity: float = None):
+    def save_to_env(
+        provider: str = "ollama",
+        session_tokens: Optional[Dict[str, dict]] = None,
+        overlay_hotkey: str = 'ctrl+shift+g',
+        check_interval: int = 5,
+        overlay_x: int = None,
+        overlay_y: int = None,
+        overlay_width: int = None,
+        overlay_height: int = None,
+        overlay_minimized: bool = None,
+        overlay_opacity: float = None,
+        ollama_host: str = None,
+        ollama_model: str = None
+    ):
         """
-        Save configuration to .env file
-
-        Note: Session tokens are now stored securely in credential store,
-              not in .env file. Use save_session_tokens() instead.
+        Save configuration to .env file.
 
         Args:
-            provider: AI provider ('openai', 'anthropic', or 'gemini')
-            session_tokens: Deprecated - session tokens are stored in credential store
-            overlay_hotkey: Hotkey for overlay (default: 'ctrl+shift+g')
-            check_interval: Game check interval in seconds (default: 5)
-            overlay_x: Overlay window X position (optional)
-            overlay_y: Overlay window Y position (optional)
-            overlay_width: Overlay window width (optional)
-            overlay_height: Overlay window height (optional)
-            overlay_minimized: Overlay minimized state (optional)
-            overlay_opacity: Overlay opacity 0.0-1.0 (optional)
+            provider: Ignored (always 'ollama')
+            session_tokens: Ignored
+            overlay_hotkey: Hotkey for overlay
+            check_interval: Game check interval in seconds
+            overlay_x: Overlay window X position
+            overlay_y: Overlay window Y position
+            overlay_width: Overlay window width
+            overlay_height: Overlay window height
+            overlay_minimized: Overlay minimized state
+            overlay_opacity: Overlay opacity 0.0-1.0
+            ollama_host: Ollama host URL
+            ollama_model: Default Ollama model
         """
         # Determine .env file location
-        # Try multiple locations, prioritizing the most appropriate one
-        possible_paths = [
-            Path('.env'),  # Current working directory
-            Path(__file__).parent.parent / '.env',  # Relative to this file (project root)
-            Path(sys.executable).parent / '.env',  # Next to executable (for bundled app)
-        ]
-
-        # For PyInstaller bundles, use directory next to executable
         if getattr(sys, 'frozen', False):
             env_path = Path(sys.executable).parent / '.env'
         else:
-            # In development, use project root
             env_path = Path(__file__).parent.parent / '.env'
 
         # Read existing .env file if it exists
@@ -643,32 +393,13 @@ class Config:
                         existing_content[key.strip()] = value.strip()
 
         # Update with new values
-        existing_content['AI_PROVIDER'] = provider
-
-        # IMPORTANT: Preserve existing API keys if present
-        # This allows users who prefer .env configuration to continue using it
-        # while also supporting the encrypted credential store for better security
-        # Only set empty placeholder if key doesn't exist
-        if 'OPENAI_API_KEY' not in existing_content:
-            existing_content['OPENAI_API_KEY'] = ''
-        # else: preserve existing value from .env file
-
-        if 'ANTHROPIC_API_KEY' not in existing_content:
-            existing_content['ANTHROPIC_API_KEY'] = ''
-        # else: preserve existing value from .env file
-
-        if 'GEMINI_API_KEY' not in existing_content:
-            existing_content['GEMINI_API_KEY'] = ''
-        # else: preserve existing value from .env file
-
         existing_content['OVERLAY_HOTKEY'] = overlay_hotkey
         existing_content['CHECK_INTERVAL'] = str(check_interval)
 
-        # Session tokens are now stored in secure credential store, not .env
-        # Remove legacy session token entries if they exist
-        for key in ['OPENAI_SESSION_DATA', 'ANTHROPIC_SESSION_DATA', 'GEMINI_SESSION_DATA']:
-            if key in existing_content:
-                del existing_content[key]
+        if ollama_host:
+            existing_content['OLLAMA_HOST'] = ollama_host
+        if ollama_model:
+            existing_content['OLLAMA_MODEL'] = ollama_model
 
         # Update overlay settings if provided
         if overlay_x is not None:
@@ -686,16 +417,12 @@ class Config:
 
         # Write to .env file
         with open(env_path, 'w', encoding='utf-8') as f:
-            f.write("# Gaming AI Assistant Configuration\n")
+            f.write("# Gaming AI Assistant Configuration (Ollama)\n")
             f.write("# This file was generated by the Settings dialog\n\n")
 
-            f.write("# AI Provider Selection\n")
-            f.write(f"AI_PROVIDER={existing_content['AI_PROVIDER']}\n\n")
-
-            f.write("# API Keys and Session Tokens are stored securely using the encrypted credential store\n")
-            f.write(f"OPENAI_API_KEY={existing_content.get('OPENAI_API_KEY', '')}\n")
-            f.write(f"ANTHROPIC_API_KEY={existing_content.get('ANTHROPIC_API_KEY', '')}\n")
-            f.write(f"GEMINI_API_KEY={existing_content.get('GEMINI_API_KEY', '')}\n\n")
+            f.write("# Ollama Configuration\n")
+            f.write(f"OLLAMA_HOST={existing_content.get('OLLAMA_HOST', 'http://localhost:11434')}\n")
+            f.write(f"OLLAMA_MODEL={existing_content.get('OLLAMA_MODEL', 'llama3')}\n\n")
 
             f.write("# Application Settings\n")
             f.write(f"OVERLAY_HOTKEY={existing_content['OVERLAY_HOTKEY']}\n")
@@ -717,7 +444,7 @@ class Config:
 
     def __repr__(self):
         """String representation"""
-        return f"Config(provider={self.ai_provider}, hotkey={self.overlay_hotkey})"
+        return f"Config(ollama_host={self.ollama_host}, model={self.ollama_model})"
 
 
 if __name__ == "__main__":
@@ -726,10 +453,7 @@ if __name__ == "__main__":
         config = Config()
         print("Configuration loaded successfully:")
         print(config)
-        print(f"API Key present: {'Yes' if config.get_api_key() else 'No'}")
+        print(f"Ollama Host: {config.ollama_host}")
+        print(f"Ollama Model: {config.ollama_model}")
     except Exception as e:
         print(f"Configuration error: {e}")
-        print("\nPlease:")
-        print("1. Launch the Gaming AI Assistant application.")
-        print("2. Open the ⚙️ Settings dialog and enter your API key(s).")
-        print("3. Choose your preferred AI provider from the Settings dialog.")

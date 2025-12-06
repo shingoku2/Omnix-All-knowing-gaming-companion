@@ -471,61 +471,25 @@ class SettingsPanel(NeonCard):
         provider_label.setObjectName("SectionTitle")
         layout.addWidget(provider_label)
 
-        # First row: OpenAI and Anthropic
-        provider_row1 = QHBoxLayout()
-        self.provider_openai = NeonButton("OpenAI", variant="provider", checkable=True)
-        self.provider_anthropic = NeonButton("Anthropic", variant="provider", checkable=True)
-        self.provider_openai.clicked.connect(lambda: self._switch_provider("openai"))
-        self.provider_anthropic.clicked.connect(lambda: self._switch_provider("anthropic"))
-        provider_row1.addWidget(self.provider_openai)
-        provider_row1.addWidget(self.provider_anthropic)
-        layout.addLayout(provider_row1)
-
-        # Second row: Gemini and Ollama
-        provider_row2 = QHBoxLayout()
-        self.provider_gemini = NeonButton("Gemini", variant="provider", checkable=True)
-        self.provider_ollama = NeonButton("Ollama", variant="provider", checkable=True)
-        self.provider_gemini.clicked.connect(lambda: self._switch_provider("gemini"))
-        self.provider_ollama.clicked.connect(lambda: self._switch_provider("ollama"))
-        provider_row2.addWidget(self.provider_gemini)
-        provider_row2.addWidget(self.provider_ollama)
-        layout.addLayout(provider_row2)
+        # Ollama status display (only provider now)
+        ollama_row = QHBoxLayout()
+        self.provider_ollama = NeonButton("🤖 Ollama (Local)", variant="provider", checkable=True)
+        self.provider_ollama.setChecked(True)  # Always active
+        self.provider_ollama.setEnabled(False)  # Not switchable
+        self.provider_ollama.setToolTip("Using local Ollama for AI inference")
+        ollama_row.addWidget(self.provider_ollama)
+        layout.addLayout(ollama_row)
 
         layout.addStretch()
 
     def _switch_provider(self, provider: str) -> None:
-        """Switch to a different AI provider"""
-        if self.config:
-            # Update config
-            self.config.ai_provider = provider
-            # Save to .env
-            try:
-                Config.save_to_env(
-                    provider=provider,
-                    overlay_hotkey=self.config.overlay_hotkey,
-                    check_interval=self.config.check_interval,
-                    overlay_x=self.config.overlay_x,
-                    overlay_y=self.config.overlay_y,
-                    overlay_width=self.config.overlay_width,
-                    overlay_height=self.config.overlay_height,
-                    overlay_minimized=self.config.overlay_minimized,
-                    overlay_opacity=self.config.overlay_opacity
-                )
-                logger.info(f"Switched to provider: {provider}")
-            except Exception as e:
-                logger.error(f"Failed to save provider change: {e}")
+        """Provider switching is disabled - Ollama only"""
+        # Ollama is the only provider now
+        logger.debug("Provider is always Ollama (local)")
 
-        # Update button states
-        self._update_provider_buttons(provider)
-        # Emit signal
-        self.provider_changed.emit(provider)
-
-    def _update_provider_buttons(self, provider: str) -> None:
-        """Update provider button checked states"""
-        self.provider_openai.setChecked(provider == "openai")
-        self.provider_anthropic.setChecked(provider == "anthropic")
-        self.provider_gemini.setChecked(provider == "gemini")
-        self.provider_ollama.setChecked(provider == "ollama")
+    def _update_provider_buttons(self, provider: str = "ollama") -> None:
+        """Update provider button state - always Ollama"""
+        self.provider_ollama.setChecked(True)
 
     def _open_providers_settings(self) -> None:
         """Open full settings dialog at providers tab"""

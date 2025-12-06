@@ -73,14 +73,13 @@ class AIAssistant:
         Initialize AI Assistant
 
         Args:
-            provider: Provider name ('openai', 'anthropic', 'gemini').
-                     If None, uses the configured default.
+            provider: Ignored (always uses Ollama)
             config: Config instance (if None, creates a new one)
-            session_tokens: Optional session tokens (currently stored but not used)
+            session_tokens: Ignored (kept for compatibility)
         """
         self.config = config or Config()
         self.router = get_router(self.config)
-        self.provider = provider or self.config.ai_provider
+        self.provider = "ollama"  # Always Ollama
         self.session_tokens = session_tokens or {}
         self.conversation_history = []
         self.current_game = None
@@ -124,34 +123,31 @@ class AIAssistant:
 
     def _format_provider_error(self, error: ProviderError) -> str:
         """Format provider errors into user-friendly messages"""
-        if isinstance(error, ProviderAuthError):
+        error_str = str(error)
+
+        if "not found" in error_str.lower():
             return (
-                f"⚠️ {self.provider.title()} API Authentication Error\n\n"
-                "Your API key is invalid or missing.\n\n"
+                "⚠️ Ollama Model Not Found\n\n"
+                f"{error_str}\n\n"
                 "To fix this:\n"
-                "1. Click the ⚙️ Settings button\n"
-                "2. Go to AI Providers tab\n"
-                "3. Enter or verify your API key\n"
-                "4. Click 'Test Connection' to verify\n\n"
-                "You can get a new API key from your provider's website."
+                "1. Open a terminal\n"
+                "2. Run: ollama pull <model_name>\n"
+                "3. Try again"
             )
-        elif isinstance(error, ProviderQuotaError):
+        elif "connection" in error_str.lower() or "connect" in error_str.lower():
             return (
-                f"⚠️ {self.provider.title()} API Quota Exceeded\n\n"
-                "Your API account has run out of credits or exceeded its quota.\n\n"
-                "To fix this, check your provider's billing settings and add credits/payment method."
-            )
-        elif isinstance(error, ProviderRateLimitError):
-            return (
-                f"⚠️ {self.provider.title()} Rate Limit Reached\n\n"
-                "You've sent too many requests in a short time.\n\n"
-                "Please wait a moment and try again. Rate limits typically reset within 1-2 minutes."
+                "❌ Cannot Connect to Ollama\n\n"
+                f"Error: {error_str}\n\n"
+                "Please ensure:\n"
+                "1. Ollama is installed (https://ollama.com)\n"
+                "2. The Ollama daemon is running\n"
+                "3. Check Settings for correct host URL"
             )
         else:
             return (
-                f"❌ {self.provider.title()} API Error\n\n"
-                f"An error occurred: {str(error)}\n\n"
-                "Please try again or check your internet connection."
+                f"❌ Ollama Error\n\n"
+                f"{error_str}\n\n"
+                "Please check that Ollama is running and try again."
             )
 
     def set_current_game(self, game_info: Optional[Dict[str, str]]):
@@ -177,21 +173,13 @@ class AIAssistant:
 
         Args:
             profile: GameProfile instance with game-specific AI configuration
-            override_provider: If True, switch to profile's preferred provider
+            override_provider: Ignored (always uses Ollama)
         """
         self.current_profile = profile
 
-        # Update model from profile
-        self.current_model = profile.default_model
-
-        # Switch provider if profile specifies one and override is enabled
-        if override_provider and profile.default_provider != self.provider:
-            logger.info(
-                f"Switching provider from {self.provider} to {profile.default_provider} "
-                f"for profile {profile.id}"
-            )
-            # Just set the provider name. The router will handle which key/client to use.
-            self.provider = profile.default_provider
+        # Update model from profile if specified
+        if profile.default_model:
+            self.current_model = profile.default_model
 
         # Thread-safe history update
         with self._history_lock:
@@ -206,21 +194,14 @@ class AIAssistant:
         logger.info(f"Set game profile: {profile.display_name} (id={profile.id})")
 
     def clear_game_profile(self):
-        """Clear the current game profile and reset to global default provider"""
+        """Clear the current game profile"""
         self.current_profile = None
         self.current_model = None
 
         with self._history_lock:
             self.conversation_history = []
 
-        # Reset provider to global default
-        # This prevents the provider from staying "stuck" on a game-specific provider
-        # after the game is closed
-        if self.provider != self.config.ai_provider:
-            logger.info(f"Resetting provider from {self.provider} to global default {self.config.ai_provider}")
-            self.provider = self.config.ai_provider
-
-        logger.info("Cleared game profile and reverted to default provider")
+        logger.info("Cleared game profile")
 
     def _add_system_context(self, game_name: Optional[str]):
         """Add system context about the current game"""
@@ -417,7 +398,7 @@ if __name__ == "__main__":
     import sys
 
     # Test with environment variables
-    provider = os.getenv("AI_PROVIDER", "anthropic")
+    provider = os.getenv("AI_PROVIDER", "ollama")
 
     try:
         assistant = AIAssistant(provider=provider)

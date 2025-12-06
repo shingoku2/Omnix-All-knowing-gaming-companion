@@ -1,111 +1,95 @@
 """
 Central AI Router
 
-High-level abstraction for routing chat requests to the appropriate AI provider.
-Handles provider instantiation, error handling, and fallback logic.
+Simplified to use Ollama only for local/remote model inference.
+Handles provider instantiation, error handling, and model management.
 """
 
-import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
 from src.config import Config
 from src.providers import (
-    AIProvider,
-    AnthropicProvider,
+    OllamaProvider,
     create_provider,
-    ProviderAuthError,
     ProviderError,
-    ProviderQuotaError,
-    ProviderRateLimitError,
+    ProviderConnectionError,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class AIRouter:
-    """Central router for AI provider requests"""
+    """Central router for AI provider requests (Ollama-only)"""
 
     def __init__(self, config: Optional[Config] = None):
         """
-        Initialize the AI router
+        Initialize the AI router.
 
         Args:
             config: Config instance (if None, creates a new one)
         """
         self.config = config or Config()
-        self._providers: Dict[str, Any] = {}
-        self._initialize_providers()
+        self._provider: Optional[OllamaProvider] = None
+        self._initialize_provider()
 
-    def _initialize_providers(self):
-        """Initialize all available providers with their API keys"""
-        provider_names = ["openai", "anthropic", "gemini", "ollama"]
+    def _initialize_provider(self):
+        """Initialize the Ollama provider"""
+        try:
+            base_url = self.config.ollama_host
+            default_model = self.config.ollama_model
 
-        for provider_name in provider_names:
-            api_key = self.config.get_api_key(provider_name)
-            base_url = self.config.get_provider_endpoint(provider_name)
+            self._provider = create_provider(
+                "ollama",
+                base_url=base_url,
+                default_model=default_model
+            )
+            logger.info(f"Initialized Ollama provider at {base_url}")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Ollama provider: {e}")
 
-            if api_key or base_url or provider_name == "ollama":
-                try:
-                    # Add default_model for Ollama
-                    kwargs = {}
-                    if provider_name == "ollama" and hasattr(self.config, 'ollama_model'):
-                        kwargs['default_model'] = self.config.ollama_model
-
-                    self._providers[provider_name] = create_provider(
-                        provider_name,
-                        api_key=api_key,
-                        base_url=base_url,
-                        **kwargs
-                    )
-                    logger.debug(f"Initialized provider: {provider_name}")
-                except Exception as e:
-                    logger.warning(f"Failed to initialize {provider_name}: {e}")
-
-    def get_default_provider(self) -> Optional[Any]:
+    def get_provider(self, provider_name: str = None) -> Optional[OllamaProvider]:
         """
-        Get the default AI provider
-
-        Returns the configured provider if it has an API key, otherwise returns
-        the first available provider with a key.
-
-        Returns:
-            Provider instance or None if no providers are configured
-        """
-        # Try to get the effective provider from config
-        effective_provider_name = self.config.get_effective_provider()
-
-        if effective_provider_name in self._providers:
-            return self._providers[effective_provider_name]
-
-        # Fallback to first available provider
-        for provider_name, provider in self._providers.items():
-            if provider.is_configured():
-                logger.debug(f"Using fallback provider: {provider_name}")
-                return provider
-
-        return None
-
-    def get_provider(self, provider_name: str) -> Optional[Any]:
-        """
-        Get a specific provider by name
+        Get the Ollama provider.
 
         Args:
-            provider_name: 'openai', 'anthropic', or 'gemini'
+            provider_name: Ignored (kept for API compatibility)
 
         Returns:
-            Provider instance or None if not available
+            OllamaProvider instance or None if not available
         """
-        return self._providers.get(provider_name.lower())
+        return self._provider
+
+    def get_default_provider(self) -> Optional[OllamaProvider]:
+        """
+        Get the default provider (Ollama).
+
+        Returns:
+            OllamaProvider instance or None if not available
+        """
+        return self._provider
 
     def list_configured_providers(self) -> List[str]:
         """
-        Get list of configured providers
+        Get list of configured providers.
 
         Returns:
-            List of provider names that are configured with API keys
+            List containing 'ollama' if configured, empty otherwise
         """
-        return [name for name, provider in self._providers.items() if provider.is_configured()]
+        if self._provider and self._provider.is_configured():
+            return ["ollama"]
+        return []
+
+    def list_models(self) -> List[str]:
+        """
+        List available models from Ollama.
+
+        Returns:
+            List of model names
+        """
+        if self._provider:
+            return self._provider.list_models()
+        return []
 
     def chat(
         self,
@@ -115,168 +99,126 @@ class AIRouter:
         **kwargs: Any
     ) -> Dict[str, Any]:
         """
-        Send a chat request to the appropriate AI provider
+        Send a chat request to Ollama.
 
         Args:
             messages: Conversation messages with 'role' and 'content'
-            provider: Specific provider to use (default: uses effective provider)
-            model: Specific model to use (provider-specific)
-            **kwargs: Additional provider-specific parameters
+            provider: Ignored (kept for API compatibility)
+            model: Specific model to use (optional)
+            **kwargs: Additional parameters
 
         Returns:
             Response dict with 'content' and provider-specific fields
 
         Raises:
-            ProviderAuthError: If no API key is configured
-            ProviderError: If the provider request fails
+            ProviderConnectionError: If Ollama is not available
+            ProviderError: If the request fails
         """
-        # Determine which provider to use
-        if provider:
-            target_provider = self.get_provider(provider)
-            if not target_provider:
-                raise ProviderAuthError(
-                    f"Provider '{provider}' is not configured. "
-                    f"Available: {', '.join(self.list_configured_providers())}"
-                )
-        else:
-            target_provider = self.get_default_provider()
-            if not target_provider:
-                raise ProviderAuthError(
-                    "No AI provider is configured. "
-                    "Please configure at least one provider via Settings > AI Providers."
-                )
+        if not self._provider:
+            raise ProviderConnectionError(
+                "Ollama is not configured.\n\n"
+                "Please ensure:\n"
+                "1. Ollama is installed (https://ollama.com)\n"
+                "2. The Ollama daemon is running\n"
+                "3. You have at least one model pulled (e.g., 'ollama pull llama3')"
+            )
+
+        if not self._provider.is_configured():
+            raise ProviderConnectionError(
+                "Ollama client is not initialized.\n\n"
+                "Please ensure the 'ollama' Python package is installed:\n"
+                "pip install ollama"
+            )
 
         try:
-            # Send the request
-            response = target_provider.chat(messages, model=model, **kwargs)
+            response = self._provider.chat(messages, model=model, **kwargs)
             return response
 
-        except ProviderAuthError as e:
-            raise ProviderAuthError(
-                f"Authentication failed with {target_provider.name}: {str(e)}\n"
-                f"Please check your API key in Settings > AI Providers."
-            )
-        except ProviderQuotaError as e:
-            raise ProviderQuotaError(
-                f"Quota exceeded for {target_provider.name}: {str(e)}\n"
-                f"Please check your account settings for {target_provider.name}."
-            )
-        except ProviderRateLimitError as e:
-            raise ProviderRateLimitError(
-                f"Rate limited by {target_provider.name}: {str(e)}\n"
-                f"Please try again in a moment."
+        except ProviderConnectionError as e:
+            raise ProviderConnectionError(
+                f"Failed to connect to Ollama: {str(e)}\n\n"
+                f"Please ensure Ollama is running at {self.config.ollama_host}"
             )
         except ProviderError as e:
-            raise ProviderError(
-                f"Request failed with {target_provider.name}: {str(e)}"
-            )
+            raise ProviderError(f"Ollama error: {str(e)}")
 
-    def test_provider(self, provider_name: str) -> tuple[bool, str]:
+    def test_provider(self, provider_name: str = None) -> tuple[bool, str]:
         """
-        Test connection to a provider
+        Test connection to Ollama.
 
         Args:
-            provider_name: 'openai', 'anthropic', or 'gemini'
+            provider_name: Ignored (kept for API compatibility)
 
         Returns:
             Tuple of (success: bool, message: str)
         """
-        provider = self.get_provider(provider_name)
-        if not provider:
-            return False, f"Provider '{provider_name}' is not configured"
+        if not self._provider:
+            return False, "Ollama provider not initialized"
 
         try:
-            health = provider.test_connection()
+            health = self._provider.test_connection()
             return health.is_healthy, health.message
         except Exception as e:
             return False, f"Test failed: {str(e)}"
 
-    def set_api_key(self, provider_name: str, api_key: str) -> bool:
+    def get_provider_status(self, provider_name: str = None) -> Dict[str, Any]:
         """
-        Set or update an API key for a provider
+        Get status information for Ollama.
 
         Args:
-            provider_name: 'openai', 'anthropic', or 'gemini'
-            api_key: The API key to save
-
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Save to config
-            self.config.set_api_key(provider_name, api_key)
-
-            # Reinitialize the provider with the new key
-            self._providers[provider_name.lower()] = create_provider(
-                provider_name,
-                api_key=api_key
-            )
-            logger.info(f"Updated API key for provider: {provider_name}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to set API key for {provider_name}: {e}")
-            return False
-
-    def clear_api_key(self, provider_name: str) -> bool:
-        """
-        Clear an API key for a provider
-
-        Args:
-            provider_name: 'openai', 'anthropic', or 'gemini'
-
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            self.config.clear_api_key(provider_name)
-            provider_name_lower = provider_name.lower()
-            if provider_name_lower in self._providers:
-                del self._providers[provider_name_lower]
-            logger.info(f"Cleared API key for provider: {provider_name}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to clear API key for {provider_name}: {e}")
-            return False
-
-    def get_provider_status(self, provider_name: str) -> Dict[str, Any]:
-        """
-        Get status information for a provider
-
-        Args:
-            provider_name: 'openai', 'anthropic', or 'gemini'
+            provider_name: Ignored (kept for API compatibility)
 
         Returns:
             Dict with provider status information
         """
-        provider = self.get_provider(provider_name)
-        if not provider:
+        if not self._provider:
             return {
-                "name": provider_name,
+                "name": "ollama",
                 "configured": False,
-                "message": f"Provider not configured"
+                "message": "Provider not initialized"
             }
 
-        health = provider.test_connection()
+        health = self._provider.test_connection()
         return {
-            "name": provider_name,
-            "configured": provider.is_configured(),
+            "name": "ollama",
+            "configured": self._provider.is_configured(),
             "healthy": health.is_healthy,
             "message": health.message,
             "error_type": health.error_type,
             "details": health.details or {}
         }
 
+    def set_model(self, model: str) -> None:
+        """
+        Set the default model for Ollama.
+
+        Args:
+            model: Model name (e.g., 'llama3', 'mistral')
+        """
+        if self._provider:
+            self._provider.default_model = model
+            self.config.ollama_model = model
+            logger.info(f"Updated default model to: {model}")
+
+    def set_host(self, host: str) -> None:
+        """
+        Set the Ollama host URL and reinitialize the provider.
+
+        Args:
+            host: Ollama host URL (e.g., 'http://localhost:11434')
+        """
+        self.config.ollama_host = host
+        self._initialize_provider()
+        logger.info(f"Updated Ollama host to: {host}")
+
     def reload_providers(self) -> None:
         """
-        Reload all provider instances from the current config.
+        Reload the Ollama provider from the current config.
 
-        This is useful when API keys have been updated through the settings dialog
-        and we need to refresh the provider clients with the new keys.
+        This is useful when configuration has been updated.
         """
-        logger.info("Reloading all provider instances from config")
-        self._providers.clear()
-        self._initialize_providers()
-        logger.info(f"Reloaded providers: {list(self._providers.keys())}")
+        logger.info("Reloading Ollama provider from config")
+        self._initialize_provider()
 
 
 # Global router instance
@@ -285,7 +227,7 @@ _router: Optional[AIRouter] = None
 
 def get_router(config: Optional[Config] = None) -> AIRouter:
     """
-    Get or create the global AI router instance
+    Get or create the global AI router instance.
 
     Args:
         config: Optional Config instance to use
