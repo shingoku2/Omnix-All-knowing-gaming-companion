@@ -27,8 +27,8 @@ class GameProfile:
         display_name: Human-readable name (e.g., "Elden Ring")
         exe_names: List of executable names to match (e.g., ["eldenring.exe"])
         system_prompt: AI behavior customization for this game
-        default_provider: Preferred AI provider (openai, anthropic, gemini)
-        default_model: Optional model override (e.g., "gpt-4", "claude-3-opus")
+        default_provider: Always 'ollama' (kept for compatibility)
+        default_model: Optional model override (e.g., "llama3", "mistral")
         overlay_mode_default: Default overlay mode (compact or full)
         extra_settings: Future extensibility dictionary
         is_builtin: Whether this is a built-in template profile
@@ -37,7 +37,7 @@ class GameProfile:
     display_name: str
     exe_names: List[str]
     system_prompt: str
-    default_provider: str = "anthropic"
+    default_provider: str = "ollama"  # Always ollama now
     default_model: Optional[str] = None
     overlay_mode_default: str = "compact"
     extra_settings: Dict = field(default_factory=dict)
@@ -88,7 +88,7 @@ class GameProfileStore:
                 "gameplay advice, and answers about the game. Keep responses concise "
                 "and actionable. Focus on being useful in-game."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -101,7 +101,7 @@ class GameProfileStore:
                 "questlines, dungeon strategies, PvP tactics, and game mechanics. "
                 "Provide build recommendations and dungeon guides. Keep advice concise."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -114,7 +114,7 @@ class GameProfileStore:
                 "build optimization, questlines, item locations, PvP tactics, and map guidance. "
                 "Provide concise, actionable tips for tough fights. Mention alternative strategies."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -127,7 +127,7 @@ class GameProfileStore:
                 "companion quests, dialogue choices, combat tactics, spell usage, and exploration. "
                 "Consider roleplay implications and provide spoiler-free guidance where possible."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -140,7 +140,7 @@ class GameProfileStore:
                 "quest walkthroughs, side gigs, weapon recommendations, cyberware setups, "
                 "and secret locations. Provide concise tactical advice for combat."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -153,7 +153,7 @@ class GameProfileStore:
                 "build recommendations, PvP tactics, item locations, and level design. "
                 "Provide concise tips for tough encounters and mention parry/backstab opportunities."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -165,7 +165,7 @@ class GameProfileStore:
                 "You are a Challenger-tier League of Legends coach. Provide pick/ban advice, "
                 "lane matchups, rune setups, and mid-game macro plans tailored to the asked role."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -177,7 +177,7 @@ class GameProfileStore:
                 "You are an expert Valorant shot-caller. Provide agent compositions, "
                 "utility lineups, economy advice, and map-specific executes."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -189,7 +189,7 @@ class GameProfileStore:
                 "You are a Counter-Strike 2 analyst. Share buy strats, nade lineups, callouts, "
                 "and aim/spray control tips for competitive play."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -201,7 +201,7 @@ class GameProfileStore:
                 "You are a Dota 2 drafter and coach. Offer hero counters, lane builds, "
                 "power spike reminders, and teamfight execution plans."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -213,7 +213,7 @@ class GameProfileStore:
                 "You are a World of Warcraft raid lead. Give rotation tips, gearing paths, "
                 "dungeon/raid mechanics, and class talent suggestions for retail and classic."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -225,7 +225,7 @@ class GameProfileStore:
                 "You are a master Minecraft builder. Provide crafting recipes, redstone ideas, "
                 "survival progression routes, and mob farming tips."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -237,7 +237,7 @@ class GameProfileStore:
                 "You are a Fortnite coach. Offer drop spot plans, building/edit drills, "
                 "loadout advice, and rotating strategies for the current season."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -249,7 +249,7 @@ class GameProfileStore:
                 "You are a PUBG strategist. Provide drop recommendations, loot routes, "
                 "mid-game rotation guidance, and gunplay tips for each map."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),
@@ -261,7 +261,7 @@ class GameProfileStore:
                 "You are a GTA V expert. Provide heist prep tips, vehicle and weapon suggestions, "
                 "and efficient money-making or exploration ideas."
             ),
-            default_provider="anthropic",
+            default_provider="ollama",
             overlay_mode_default="compact",
             is_builtin=True,
         ),

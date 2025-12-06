@@ -28,7 +28,7 @@ except ImportError:
 class EmbeddingProvider:
     """
     Abstract base for embedding generation.
-    Can be extended to support different providers (OpenAI, sentence-transformers, etc.)
+    Currently uses SimpleTFIDFEmbedding for local operation.
     """
 
     def generate_embedding(self, text: str) -> List[float]:
@@ -153,72 +153,6 @@ class SimpleTFIDFEmbedding(EmbeddingProvider):
             vector = [v / magnitude for v in vector]
 
         return vector
-
-
-class OpenAIEmbedding(EmbeddingProvider):
-    """
-    OpenAI embedding provider using their embedding API.
-    Requires OpenAI API key.
-    """
-
-    def __init__(self, api_key: str, model: str = "text-embedding-3-small"):
-        """
-        Initialize OpenAI embedding provider
-
-        Args:
-            api_key: OpenAI API key
-            model: Embedding model to use (default: text-embedding-3-small)
-        """
-        self.api_key = api_key
-        self.model = model
-        self._check_api_available()
-
-    def _check_api_available(self):
-        """Check if OpenAI library is available"""
-        try:
-            import openai
-            self.openai = openai
-        except ImportError:
-            logger.warning("OpenAI library not available. Install with: pip install openai")
-            self.openai = None
-
-    def generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding using OpenAI API"""
-        if not self.openai:
-            raise RuntimeError("OpenAI library not available")
-
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=self.api_key)
-
-            response = client.embeddings.create(
-                input=text,
-                model=self.model
-            )
-            return response.data[0].embedding
-
-        except Exception as e:
-            logger.error(f"Failed to generate embedding: {e}")
-            raise
-
-    def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for multiple texts (optimized batch API call)"""
-        if not self.openai:
-            raise RuntimeError("OpenAI library not available")
-
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=self.api_key)
-
-            response = client.embeddings.create(
-                input=texts,
-                model=self.model
-            )
-            return [item.embedding for item in response.data]
-
-        except Exception as e:
-            logger.error(f"Failed to generate embeddings batch: {e}")
-            raise
 
 
 class KnowledgeIndex:
