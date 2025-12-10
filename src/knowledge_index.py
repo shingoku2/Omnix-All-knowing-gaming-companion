@@ -17,6 +17,7 @@ from knowledge_store import get_knowledge_pack_store
 logger = logging.getLogger(__name__)
 
 # Import pickle only for backward compatibility with legacy index files
+# SECURITY WARNING: Only used for local trusted files, never for external data
 try:
     import pickle
     PICKLE_AVAILABLE = True
@@ -143,7 +144,8 @@ class SimpleTFIDFEmbedding(EmbeddingProvider):
         vector = [0.0] * size
 
         for token in tokens:
-            hash_val = int(hashlib.md5(token.encode()).hexdigest(), 16)
+            # Use SHA256 instead of MD5 for better security
+            hash_val = int(hashlib.sha256(token.encode()).hexdigest(), 16)
             idx = hash_val % size
             vector[idx] += 1.0
 
