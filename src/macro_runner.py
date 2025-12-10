@@ -165,8 +165,8 @@ class MacroRunner:
         if self.execution_thread and self.execution_thread.is_alive():
             try:
                 self.execution_thread.join(timeout=1.0)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Error joining macro execution thread: {e}")
 
     def _execute_macro_thread(self):
         """Execute macro in background thread"""
@@ -271,7 +271,9 @@ class MacroRunner:
         # Add optional jitter to delays
         delay = step.duration_ms if step.duration_ms > 0 else 0
         if step.delay_jitter_ms > 0 and step.type == MacroStepType.DELAY.value:
-            jitter = random.randint(0, step.delay_jitter_ms)
+            # Use secrets module for cryptographically secure random numbers
+            import secrets
+            jitter = secrets.randbelow(step.delay_jitter_ms + 1)
             delay = step.duration_ms + jitter
 
         try:
