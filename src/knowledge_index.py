@@ -16,15 +16,6 @@ from knowledge_store import get_knowledge_pack_store
 
 logger = logging.getLogger(__name__)
 
-# Import pickle only for backward compatibility with legacy index files
-try:
-    import pickle
-    PICKLE_AVAILABLE = True
-except ImportError:
-    PICKLE_AVAILABLE = False
-    logger.warning("pickle module not available - cannot migrate legacy index files")
-
-
 class EmbeddingProvider:
     """
     Abstract base for embedding generation.
@@ -143,7 +134,7 @@ class SimpleTFIDFEmbedding(EmbeddingProvider):
         vector = [0.0] * size
 
         for token in tokens:
-            hash_val = int(hashlib.md5(token.encode()).hexdigest(), 16)
+            hash_val = int(hashlib.sha256(token.encode()).hexdigest(), 16)
             idx = hash_val % size
             vector[idx] += 1.0
 
@@ -177,16 +168,14 @@ class KnowledgeIndex:
                             Injecting this dependency makes testing much easier.
         """
         if config_dir is None:
-            config_dir = Path.home() / '.gaming_ai_assistant'
+            self.config_dir = Path.home() / '.gaming_ai_assistant'
         else:
-            config_dir = Path(config_dir)
+            self.config_dir = Path(config_dir)
 
-        self.config_dir = config_dir
         self.index_dir = self.config_dir / "knowledge_index"
         self.index_dir.mkdir(parents=True, exist_ok=True)
 
         self.index_file = self.index_dir / "index.json"
-        self.legacy_index_file = self.index_dir / "index.pkl"  # For backward compatibility
 
         # Embedding provider
         self.embedding_provider = embedding_provider or SimpleTFIDFEmbedding()
@@ -228,34 +217,6 @@ class KnowledgeIndex:
 
                 logger.info(f"Loaded knowledge index with {sum(len(chunks) for chunks in self.index.values())} chunks")
                 return
-
-            # Backward compatibility: Try loading legacy pickle file
-            if self.legacy_index_file.exists():
-                if not PICKLE_AVAILABLE:
-                    logger.error("Found legacy pickle index file but pickle module not available - cannot migrate")
-                    logger.error("Please manually delete the pickle file or install pickle module")
-                    return
-
-                logger.warning("Found legacy pickle index file - migrating to secure JSON format")
-                with open(self.legacy_index_file, 'rb') as f:
-                    data = pickle.load(f)
-
-                # Handle legacy format (if file just contains the dict) or new format
-                if isinstance(data, dict) and 'index' in data:
-                    self.index = data['index']
-                    if data.get('embedding_provider') and isinstance(data['embedding_provider'], SimpleTFIDFEmbedding):
-                        self.embedding_provider = data['embedding_provider']
-                        logger.info("Migrated TF-IDF model from legacy pickle format")
-                else:
-                    # Legacy fallback: data is just the index dict
-                    self.index = data
-                    logger.warning("Migrated legacy index format without embedding model")
-
-                # Save in new JSON format and remove pickle file
-                self._save_index()
-                self.legacy_index_file.unlink()
-                logger.info("Successfully migrated to secure JSON format and removed pickle file")
-                logger.info(f"Loaded knowledge index with {sum(len(chunks) for chunks in self.index.values())} chunks")
 
         except Exception as e:
             logger.error(f"Failed to load index: {e}")

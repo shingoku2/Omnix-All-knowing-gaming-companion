@@ -340,7 +340,7 @@ Focus on:
 Be specific and actionable."""
 
         try:
-            response = await self.router.chat(
+            response = self.router.chat(
                 messages=[{"role": "user", "content": prompt}],
                 provider=self.config.ai_provider
             )
@@ -353,7 +353,7 @@ Be specific and actionable."""
         prompt = f"Provide general coaching tips for {game_profile_id}."
 
         try:
-            response = await self.router.chat(
+            response = self.router.chat(
                 messages=[{"role": "user", "content": prompt}],
                 provider=self.config.ai_provider
             )

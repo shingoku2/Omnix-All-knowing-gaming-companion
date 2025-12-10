@@ -11,15 +11,14 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal, Qt
 
-from settings_tabs import KeybindingsTab, MacrosTab
+from settings_tabs import KeybindingsTab, MacrosTab, HRMSettingsTab
 from appearance_tabs import AppAppearanceTab, OverlayAppearanceTab
 from providers_tab import ProvidersTab
 from game_profiles_tab import GameProfilesTab
 from knowledge_packs_tab import KnowledgePacksTab
 from keybind_manager import KeybindManager
 from macro_manager import MacroManager
-from theme_compat import ThemeManager as LegacyThemeManager
-from ui.theme_manager import get_theme_manager
+from ui.theme_manager import get_theme_manager, OmnixThemeManager
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class TabbedSettingsDialog(QDialog):
         config,
         keybind_manager: KeybindManager,
         macro_manager: MacroManager,
-        theme_manager: LegacyThemeManager,
+        theme_manager: OmnixThemeManager,
         # Keep reference to original SettingsDialog for General tab
         original_settings_widget=None
     ):
@@ -57,11 +56,11 @@ class TabbedSettingsDialog(QDialog):
         self.config = config
         self.keybind_manager = keybind_manager
         self.macro_manager = macro_manager
-        self.theme_manager = theme_manager  # Legacy compat wrapper
+        self.theme_manager = theme_manager  # Now OmnixThemeManager
         self.original_settings_widget = original_settings_widget
 
         # Get the new theme manager for appearance tabs
-        self.omnix_theme_manager = get_theme_manager()
+        self.omnix_theme_manager = theme_manager
 
         self.init_ui()
 
@@ -150,6 +149,11 @@ class TabbedSettingsDialog(QDialog):
         self.providers_tab.provider_config_changed.connect(self.on_provider_config_changed)
         self.tab_widget.addTab(self.providers_tab, "🔑 AI Providers")
 
+        # HRM Settings tab
+        self.hrm_tab = HRMSettingsTab(self.config)
+        self.hrm_tab.config_changed.connect(self.on_config_changed)
+        self.tab_widget.addTab(self.hrm_tab, "🧠 HRM Settings")
+
         # Game Profiles tab
         self.game_profiles_tab = GameProfilesTab()
         self.game_profiles_tab.profile_changed.connect(self.on_game_profiles_changed)
@@ -223,6 +227,10 @@ class TabbedSettingsDialog(QDialog):
         """Handle knowledge packs being updated"""
         logger.info("Knowledge packs changed")
 
+    def on_config_changed(self, config_dict: dict):
+        """Handle general configuration changes"""
+        logger.info(f"Configuration changed: {config_dict}")
+
     def save_all_settings(self):
         """Save all settings from all tabs"""
         try:
@@ -235,6 +243,12 @@ class TabbedSettingsDialog(QDialog):
             theme = {}  # Empty dict for backward compatibility
 
             overlay_appearance = self.overlay_appearance_tab.get_overlay_settings()
+
+            # Save HRM configuration
+            hrm_saved = self.hrm_tab.save_config()
+            if not hrm_saved:
+                # If HRM config save failed, don't proceed
+                return
 
             # Save provider configuration
             provider_saved = self.providers_tab.save_provider_config()
@@ -307,27 +321,27 @@ class TabbedSettingsDialog(QDialog):
 
     def apply_dialog_theme(self):
         """Apply theme styling to the dialog"""
-        # Get current theme from theme manager
-        theme = self.theme_manager.current_theme
+        # Get current theme tokens
+        colors = self.omnix_theme_manager.tokens.colors
 
         # Apply dark theme by default
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {theme.background_color};
-                color: {theme.text_color};
+                background-color: {colors.bg_primary};
+                color: {colors.text_primary};
             }}
             QLabel {{
-                color: {theme.text_color};
+                color: {colors.text_primary};
             }}
             QTabWidget::pane {{
-                border: 2px solid {theme.surface_color};
+                border: 2px solid {colors.bg_secondary};
                 border-radius: 5px;
-                background: {theme.background_color};
+                background: {colors.bg_primary};
             }}
             QTabBar::tab {{
-                background: {theme.surface_color};
-                color: {theme.text_color};
-                border: 2px solid {theme.surface_color};
+                background: {colors.bg_secondary};
+                color: {colors.text_primary};
+                border: 2px solid {colors.bg_secondary};
                 border-bottom: none;
                 border-top-left-radius: 5px;
                 border-top-right-radius: 5px;
@@ -337,11 +351,11 @@ class TabbedSettingsDialog(QDialog):
                 font-weight: bold;
             }}
             QTabBar::tab:selected {{
-                background: {theme.primary_color};
+                background: {colors.accent_primary};
                 color: white;
             }}
             QTabBar::tab:hover {{
-                background: {theme.primary_color};
+                background: {colors.accent_primary};
                 opacity: 0.8;
             }}
         """)

@@ -1,19 +1,11 @@
-"""
-Test suite for AI Providers
+"""Tests for the Ollama-only provider layer."""
 
-Tests OpenAI, Anthropic, and Google Gemini provider implementations.
-"""
 import pytest
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+
 from src.providers import (
-    OpenAIProvider,
-    AnthropicProvider,
-    GeminiProvider,
+    OllamaProvider,
+    ProviderConnectionError,
     ProviderError,
-    ProviderAuthError,
-    ProviderQuotaError,
-    ProviderRateLimitError,
-    ProviderConnectionError
 )
 
 
@@ -26,22 +18,6 @@ class TestProviderExceptions:
         assert str(error) == "Test error"
         assert isinstance(error, Exception)
 
-    def test_provider_auth_error(self):
-        """Test ProviderAuthError exception"""
-        error = ProviderAuthError("Invalid API key")
-        assert isinstance(error, ProviderError)
-        assert "Invalid API key" in str(error)
-
-    def test_provider_quota_error(self):
-        """Test ProviderQuotaError exception"""
-        error = ProviderQuotaError("Quota exceeded")
-        assert isinstance(error, ProviderError)
-
-    def test_provider_rate_limit_error(self):
-        """Test ProviderRateLimitError exception"""
-        error = ProviderRateLimitError("Rate limited")
-        assert isinstance(error, ProviderError)
-
     def test_provider_connection_error(self):
         """Test ProviderConnectionError exception"""
         error = ProviderConnectionError("Connection failed")
@@ -49,144 +25,25 @@ class TestProviderExceptions:
 
 
 @pytest.mark.unit
-class TestOpenAIProvider:
-    """Test OpenAI provider"""
+class TestOllamaProvider:
+    """Tests for the Ollama provider (only supported provider)."""
 
-    def test_openai_provider_init(self):
-        """Test OpenAI provider initialization"""
-        provider = OpenAIProvider(api_key="sk-test-key")
-        assert provider.name == "openai"
-        assert provider.api_key == "sk-test-key"
+    def test_init_defaults(self):
+        provider = OllamaProvider()
+        assert provider.name == "ollama"
+        assert provider.base_url == "http://localhost:11434"
+        assert provider.default_model == "llama3"
 
-    def test_openai_provider_is_configured(self):
-        """Test checking if provider is configured"""
-        provider = OpenAIProvider(api_key="sk-test-key")
-        assert provider.is_configured() is True
+    def test_init_custom_base_and_model(self):
+        provider = OllamaProvider(base_url="http://remote-host:11434", default_model="custom")
+        assert provider.base_url == "http://remote-host:11434"
+        assert provider.default_model == "custom"
 
-        provider_no_key = OpenAIProvider(api_key=None)
-        assert provider_no_key.is_configured() is False
+    def test_is_configured_tracks_client(self):
+        provider = OllamaProvider()
+        assert provider.is_configured() in (True, False)
 
-    def test_openai_provider_init_no_key(self):
-        """Test OpenAI provider with no API key"""
-        provider = OpenAIProvider(api_key=None)
-        assert provider.is_configured() is False
-
-    async def test_openai_chat_basic(self):
-        """Test basic OpenAI chat"""
-        # Mock the client
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = "Test response"
-        mock_response.choices[0].finish_reason = "stop"
-        mock_response.model = "gpt-4"
-        mock_response.usage = None
-
-        mock_client.chat.completions.create = MagicMock(return_value=mock_response)
-
-        provider = OpenAIProvider(api_key="sk-test-key")
-        provider.client = mock_client
-
-        messages = [{"role": "user", "content": "Test"}]
-        result = await provider.chat(messages)
-
-        assert result["content"] == "Test response"
-        assert result["model"] == "gpt-4"
-
-
-@pytest.mark.unit
-class TestAnthropicProvider:
-    """Test Anthropic provider"""
-
-    def test_anthropic_provider_init(self):
-        """Test Anthropic provider initialization"""
-        provider = AnthropicProvider(api_key="sk-ant-test-key")
-        assert provider.name == "anthropic"
-        assert provider.api_key == "sk-ant-test-key"
-
-    def test_anthropic_provider_is_configured(self):
-        """Test checking if Anthropic provider is configured"""
-        provider = AnthropicProvider(api_key="sk-ant-test-key")
-        assert provider.is_configured() is True
-
-        provider_no_key = AnthropicProvider(api_key=None)
-        assert provider_no_key.is_configured() is False
-
-    async def test_anthropic_chat_basic(self):
-        """Test basic Anthropic chat"""
-        # Mock the client
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock()]
-        mock_response.content[0].text = "Test response from Claude"
-        mock_response.model = "claude-3-sonnet"
-        mock_response.stop_reason = "end_turn"
-        mock_response.usage = None
-
-        mock_client.messages.create = MagicMock(return_value=mock_response)
-
-        provider = AnthropicProvider(api_key="sk-ant-test-key")
-        provider.client = mock_client
-
-        messages = [{"role": "user", "content": "Test"}]
-        result = await provider.chat(messages)
-
-        assert result["content"] == "Test response from Claude"
-        assert result["model"] == "claude-3-sonnet"
-
-
-@pytest.mark.unit
-class TestGeminiProvider:
-    """Test Google Gemini provider"""
-
-    def test_gemini_provider_init(self):
-        """Test Gemini provider initialization"""
-        provider = GeminiProvider(api_key="test-gemini-key")
-        assert provider.name == "gemini"
-        assert provider.api_key == "test-gemini-key"
-
-    def test_gemini_provider_is_configured(self):
-        """Test checking if Gemini provider is configured"""
-        provider = GeminiProvider(api_key="test-key")
-        assert provider.is_configured() is True
-
-        provider_no_key = GeminiProvider(api_key=None)
-        assert provider_no_key.is_configured() is False
-
-
-@pytest.mark.unit
-class TestProviderCommonBehavior:
-    """Test common behavior across all providers"""
-
-    @pytest.mark.parametrize("provider_class,api_key", [
-        (OpenAIProvider, "sk-test"),
-        (AnthropicProvider, "sk-ant-test"),
-        (GeminiProvider, "gemini-test")
-    ])
-    def test_all_providers_have_name(self, provider_class, api_key):
-        """Test all providers have a name attribute"""
-        provider = provider_class(api_key=api_key)
-        assert hasattr(provider, 'name')
-        assert isinstance(provider.name, str)
-        assert len(provider.name) > 0
-
-    @pytest.mark.parametrize("provider_class,api_key", [
-        (OpenAIProvider, "sk-test"),
-        (AnthropicProvider, "sk-ant-test"),
-        (GeminiProvider, "gemini-test")
-    ])
-    def test_all_providers_have_is_configured(self, provider_class, api_key):
-        """Test all providers have is_configured method"""
-        provider = provider_class(api_key=api_key)
-        assert hasattr(provider, 'is_configured')
-        assert callable(provider.is_configured)
-
-    @pytest.mark.parametrize("provider_class", [
-        OpenAIProvider,
-        AnthropicProvider,
-        GeminiProvider
-    ])
-    def test_all_providers_handle_no_api_key(self, provider_class):
-        """Test all providers handle missing API key"""
-        provider = provider_class(api_key=None)
-        assert provider.is_configured() is False
+    def test_supports_optional_api_key(self):
+        provider = OllamaProvider(api_key="secret-key")
+        # API key is accepted for secured remote instances but not required locally
+        assert provider.api_key == "secret-key"

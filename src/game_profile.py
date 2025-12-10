@@ -1,14 +1,11 @@
-"""
-Game Profile Module
-Manages per-game AI assistant configurations
-"""
+"""Game Profile Module."""
 
-import json
 import logging
-import os
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
+
+from base_store import BaseStore
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +63,7 @@ class GameProfile:
         return any(exe.lower() == exe_lower for exe in self.exe_names)
 
 
-class GameProfileStore:
+class GameProfileStore(BaseStore[GameProfile]):
     """
     Manages game profile persistence and lookup.
 
@@ -269,14 +266,12 @@ class GameProfileStore:
 
     def __init__(self, config_dir: Optional[Path] = None):
         """Initialize profile store and load profiles"""
-        if config_dir:
-            self.config_dir = Path(config_dir)
-            self.profiles_file = self.config_dir / 'game_profiles.json'
-        else:
-            self.config_dir = CONFIG_DIR
-            self.profiles_file = PROFILES_FILE
+        resolved_config = Path(config_dir) if config_dir else CONFIG_DIR
+        super().__init__("", config_dir=str(resolved_config))
+        self.config_dir = resolved_config
+        self.profiles_file = self.config_dir / 'game_profiles.json'
         self.profiles: Dict[str, GameProfile] = {}
-        self._custom_profile_ids: set = set()
+        self._custom_profile_ids: Set[str] = set()
         self._load_profiles()
 
     def _load_profiles(self) -> None:
@@ -286,36 +281,33 @@ class GameProfileStore:
             self.profiles[profile.id] = profile
 
         # Load custom profiles from file
-        if self.profiles_file.exists():
+        data = self._json_load(self.profiles_file)
+        if not data:
+            return
+
+        for profile_data in data.get('profiles', []):
             try:
-                with open(self.profiles_file, 'r') as f:
-                    data = json.load(f)
-                    for profile_data in data.get('profiles', []):
-                        profile = GameProfile.from_dict(profile_data)
-                        self.profiles[profile.id] = profile
-                        self._custom_profile_ids.add(profile.id)
-                logger.info(f"Loaded {len(self._custom_profile_ids)} custom game profiles")
-            except Exception as e:
-                logger.error(f"Failed to load game profiles: {e}")
+                profile = GameProfile.from_dict(profile_data)
+            except Exception as exc:  # pragma: no cover
+                logger.error("Failed to load profile data %s: %s", profile_data, exc)
+                continue
+            self.profiles[profile.id] = profile
+            self._custom_profile_ids.add(profile.id)
+
+        logger.info("Loaded %s custom game profiles", len(self._custom_profile_ids))
 
     def _save_to_disk(self) -> None:
         """Save all custom profiles to JSON file"""
-        try:
-            # Ensure directory exists
-            self.config_dir.mkdir(parents=True, exist_ok=True)
-
-            # Only save custom profiles (not built-ins)
-            custom_profiles = [
-                self.profiles[pid].to_dict()
-                for pid in self._custom_profile_ids
-                if pid in self.profiles
-            ]
-
-            with open(self.profiles_file, 'w') as f:
-                json.dump({'profiles': custom_profiles}, f, indent=2)
-            logger.info(f"Saved {len(custom_profiles)} custom game profiles")
-        except Exception as e:
-            logger.error(f"Failed to save game profiles: {e}")
+        custom_profiles = [
+            self.profiles[pid].to_dict()
+            for pid in self._custom_profile_ids
+            if pid in self.profiles
+        ]
+        payload = {'profiles': custom_profiles}
+        if self._json_save(self.profiles_file, payload):
+            logger.info("Saved %s custom game profiles", len(custom_profiles))
+        else:
+            logger.error("Failed to save game profiles to %s", self.profiles_file)
 
     def get_profile_by_id(self, profile_id: str) -> Optional[GameProfile]:
         """Get a profile by its ID"""

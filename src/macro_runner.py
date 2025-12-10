@@ -165,8 +165,8 @@ class MacroRunner:
         if self.execution_thread and self.execution_thread.is_alive():
             try:
                 self.execution_thread.join(timeout=1.0)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to join execution thread: {e}")
 
     def _execute_macro_thread(self):
         """Execute macro in background thread"""
@@ -498,12 +498,6 @@ class MacroRunner:
 
         return keys
 
-    def stop_macro(self):
-        """Stop currently executing macro"""
-        if self.state == MacroExecutionState.RUNNING:
-            self.state = MacroExecutionState.STOPPED
-            logger.info("Macro execution stop requested")
-
     def pause_macro(self):
         """Pause currently executing macro"""
         if self.state == MacroExecutionState.RUNNING:
@@ -543,7 +537,3 @@ class MacroRunner:
     def get_state(self) -> MacroExecutionState:
         """Get current execution state"""
         return self.state
-
-    def is_running(self) -> bool:
-        """Check if macro is currently running"""
-        return self.state == MacroExecutionState.RUNNING

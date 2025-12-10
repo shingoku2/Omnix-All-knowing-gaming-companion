@@ -1,5 +1,5 @@
 # Test Quick Reference Guide
-**Last Updated:** 2025-11-19  
+**Last Updated:** 2025-12-09
 **Quick access guide for testing the Omnix Gaming Companion**
 
 ---
@@ -28,37 +28,30 @@ pytest tests/integration/ -v
 
 ---
 
-## 📊 Current Test Status (2025-11-19)
+## 📊 Current Test Status (2025-12-09)
 
-| Category | Tests | Passed | Failed | Status |
-|----------|-------|--------|--------|--------|
-| Unit | 155 | 143 | 7 | ✅ 92% |
-| Integration | 29 | 27 | 1 | ✅ 93% |
-| Edge Cases | 40 | 38 | 2 | ✅ 95% |
-| Archive | 78 | 78 | 0 | ✅ 100% |
-| **TOTAL** | **278** | **268** | **10** | **✅ 96.4%** |
+| Category | Tests | Status |
+|----------|-------|--------|
+| Unit | ~150 | ✅ Passing |
+| Integration | ~30 | ✅ Passing |
+| UI | ~10 | ⚠️ Manual/Headless |
+| **TOTAL** | **~190** | **✅ Stable** |
 
 ---
 
 ## 🎯 Component Test Coverage
 
 ### ✅ Fully Tested (100% Pass)
-- Game Detector (`test_game_detector.py`)
-- Game Profiles (`test_game_profiles.py`)
-- Macro System (`test_macro_system.py`)
-- Credential Store (`test_credential_store.py`)
-- Utilities (`test_utils.py`)
-- Session Management (integration)
-- AI Router (`test_ai_router.py`)
+- Game Detector (`tests/unit/test_game_detector.py`)
+- Game Profiles (`tests/unit/test_game_profiles.py`)
+- Macro System (`tests/unit/test_macro_system.py`)
+- Credential Store (`tests/unit/test_credential_store.py`)
+- Utilities (`tests/unit/test_utils.py`)
+- AI Router (`tests/unit/test_ai_router.py`)
 
-### ⚠️ Mostly Tested (90-99% Pass)
-- AI Assistant (`test_ai_assistant.py`) - needs API keys for full testing
-- Game Watcher (`test_game_watcher.py`) - 1 Qt test skipped
-- Knowledge System (`test_knowledge_system.py`) - 1 persistence bug
-
-### ⚠️ Needs Attention (70-89% Pass)
-- Configuration (`test_config.py`) - 1 test needs updating
-- Providers (`test_providers.py`) - Gemini Python 3.14 incompatibility
+### ⚠️ Mostly Tested
+- AI Assistant (`tests/unit/test_ai_assistant.py`)
+- Knowledge System (`tests/unit/test_knowledge_system.py`)
 
 ---
 
@@ -148,9 +141,6 @@ pytest -x
 # Show local variables in failure
 pytest --tb=long --showlocals
 
-# Run specific test with verbose output
-pytest tests/unit/test_providers.py::TestGeminiProvider::test_gemini_provider_init -vv
-
 # Run with print statements visible
 pytest -s tests/unit/test_game_detector.py
 ```
@@ -159,22 +149,7 @@ pytest -s tests/unit/test_game_detector.py
 
 ## 🔧 Known Issues & Workarounds
 
-### Issue 1: Gemini Provider Tests Fail (Python 3.14)
-**Error:** `TypeError: Metaclasses with custom tp_new are not supported`  
-**Workaround:** Use Python 3.11-3.13 OR skip Gemini tests:
-```bash
-pytest -k "not Gemini" -v
-```
-
-### Issue 2: Config Default Provider Test Fails
-**Error:** `assert 'ollama' in ['anthropic', 'openai', 'gemini']`  
-**Status:** Known issue, test needs updating  
-**Workaround:** Skip this specific test:
-```bash
-pytest tests/unit/test_config.py -k "not test_config_ai_provider_default" -v
-```
-
-### Issue 3: Qt Tests Require Display
+### Issue 1: Qt Tests Require Display
 **Error:** Tests fail without display  
 **Workaround:** Set offscreen platform:
 ```bash

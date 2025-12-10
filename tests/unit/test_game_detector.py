@@ -18,14 +18,6 @@ class TestGameDetector:
         assert detector is not None
         assert hasattr(detector, 'common_games')
 
-    def test_known_games_exists(self):
-        """Test that KNOWN_GAMES attribute exists (legacy compatibility)"""
-        from game_detector import GameDetector
-
-        detector = GameDetector()
-        assert hasattr(detector, 'KNOWN_GAMES')
-        assert isinstance(detector.KNOWN_GAMES, dict)
-
     def test_common_games_populated(self):
         """Test that common_games has pre-configured games"""
         from game_detector import GameDetector

@@ -58,7 +58,7 @@ python build_windows_exe.py
 
 Or build manually with this command:
 ```cmd
-python -m PyInstaller --name=GamingAIAssistant --windowed --onedir --clean --noconfirm --add-data=".env.example;." --add-data="README.md;." --add-data="SETUP.md;." --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=PyQt6.QtCore.QTimer --hidden-import=PyQt6.QtWidgets.QApplication --hidden-import=anthropic --hidden-import=openai --hidden-import=google.generativeai --hidden-import=psutil --hidden-import=requests --hidden-import=bs4 --hidden-import=dotenv --hidden-import=urllib3 --hidden-import=certifi --hidden-import=charset_normalizer --hidden-import=idna --hidden-import=pydantic --hidden-import=pydantic_core --hidden-import=win32api --hidden-import=win32con --hidden-import=win32gui --hidden-import=win32process --hidden-import=encodings.utf_8 main.py
+python -m PyInstaller --name=GamingAIAssistant --windowed --onedir --clean --noconfirm --add-data=".env.example;." --add-data="README.md;." --add-data="SETUP.md;." --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=PyQt6.QtCore.QTimer --hidden-import=PyQt6.QtWidgets.QApplication --hidden-import=psutil --hidden-import=requests --hidden-import=bs4 --hidden-import=dotenv --hidden-import=urllib3 --hidden-import=certifi --hidden-import=charset_normalizer --hidden-import=idna --hidden-import=pydantic --hidden-import=pydantic_core --hidden-import=win32api --hidden-import=win32con --hidden-import=win32gui --hidden-import=win32process --hidden-import=encodings.utf_8 main.py
 ```
 
 ### Step 3: Copy Additional Files
@@ -75,7 +75,7 @@ copy SETUP.md dist\GamingAIAssistant\SETUP.md
 For a single .exe file (larger but more portable):
 
 ```cmd
-python -m PyInstaller --name=GamingAIAssistant --windowed --onefile --clean --noconfirm --paths=src --add-data=".env.example;." --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=config --hidden-import=game_detector --hidden-import=ai_assistant --hidden-import=info_scraper --hidden-import=gui --hidden-import=anthropic --hidden-import=openai --hidden-import=psutil --hidden-import=bs4 --hidden-import=dotenv main.py
+python -m PyInstaller --name=GamingAIAssistant --windowed --onefile --clean --noconfirm --paths=src --add-data=".env.example;." --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=config --hidden-import=game_detector --hidden-import=ai_assistant --hidden-import=gui --hidden-import=psutil --hidden-import=bs4 --hidden-import=dotenv main.py
 ```
 
 **Note:** Single-file builds are slower to start but easier to distribute.
@@ -94,11 +94,11 @@ python -m PyInstaller --name=GamingAIAssistant --windowed --onefile --clean --no
    - Zip the entire `dist\GamingAIAssistant` folder
    - Send the zip file
    - Recipients extract and run `GamingAIAssistant.exe`
-   - Setup Wizard will launch and they enter their own API key
+   - Setup Wizard will launch and they configure their Ollama connection
 
 2. **For single-file build:**
    - Just send the `GamingAIAssistant.exe` file
-   - Recipients run it and complete Setup Wizard with their API key
+   - Recipients run it and complete Setup Wizard
    - No .env file needed!
 
 ---
@@ -111,9 +111,9 @@ After building, users need to:
    - The Setup Wizard will launch automatically on first run
 
 2. **Complete Setup Wizard:**
-   - Select your AI provider (Anthropic Claude, OpenAI, or Gemini)
-   - Enter your API key (obtained from provider's website)
-   - Your key is securely stored by the application
+   - Confirm the Ollama host (default `http://localhost:11434`)
+   - Choose a model (defaults to `llama3`; pulls automatically if missing)
+   - No API keys are required for the default local setup
 
 3. **Launch a game**
 
@@ -185,9 +185,9 @@ When sharing your executable:
 
 ## Security Note
 
-**DO NOT include your .env file with your API key in the distribution!**
+**DO NOT include your .env file in the distribution!**
 
-Only include `.env.example`. Users must add their own API keys.
+Only include `.env.example`. Users will generate their own configuration via the Setup Wizard.
 
 ---
 

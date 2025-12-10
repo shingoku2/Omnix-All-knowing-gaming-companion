@@ -3,9 +3,11 @@
     "allow": [
       "Bash(python -m py_compile:*)",
       "Bash(python test_minimal.py:*)",
-      "Bash(python -c:*)"
+      "Bash(python -c:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "default"
 }

@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from collections import deque
 
 logger = logging.getLogger(__name__)
@@ -32,12 +32,9 @@ class SessionEvent:
     event_type: str
     game_profile_id: str
     content: str
-    meta: Dict = None
+    meta: Dict = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.meta is None:
-            self.meta = {}
-
         # Convert string timestamp back to datetime if needed
         if isinstance(self.timestamp, str):
             self.timestamp = datetime.fromisoformat(self.timestamp)

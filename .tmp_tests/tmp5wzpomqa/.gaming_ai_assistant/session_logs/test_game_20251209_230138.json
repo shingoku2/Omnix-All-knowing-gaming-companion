@@ -1,0 +1,13 @@
+{
+  "game_profile_id": "test_game",
+  "session_id": "20251209_230138",
+  "events": [
+    {
+      "timestamp": "2025-12-09T23:01:38.450730",
+      "event_type": "question",
+      "game_profile_id": "test_game",
+      "content": "Test",
+      "meta": {}
+    }
+  ]
+}

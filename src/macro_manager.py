@@ -484,6 +484,11 @@ class MacroManager:
             logger.warning("Not currently recording a macro")
             return None
 
+        if self.recording_macro is None:
+            logger.error("Inconsistent state: is_recording is True but recording_macro is None")
+            self.is_recording = False
+            return None
+
         macro = self.recording_macro
         self.is_recording = False
         self.recording_macro = None

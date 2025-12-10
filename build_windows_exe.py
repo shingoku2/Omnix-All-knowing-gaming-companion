@@ -81,27 +81,18 @@ GAMING AI ASSISTANT - QUICK START
 
 1. RUN THE APPLICATION:
    - Double-click GamingAIAssistant.exe
-   - The Setup Wizard will launch automatically on first run
+   - Ensure Ollama is running in the background (https://ollama.com)
+   - The app will automatically connect
 
-2. CONFIGURE YOUR AI PROVIDER:
-   - Select your preferred AI provider (Anthropic Claude, OpenAI, or Gemini)
-   - Enter your API key (it will be stored securely in encrypted CredentialStore)
-   - Test the connection
-
-3. START GAMING:
+2. START GAMING:
    - Launch a game (League of Legends, Minecraft, VALORANT, Elden Ring, etc.)
    - Press Ctrl+Shift+G to open the assistant while in-game
    - Ask questions, get tips, and enhance your gameplay!
 
-4. GET AN API KEY (if you don't have one):
-   - Anthropic Claude: https://console.anthropic.com/
-   - OpenAI: https://platform.openai.com/api-keys
-   - Gemini: https://aistudio.google.com/app/apikey
-
-SECURITY NOTE:
-- Your API key is stored securely in your system's credential manager
-- API keys are NOT stored in .env files
-- No data is sent to anyone except your chosen AI provider
+3. PRIVACY FIRST:
+   - All AI runs locally on your machine
+   - No data is sent to the cloud
+   - No API keys required
 
 For detailed instructions, see SETUP.md
 
@@ -134,8 +125,8 @@ print(f"   File: {dist_name}.zip")
 print(f"\n💡 To use on Windows:")
 print(f"   1. Extract {dist_name}.zip")
 print(f"   2. Run GamingAIAssistant.exe")
-print(f"   3. Setup Wizard will guide you through API key configuration")
+print(f"   3. Ensure Ollama is running locally")
 print(f"\n🔒 Security:")
-print(f"   - API keys are stored securely in system credential manager")
-print(f"   - NOT stored in .env files!")
+print(f"   - Local AI inference via Ollama")
+print(f"   - Privacy-first architecture")
 print("=" * 70)

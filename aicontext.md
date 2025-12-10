@@ -14,6 +14,14 @@
 **LOC:** ~14,700 lines (backend) + frontend code
 **Test Coverage:** 272 test functions, 3,196 lines of test code
 
+## Repository Guidelines (from AGENTS.md)
+- Structure: `src/` core app (AI routing, credentials, game detection, PyQt6 UI/design system), `frontend/` web dashboard/overlay assets, `tests/` pytest suite (some heavier tests ignored unless invoked), `scripts/` and root `*.bat` for builds; build artifacts in `build/` and `dist/`.
+- Commands: create venv `python -m venv .venv; .\.venv\Scripts\activate`; install deps `pip install -r requirements.txt` (or `requirements-dev.txt`); run app `python main.py`; tests `pytest` or `pytest --cov=src --cov-report=html`; lint/format/security `pre-commit run --all-files`; Windows build `python build_windows_exe.py` or `pyinstaller GamingAIAssistant.spec`.
+- Style: Python 3.8+, 4-space indentation, prefer type hints; Black 100 cols and isort (profile=black); Flake8 max line length 127 with E203 ignored; test naming `test_*.py`/`*_test.py`, classes `Test*`, functions `test_*`.
+- Testing: run `pytest` before PRs (use `-n auto` if needed); focus runs `pytest tests/game` or `pytest -k game_detector`; review coverage via `htmlcov/index.html`; explicitly run skipped UI/game tests like `test_gui_minimal.py`, `test_macro_runner_execution.py` when touching related code.
+- Commits/PRs: short imperative commit summaries; before pushing run `pre-commit run --all-files` and relevant tests; PRs should include problem/solution, impacted modules, test commands/output, config/env prereqs (e.g., `.env`, keyring), and link issues when available.
+- Security: secrets stay in keyring/`.env` (never commit keys; `.env.example` lists required vars); keep user data in `~/.gaming_ai_assistant/` and avoid altering user dirs in tests (use temp paths/fixtures from `conftest.py`).
+
 ---
 
 ## Key Architecture Components
@@ -316,7 +324,7 @@ worker.start()
 ### Active Considerations
 - Self-hosted runner requires manual maintenance
 - Headless testing requires `QT_QPA_PLATFORM=offscreen`
-- API keys stored in system keyring (encrypted)
+- Remote-only API keys (for secured Ollama endpoints) live in the system keyring (encrypted)
 - Frontend requires Node.js 18+ for development
 - Frontend integration with Python backend TBD (options: Electron, API server, WebView)
 
@@ -341,7 +349,7 @@ worker.start()
 - ❌ Use inconsistent import patterns
 - ❌ Modify built-in game profiles
 - ❌ Commit sensitive data
-- ❌ Assume API keys are required (Ollama doesn't need them)
+- ❌ Assume API keys are required (except for secured remote Ollama)
 
 ### Common Tasks
 
@@ -352,7 +360,7 @@ worker.start()
 **Configure Ollama:**
 1. Install Ollama: `curl https://ollama.ai/install.sh | sh`
 2. Pull models: `ollama pull llama3`
-3. Configure in .env (optional): `OLLAMA_BASE_URL`, `OLLAMA_MODEL`
+3. Configure in .env (optional): `OLLAMA_BASE_URL`, `OLLAMA_MODEL` (overrides defaults)
 4. Test connection via Setup Wizard or providers tab
 
 **Add tests:**
@@ -573,3 +581,34 @@ npm run lint            # ESLint checks
 - `8de03a6` - Translate chat params for Ollama
 - `fee2059` - Add automatic Ollama model dropdown population
 - `bf9d8fb` - Fix AI provider selection and Ollama integration
+
+## 2025-12-10 HRM Integration
+- **Added Hierarchical Reasoning Model (HRM) integration** for enhanced reasoning capabilities
+  - Created `src/hrm_integration.py` module with intelligent routing logic
+  - Integrated HRM analysis into `src/ai_assistant.py` question processing
+  - Added HRM-specific configuration options in `src/config.py`
+  - Created HRM settings tab in the settings interface
+  - Implemented conditional loading with graceful degradation when HRM unavailable
+  - Added PyTorch and HRM dependencies as optional requirements in `requirements.txt`
+  - Added HRM capabilities to the UI with dependency status checking
+  - Updated documentation in `QWEN.md`, `GEMINI.md`, `AGENTS.md`, and `CLAUDE.md`
+
+**Key Changes Documented:**
+- HRM intelligent routing for complex reasoning questions in gaming contexts
+- New settings interface for HRM configuration and dependency management
+- Conditional loading with fallback to standard Ollama AI when HRM unavailable
+- Clear installation instructions for PyTorch and HRM dependencies
+- Safeguards to prevent crashes when HRM components are not installed
+
+**Files Modified:**
+- `src/hrm_integration.py` - New module for HRM functionality
+- `src/ai_assistant.py` - Enhanced with HRM integration
+- `src/config.py` - Added HRM configuration options
+- `src/settings_tabs.py` - Added HRM settings tab
+- `src/settings_dialog.py` - Integrated HRM tab into main settings
+- `requirements.txt` - Added optional PyTorch dependencies
+- `QWEN.md` - Updated with HRM integration notes
+- `GEMINI.md` - Updated with HRM integration notes
+- `AGENTS.md` - Updated with HRM integration notes
+- `CLAUDE.md` - Updated with HRM integration notes
+- `aicontext.md` - This file (current updates)

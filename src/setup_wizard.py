@@ -8,19 +8,29 @@ import webbrowser
 from typing import List, Optional
 
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QWidget, QMessageBox, QStackedWidget, QGroupBox, QComboBox
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QWidget,
+    QMessageBox,
+    QStackedWidget,
+    QGroupBox,
+    QComboBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QFont
 
-from src.provider_tester import ProviderTester
+from provider_tester import ProviderTester
 
 logger = logging.getLogger(__name__)
 
 
 class TestConnectionThread(QThread):
     """Background thread for testing Ollama connection"""
+
     test_complete = pyqtSignal(bool, str)
 
     def __init__(self, base_url: str, timeout: float = 15.0):
@@ -31,7 +41,9 @@ class TestConnectionThread(QThread):
     def run(self):
         """Run connection test in background"""
         try:
-            success, message = ProviderTester.test_ollama(self.base_url, timeout=self.timeout)
+            success, message = ProviderTester.test_ollama(
+                self.base_url, timeout=self.timeout
+            )
             self.test_complete.emit(success, message)
         except Exception as e:
             logger.error(f"Connection test failed: {e}", exc_info=True)
@@ -40,6 +52,7 @@ class TestConnectionThread(QThread):
 
 class FetchModelsThread(QThread):
     """Background thread for fetching Ollama models"""
+
     models_fetched = pyqtSignal(list)
     fetch_failed = pyqtSignal(str)
 
@@ -51,9 +64,14 @@ class FetchModelsThread(QThread):
         """Fetch models from Ollama"""
         try:
             import ollama
+
             client = ollama.Client(host=self.base_url)
             models_response = client.list()
-            models = [m.get("name", "") for m in models_response.get("models", []) if m.get("name")]
+            models = [
+                m.get("name", "")
+                for m in models_response.get("models", [])
+                if m.get("name")
+            ]
             self.models_fetched.emit(models)
         except ImportError:
             self.fetch_failed.emit("Ollama library not installed")
@@ -432,11 +450,15 @@ class SetupWizard(QDialog):
 
         if success:
             self.status_label.setText("✅ Connected!")
-            self.status_label.setStyleSheet("font-size: 10pt; color: #10b981; font-weight: bold;")
+            self.status_label.setStyleSheet(
+                "font-size: 10pt; color: #10b981; font-weight: bold;"
+            )
             self.refresh_models()
         else:
             self.status_label.setText("❌ Failed")
-            self.status_label.setStyleSheet("font-size: 10pt; color: #ef4444; font-weight: bold;")
+            self.status_label.setStyleSheet(
+                "font-size: 10pt; color: #ef4444; font-weight: bold;"
+            )
             QMessageBox.warning(self, "Connection Failed", message)
 
         self.update_navigation()
@@ -503,7 +525,9 @@ class SetupWizard(QDialog):
 
         # Update summary when going to complete page
         if current_index == 1:
-            self.ollama_host = self.host_input.text().strip() or "http://localhost:11434"
+            self.ollama_host = (
+                self.host_input.text().strip() or "http://localhost:11434"
+            )
             self.ollama_model = self.model_combo.currentText().strip() or "llama3"
 
             self.summary_label.setText(
@@ -531,17 +555,19 @@ class SetupWizard(QDialog):
             Config.save_to_env(
                 ollama_host=self.ollama_host,
                 ollama_model=self.ollama_model,
-                overlay_hotkey='ctrl+shift+g',
+                overlay_hotkey="ctrl+shift+g",
                 check_interval=5,
             )
 
-            logger.info(f"Setup complete: host={self.ollama_host}, model={self.ollama_model}")
+            logger.info(
+                f"Setup complete: host={self.ollama_host}, model={self.ollama_model}"
+            )
 
             # Emit completion signal
-            self.setup_complete.emit("ollama", {
-                'ollama_host': self.ollama_host,
-                'ollama_model': self.ollama_model
-            })
+            self.setup_complete.emit(
+                "ollama",
+                {"ollama_host": self.ollama_host, "ollama_model": self.ollama_model},
+            )
 
             QMessageBox.information(
                 self,
@@ -549,7 +575,7 @@ class SetupWizard(QDialog):
                 f"Ollama is configured!\n\n"
                 f"Host: {self.ollama_host}\n"
                 f"Model: {self.ollama_model}\n\n"
-                f"Press Ctrl+Shift+G to toggle the overlay."
+                f"Press Ctrl+Shift+G to toggle the overlay.",
             )
 
             self.accept()
@@ -557,9 +583,7 @@ class SetupWizard(QDialog):
         except Exception as e:
             logger.error(f"Setup failed: {e}", exc_info=True)
             QMessageBox.critical(
-                self,
-                "Setup Failed",
-                f"Failed to save configuration:\n{str(e)}"
+                self, "Setup Failed", f"Failed to save configuration:\n{str(e)}"
             )
 
     def closeEvent(self, event):

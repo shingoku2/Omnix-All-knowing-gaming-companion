@@ -5,7 +5,7 @@ Defines compact and full panel modes for the in-game overlay
 
 from typing import Any, Dict
 
-from src.type_definitions import OverlayMode
+from type_definitions import OverlayMode
 
 
 class OverlayModeConfig:

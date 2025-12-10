@@ -12,17 +12,19 @@ import os
 import threading
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
-from src.config import Config
-from src.ai_router import get_router, AIRouter
-from src.providers import (
+from config import Config
+from ai_router import get_router, AIRouter
+from providers import (
     ProviderError,
-    ProviderAuthError,
-    ProviderQuotaError,
-    ProviderRateLimitError,
 )
-from src.knowledge_integration import (
+from knowledge_integration import (
     get_knowledge_integration,
     KnowledgeIntegration,
+)
+from hrm_integration import (
+    get_hrm_interface,
+    requires_complex_reasoning,
+    get_hrm_analysis,
 )
 
 # Configure logging
@@ -30,6 +32,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from PyQt6.QtCore import QThread, pyqtSignal
+
 # Avoid circular imports
 if TYPE_CHECKING:
     from game_profile import GameProfile
@@ -55,7 +58,7 @@ class AIWorkerThread(QThread):
         except Exception as e:
             logger.error(f"AI worker thread error: {e}", exc_info=True)
             self.error_occurred.emit(str(e))
-			
+
 
 class AIAssistant:
     """AI-powered gaming assistant with conversation context management"""
@@ -94,6 +97,9 @@ class AIAssistant:
 
         # Initialize knowledge integration
         self.knowledge_integration = get_knowledge_integration()
+
+        # Get HRM interface (may be used for complex reasoning)
+        self.hrm_interface = get_hrm_interface()
 
         logger.info(f"AIAssistant initialized with provider: {self.provider}")
 
@@ -159,7 +165,7 @@ class AIAssistant:
 
             # Add system context
             if game_info:
-                game_name = game_info.get('name', 'Unknown Game')
+                game_name = game_info.get("name", "Unknown Game")
                 self._add_system_context(game_name)
                 logger.info(f"Set current game context: {game_name}")
             else:
@@ -186,10 +192,9 @@ class AIAssistant:
             self.conversation_history = []
 
             # Add profile's system prompt as context
-            self.conversation_history.append({
-                "role": "system",
-                "content": profile.system_prompt
-            })
+            self.conversation_history.append(
+                {"role": "system", "content": profile.system_prompt}
+            )
 
         logger.info(f"Set game profile: {profile.display_name} (id={profile.id})")
 
@@ -238,27 +243,32 @@ I can help with:
 
 Please start a game or tell me which game you'd like help with, and I'll provide specialized assistance for that game."""
 
-        self.conversation_history.append({
-            "role": "system",
-            "content": system_message
-        })
+        self.conversation_history.append({"role": "system", "content": system_message})
 
     def _trim_conversation_history(self):
         """Trim conversation history to prevent token limit issues"""
         # Keep system message + last N messages
         if len(self.conversation_history) > self.MAX_CONVERSATION_MESSAGES:
-            system_messages = [msg for msg in self.conversation_history if msg["role"] == "system"]
-            recent_messages = [msg for msg in self.conversation_history if msg["role"] != "system"]
+            system_messages = [
+                msg for msg in self.conversation_history if msg["role"] == "system"
+            ]
+            recent_messages = [
+                msg for msg in self.conversation_history if msg["role"] != "system"
+            ]
 
             # Limit system messages to prevent unbounded growth (keep most recent 3)
             if len(system_messages) > 3:
                 system_messages = system_messages[-3:]
 
             # Keep system message and most recent messages
-            recent_messages = recent_messages[-(self.MAX_CONVERSATION_MESSAGES - len(system_messages)):]
+            recent_messages = recent_messages[
+                -(self.MAX_CONVERSATION_MESSAGES - len(system_messages)) :
+            ]
             self.conversation_history = system_messages + recent_messages
 
-            logger.info(f"Trimmed conversation history to {len(self.conversation_history)} messages")
+            logger.info(
+                f"Trimmed conversation history to {len(self.conversation_history)} messages"
+            )
 
     def ask_question(self, question: str, game_context: Optional[str] = None) -> str:
         """
@@ -279,6 +289,17 @@ Please start a game or tell me which game you'd like help with, and I'll provide
             return "🎮 No game detected!\n\nPlease start a game to get assistance. I'm here to help you with gaming questions once you're playing."
 
         try:
+            # Check if HRM is enabled in config and available
+            hrm_enabled = self.config.hrm_enabled and self.hrm_interface.is_available()
+
+            # Check if this question requires complex reasoning (HRM analysis)
+            game_name = (
+                self.current_game.get("name", "Unknown Game")
+                if self.current_game
+                else "Unknown Game"
+            )
+            use_hrm = hrm_enabled and requires_complex_reasoning(question, game_name)
+
             # Build the user message
             user_message = question.strip()
 
@@ -289,16 +310,32 @@ Please start a game or tell me which game you'd like help with, and I'll provide
                 extra_settings = self.current_profile.extra_settings
 
                 # Check if knowledge packs should be used
-                if self.knowledge_integration.should_use_knowledge_packs(game_profile_id, extra_settings):
-                    knowledge_context = self.knowledge_integration.get_knowledge_context(
-                        game_profile_id=game_profile_id,
-                        question=question,
-                        extra_settings=extra_settings
+                if self.knowledge_integration.should_use_knowledge_packs(
+                    game_profile_id, extra_settings
+                ):
+                    knowledge_context = (
+                        self.knowledge_integration.get_knowledge_context(
+                            game_profile_id=game_profile_id,
+                            question=question,
+                            extra_settings=extra_settings,
+                        )
                     )
 
             # Add knowledge context if available
             if knowledge_context:
                 user_message = f"{knowledge_context}\n{user_message}"
+
+            # Add HRM analysis if required
+            hrm_analysis = None
+            if use_hrm:
+                try:
+                    hrm_analysis = get_hrm_analysis(question, game_context)
+                    if hrm_analysis:
+                        user_message = f"{hrm_analysis}\n\n{user_message}"
+                except Exception as e:
+                    logger.warning(
+                        f"HRM analysis failed: {e}, proceeding with standard response"
+                    )
 
             # Add web scraping context if available
             if game_context:
@@ -307,10 +344,9 @@ Please start a game or tell me which game you'd like help with, and I'll provide
             # Thread-safe history modification
             with self._history_lock:
                 # Add to conversation history
-                self.conversation_history.append({
-                    "role": "user",
-                    "content": user_message
-                })
+                self.conversation_history.append(
+                    {"role": "user", "content": user_message}
+                )
 
                 # Trim history if needed
                 self._trim_conversation_history()
@@ -322,7 +358,7 @@ Please start a game or tell me which game you'd like help with, and I'll provide
                     self.conversation_history,
                     provider=self.provider,
                     max_tokens=1000,
-                    temperature=0.7
+                    temperature=0.7,
                 )
 
                 # Extract content from response
@@ -332,19 +368,18 @@ Please start a game or tell me which game you'd like help with, and I'll provide
                     content = str(response)
 
                 # Add response to history only if it's not an error
-                if not content.startswith(('⚠️', '❌')):
+                if not content.startswith(("⚠️", "❌")):
                     with self._history_lock:
-                        self.conversation_history.append({
-                            "role": "assistant",
-                            "content": content
-                        })
+                        self.conversation_history.append(
+                            {"role": "assistant", "content": content}
+                        )
 
                 # Log conversation to session logger
                 if self.current_profile:
                     self.knowledge_integration.log_conversation(
                         game_profile_id=self.current_profile.id,
                         question=question,
-                        answer=content
+                        answer=content,
                     )
 
                 return content
@@ -369,10 +404,12 @@ Please start a game or tell me which game you'd like help with, and I'll provide
         if not self.current_game:
             return "🎮 No game detected!\n\nPlease start a game to get tips and strategies. I'm here to help you once you're playing."
 
-        game_name = self.current_game.get('name', 'the current game')
+        game_name = self.current_game.get("name", "the current game")
 
         if specific_topic:
-            question = f"Give me tips and strategies for {specific_topic} in {game_name}."
+            question = (
+                f"Give me tips and strategies for {specific_topic} in {game_name}."
+            )
         else:
             question = f"Give me some general tips and strategies for playing {game_name} effectively."
 
@@ -380,7 +417,11 @@ Please start a game or tell me which game you'd like help with, and I'll provide
 
     def clear_history(self):
         """Clear conversation history"""
-        game_name = self.current_game.get('name', 'Unknown Game') if self.current_game else 'Unknown Game'
+        game_name = (
+            self.current_game.get("name", "Unknown Game")
+            if self.current_game
+            else "Unknown Game"
+        )
 
         with self._history_lock:
             self.conversation_history = []

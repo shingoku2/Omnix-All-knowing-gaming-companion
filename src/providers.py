@@ -56,21 +56,6 @@ class ProviderError(Exception):
     pass
 
 
-class ProviderAuthError(ProviderError):
-    """Raised when API key is invalid or missing (kept for compatibility)"""
-    pass
-
-
-class ProviderQuotaError(ProviderError):
-    """Raised when quota is exceeded (kept for compatibility)"""
-    pass
-
-
-class ProviderRateLimitError(ProviderError):
-    """Raised when rate limit is exceeded (kept for compatibility)"""
-    pass
-
-
 class ProviderConnectionError(ProviderError):
     """Raised when unable to connect to provider"""
     pass
@@ -161,6 +146,8 @@ class OllamaProvider:
                 message="Ollama client not initialized - ensure the 'ollama' package is installed",
                 error_type="connection",
             )
+        
+        assert self.client is not None
 
         try:
             models = self.client.list().get("models", [])
@@ -189,6 +176,8 @@ class OllamaProvider:
         """List available models from Ollama."""
         if not self.is_configured():
             return []
+            
+        assert self.client is not None
 
         try:
             models = self.client.list().get("models", [])
@@ -216,6 +205,8 @@ class OllamaProvider:
         """
         if not self.is_configured():
             raise ProviderConnectionError("Ollama client not initialized or unreachable")
+            
+        assert self.client is not None
 
         model_name = model or self.default_model
 

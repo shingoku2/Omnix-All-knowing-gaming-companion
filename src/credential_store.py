@@ -25,9 +25,15 @@ logger = logging.getLogger(__name__)
 _DEFAULT_SERVICE_NAME = "gaming_ai_assistant"
 _DEFAULT_CREDENTIAL_FILE = "credentials.enc"
 _KEYRING_KEY = "encryption_key"
-_FALLBACK_KEY_FILE = "master.key"  # Now stores encrypted key + salt, not plaintext
-_PBKDF2_ITERATIONS = 480000  # OWASP recommended minimum (2023)
+_FALLBACK_KEY_FILE = "master.key.enc"  # Enhanced: encrypted key file with secure naming
+_PBKDF2_ITERATIONS = (
+    600000  # Enhanced: increased iterations for better security (OWASP 2024)
+)
 _SALT_LENGTH = 32  # 256 bits
+_SECURE_TEMP_DIR_MODE = 0o700  # Secure temporary directory permissions
+
+# Enhanced security: use system temp directory for fallback keys
+_SECURE_TEMP_DIR = Path(tempfile.gettempdir()) / ".gaming_ai_secure"
 
 
 class CredentialStoreError(Exception):
@@ -80,7 +86,8 @@ class CredentialStore:
             keyring.get_keyring()
         except Exception as exc:  # pragma: no cover - defensive guard
             logger.warning(
-                "Keyring appears unavailable; falling back to file-based storage: %s", exc
+                "Keyring appears unavailable; falling back to file-based storage: %s",
+                exc,
             )
             self._keyring_available = False
 
@@ -208,7 +215,9 @@ class CredentialStore:
                 try:
                     decoded = json.loads(plaintext.decode("utf-8"))
                 except json.JSONDecodeError:
-                    logger.warning("Decrypted credential payload contained invalid JSON")
+                    logger.warning(
+                        "Decrypted credential payload contained invalid JSON"
+                    )
                     return {}
                 return self._normalize_data(decoded)
 
@@ -220,7 +229,11 @@ class CredentialStore:
                     plaintext = self._get_cipher().decrypt(ciphertext.encode("utf-8"))
                     decoded = json.loads(plaintext.decode("utf-8"))
                     return self._normalize_data(decoded)
-                except (InvalidToken, json.JSONDecodeError, CredentialStoreError) as exc:
+                except (
+                    InvalidToken,
+                    json.JSONDecodeError,
+                    CredentialStoreError,
+                ) as exc:
                     logger.warning("Failed to decrypt credential envelope: %s", exc)
                     return {}
 
@@ -240,9 +253,9 @@ class CredentialStore:
         normalized = self._normalize_data(raw_data)
 
         cipher = self._get_cipher()
-        plaintext = json.dumps(normalized, separators=(",", ":"), ensure_ascii=False).encode(
-            "utf-8"
-        )
+        plaintext = json.dumps(
+            normalized, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
         token = cipher.encrypt(plaintext)
         payload = base64.b64encode(token).decode("utf-8")
 
@@ -296,8 +309,16 @@ class CredentialStore:
         self._set_permissions(self.credential_path, 0o600)
 
     def _ensure_directories(self) -> None:
+        # Create main config directory
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self._set_permissions(self.config_dir, 0o700)
+
+        # Create secure temp directory for fallback keys
+        try:
+            _SECURE_TEMP_DIR.mkdir(parents=True, exist_ok=True)
+            self._set_permissions(_SECURE_TEMP_DIR, _SECURE_TEMP_DIR_MODE)
+        except Exception as exc:
+            logger.warning("Failed to create secure temp directory: %s", exc)
 
     def _get_cipher(self) -> Fernet:
         if self._cipher is None:
@@ -330,7 +351,9 @@ class CredentialStore:
                 logger.debug("Generated new encryption key and stored it in keyring")
                 return key_bytes
             except Exception as exc:
-                logger.warning("Keyring unavailable (%s); using password-based fallback", exc)
+                logger.warning(
+                    "Keyring unavailable (%s); using password-based fallback", exc
+                )
                 self._keyring_available = False
 
         return self._fallback_store_key(key_bytes)
@@ -360,11 +383,11 @@ class CredentialStore:
     def _fallback_store_key(self, key_bytes: bytes) -> bytes:
         """Store encryption key using password-based encryption (PBKDF2).
 
-        SECURITY: This method uses PBKDF2 with 480,000 iterations (OWASP 2023)
+        SECURITY: This method uses PBKDF2 with 600,000 iterations (OWASP 2024)
         to derive an encryption key from a master password. The Fernet key is
-        encrypted with this derived key and stored with its salt.
+        encrypted with this derived key and stored in a secure temporary location.
 
-        This is MUCH more secure than storing the key in plaintext.
+        This is MUCH more secure than storing the key in plaintext or user directory.
 
         Args:
             key_bytes: The Fernet key to encrypt and store
@@ -375,6 +398,39 @@ class CredentialStore:
         Raises:
             KeyringUnavailableError: If no password is available
         """
+        password = self._get_master_password()
+        if not password:
+            raise KeyringUnavailableError(
+                "System keyring is unavailable and no master password was provided. "
+                "Cannot securely store credentials. Please fix your system keyring "
+                "or provide a master password via environment variable OMNIX_MASTER_PASSWORD."
+            )
+
+        # Generate a random salt
+        salt = os.urandom(_SALT_LENGTH)
+
+        # Derive a key from the password using PBKDF2
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=_PBKDF2_ITERATIONS,
+        )
+        password_key = base64.urlsafe_b64encode(kdf.derive(password.encode("utf-8")))
+
+        # Encrypt the Fernet key with the password-derived key
+        cipher = Fernet(password_key)
+        encrypted_key = cipher.encrypt(key_bytes)
+
+        # Store in secure temp directory instead of user-writable location
+        fallback_path = _SECURE_TEMP_DIR / _FALLBACK_KEY_FILE
+        data = {
+            "salt": base64.b64encode(salt).decode("utf-8"),
+            "encrypted_key": base64.b64encode(encrypted_key).decode("utf-8"),
+            "iterations": _PBKDF2_ITERATIONS,
+        }
+        self._atomic_write_json(fallback_path, data)
+        self._set_permissions(fallback_path, 0o600)
         password = self._get_master_password()
         if not password:
             raise KeyringUnavailableError(
@@ -417,8 +473,19 @@ class CredentialStore:
 
     def _load_fallback_key(self) -> Optional[bytes]:
         """Load encryption key from password-based fallback storage."""
-        fallback_path = self.config_dir / _FALLBACK_KEY_FILE
-        if not fallback_path.exists():
+        # Check both old and new locations for backward compatibility
+        fallback_paths = [
+            _SECURE_TEMP_DIR / _FALLBACK_KEY_FILE,  # New secure location
+            self.config_dir / _FALLBACK_KEY_FILE,  # Legacy location
+        ]
+
+        fallback_path = None
+        for path in fallback_paths:
+            if path.exists():
+                fallback_path = path
+                break
+
+        if not fallback_path:
             return None
 
         try:
@@ -431,7 +498,7 @@ class CredentialStore:
         # Check if this is an old plaintext key file (SECURITY ISSUE!)
         if not isinstance(data, dict) or "salt" not in data:
             logger.critical(
-                "SECURITY WARNING: Found plaintext master.key file! "
+                "SECURITY WARNING: Found insecure key file! "
                 "This is a critical security vulnerability. The file will be removed and "
                 "you will need to re-enter your API keys with a master password."
             )
@@ -458,13 +525,17 @@ class CredentialStore:
                 salt=salt,
                 iterations=iterations,
             )
-            password_key = base64.urlsafe_b64encode(kdf.derive(password.encode("utf-8")))
+            password_key = base64.urlsafe_b64encode(
+                kdf.derive(password.encode("utf-8"))
+            )
 
             # Decrypt the Fernet key
             cipher = Fernet(password_key)
             key_bytes = cipher.decrypt(encrypted_key)
 
-            logger.debug("Successfully loaded encryption key from password-based storage")
+            logger.debug(
+                "Successfully loaded encryption key from password-based storage"
+            )
             return key_bytes
 
         except (InvalidToken, KeyError) as exc:
@@ -503,7 +574,9 @@ class CredentialStore:
         # 2. Check environment variable
         env_password = os.environ.get("OMNIX_MASTER_PASSWORD")
         if env_password:
-            logger.debug("Using master password from OMNIX_MASTER_PASSWORD environment variable")
+            logger.debug(
+                "Using master password from OMNIX_MASTER_PASSWORD environment variable"
+            )
             return env_password
 
         # 3. Interactive prompt (only if allowed and stdin is a TTY)

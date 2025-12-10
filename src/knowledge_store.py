@@ -1,21 +1,17 @@
-"""
-Knowledge Pack Store Module
-Handles persistence of knowledge packs to disk (JSON format)
-"""
+"""Knowledge Pack Store Module."""
 
 import logging
-import json
-import os
-from pathlib import Path
-from typing import List, Dict, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, Optional
 
 from knowledge_pack import KnowledgePack, KnowledgeSource
+from base_store import BaseStore
 
 logger = logging.getLogger(__name__)
 
 
-class KnowledgePackStore:
+class KnowledgePackStore(BaseStore[KnowledgePack]):
     """
     Stores and retrieves knowledge packs from disk
     Handles JSON serialization and game profile associations
@@ -28,19 +24,11 @@ class KnowledgePackStore:
         Args:
             config_dir: Directory to store packs (defaults to ~/.gaming_ai_assistant)
         """
-        if config_dir is None:
-            config_dir = os.path.expanduser("~/.gaming_ai_assistant")
+        super().__init__("knowledge_packs", config_dir=config_dir)
+        self.packs_dir = self.base_dir
+        self.sources_dir = self.ensure_subdir("knowledge_sources")
 
-        self.config_dir = Path(config_dir)
-        self.packs_dir = self.config_dir / "knowledge_packs"
-        self.sources_dir = self.config_dir / "knowledge_sources"
-
-        # Ensure directories exist
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.packs_dir.mkdir(parents=True, exist_ok=True)
-        self.sources_dir.mkdir(parents=True, exist_ok=True)
-
-        logger.info(f"KnowledgePackStore initialized at {self.config_dir}")
+        logger.info("KnowledgePackStore initialized at %s", self.config_dir)
 
     def save_pack(self, pack: KnowledgePack) -> bool:
         """
@@ -52,22 +40,14 @@ class KnowledgePackStore:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            # Update timestamp
-            pack.updated_at = datetime.now()
-
-            # Save pack file
-            pack_file = self.packs_dir / f"{pack.id}.json"
-
-            with open(pack_file, 'w') as f:
-                json.dump(pack.to_dict(), f, indent=2)
-
-            logger.info(f"Saved knowledge pack: {pack.name} (ID: {pack.id})")
+        pack.updated_at = datetime.now()
+        pack_file = self.packs_dir / f"{pack.id}.json"
+        if self._json_save(pack_file, pack.to_dict()):
+            logger.info("Saved knowledge pack: %s (ID: %s)", pack.name, pack.id)
             return True
 
-        except Exception as e:
-            logger.error(f"Failed to save knowledge pack {pack.id}: {e}")
-            return False
+        logger.error("Failed to save knowledge pack %s", pack.id)
+        return False
 
     def load_pack(self, pack_id: str) -> Optional[KnowledgePack]:
         """
@@ -79,22 +59,18 @@ class KnowledgePackStore:
         Returns:
             KnowledgePack object or None if not found
         """
+        pack_file = self.packs_dir / f"{pack_id}.json"
+        data = self._json_load(pack_file)
+        if not data:
+            logger.warning("Knowledge pack file not found: %s", pack_id)
+            return None
+
         try:
-            pack_file = self.packs_dir / f"{pack_id}.json"
-
-            if not pack_file.exists():
-                logger.warning(f"Knowledge pack file not found: {pack_id}")
-                return None
-
-            with open(pack_file, 'r') as f:
-                data = json.load(f)
-
             pack = KnowledgePack.from_dict(data)
-            logger.debug(f"Loaded knowledge pack: {pack.name} (ID: {pack.id})")
+            logger.debug("Loaded knowledge pack: %s (ID: %s)", pack.name, pack.id)
             return pack
-
-        except Exception as e:
-            logger.error(f"Failed to load knowledge pack {pack_id}: {e}")
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.error("Failed to deserialize knowledge pack %s: %s", pack_id, exc)
             return None
 
     def delete_pack(self, pack_id: str) -> bool:
@@ -107,20 +83,13 @@ class KnowledgePackStore:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            pack_file = self.packs_dir / f"{pack_id}.json"
+        pack_file = self.packs_dir / f"{pack_id}.json"
+        if self._delete_file(pack_file):
+            logger.info("Deleted knowledge pack file: %s", pack_id)
+            return True
 
-            if pack_file.exists():
-                pack_file.unlink()
-                logger.info(f"Deleted knowledge pack file: {pack_id}")
-                return True
-
-            logger.warning(f"Knowledge pack file not found: {pack_id}")
-            return False
-
-        except Exception as e:
-            logger.error(f"Failed to delete knowledge pack {pack_id}: {e}")
-            return False
+        logger.warning("Knowledge pack file not found: %s", pack_id)
+        return False
 
     def load_all_packs(self) -> Dict[str, KnowledgePack]:
         """
@@ -129,30 +98,20 @@ class KnowledgePackStore:
         Returns:
             Dictionary of {pack_id: KnowledgePack}
         """
-        packs = {}
+        packs: Dict[str, KnowledgePack] = {}
 
-        try:
-            if not self.packs_dir.exists():
-                logger.warning(f"Knowledge packs directory not found: {self.packs_dir}")
-                return packs
+        for pack_file in self.iter_json_files(self.packs_dir):
+            data = self._json_load(pack_file)
+            if not data:
+                continue
+            try:
+                pack = KnowledgePack.from_dict(data)
+                packs[pack.id] = pack
+            except Exception as exc:  # pragma: no cover
+                logger.error("Failed to load knowledge pack from %s: %s", pack_file, exc)
 
-            for pack_file in self.packs_dir.glob("*.json"):
-                try:
-                    with open(pack_file, 'r') as f:
-                        data = json.load(f)
-
-                    pack = KnowledgePack.from_dict(data)
-                    packs[pack.id] = pack
-
-                except Exception as e:
-                    logger.error(f"Failed to load knowledge pack from {pack_file}: {e}")
-
-            logger.info(f"Loaded {len(packs)} knowledge packs from disk")
-            return packs
-
-        except Exception as e:
-            logger.error(f"Failed to load knowledge packs: {e}")
-            return packs
+        logger.info("Loaded %s knowledge packs from disk", len(packs))
+        return packs
 
     def save_all_packs(self, packs: Dict[str, KnowledgePack]) -> bool:
         """
@@ -248,19 +207,15 @@ class KnowledgePackStore:
 
         total_sources = sum(len(p.sources) for p in all_packs.values())
 
-        game_profiles = {}
+        game_profiles: Dict[str, int] = {}
         for pack in all_packs.values():
             profile_id = pack.game_profile_id
-            if profile_id not in game_profiles:
-                game_profiles[profile_id] = 0
-            game_profiles[profile_id] += 1
+            game_profiles[profile_id] = game_profiles.get(profile_id, 0) + 1
 
-        source_types = {}
+        source_types: Dict[str, int] = {}
         for pack in all_packs.values():
             for source in pack.sources:
-                if source.type not in source_types:
-                    source_types[source.type] = 0
-                source_types[source.type] += 1
+                source_types[source.type] = source_types.get(source.type, 0) + 1
 
         return {
             'total_packs': len(all_packs),
@@ -281,21 +236,12 @@ class KnowledgePackStore:
         Returns:
             True if successful
         """
-        try:
-            pack = self.load_pack(pack_id)
-            if not pack:
-                logger.error(f"Knowledge pack not found: {pack_id}")
-                return False
-
-            with open(export_path, 'w') as f:
-                json.dump(pack.to_dict(), f, indent=2)
-
-            logger.info(f"Exported knowledge pack {pack_id} to {export_path}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to export knowledge pack {pack_id}: {e}")
+        pack = self.load_pack(pack_id)
+        if not pack:
+            logger.error("Knowledge pack not found: %s", pack_id)
             return False
+
+        return self._json_save(Path(export_path), pack.to_dict())
 
     def import_pack(self, import_path: str) -> Optional[KnowledgePack]:
         """
@@ -307,22 +253,21 @@ class KnowledgePackStore:
         Returns:
             Imported KnowledgePack object or None if failed
         """
+        data = self._json_load(Path(import_path))
+        if not data:
+            logger.error("Failed to import knowledge pack from %s", import_path)
+            return None
+
         try:
-            with open(import_path, 'r') as f:
-                data = json.load(f)
-
             pack = KnowledgePack.from_dict(data)
-
-            # Save the imported pack
-            if self.save_pack(pack):
-                logger.info(f"Imported knowledge pack: {pack.name}")
-                return pack
-
+        except Exception as exc:  # pragma: no cover
+            logger.error("Invalid knowledge pack file %s: %s", import_path, exc)
             return None
 
-        except Exception as e:
-            logger.error(f"Failed to import knowledge pack from {import_path}: {e}")
-            return None
+        if self.save_pack(pack):
+            logger.info("Imported knowledge pack: %s", pack.name)
+            return pack
+        return None
 
 
 # Global knowledge pack store instance

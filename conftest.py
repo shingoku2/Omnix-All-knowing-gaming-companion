@@ -66,7 +66,9 @@ def temp_dir() -> Generator[Path, None, None]:
 @pytest.fixture
 def temp_config_dir(temp_dir) -> Path:
     """Provide a temporary config directory for testing."""
-    config_dir = temp_dir / ".gaming_ai_assistant"
+    # Use a workspace-local temp path to avoid OS temp directory permission issues.
+    root = Path.cwd() / ".tmp_tests" / temp_dir.name
+    config_dir = root / ".gaming_ai_assistant"
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir
 
@@ -103,7 +105,7 @@ def mock_config(temp_config_dir):
     config = Config(config_dir=str(temp_config_dir))
 
     # Set safe test defaults
-    config.ai_provider = "anthropic"
+    config.ai_provider = "ollama"
     config.check_interval = 5
     config.overlay_hotkey = "ctrl+shift+g"
 
@@ -156,7 +158,7 @@ def mock_game_profile():
         display_name="Elden Ring",
         exe_names=["eldenring.exe"],
         system_prompt="You are an expert Elden Ring guide.",
-        default_provider="anthropic",
+        default_provider="ollama",
         overlay_mode_default="full"
     )
 
@@ -287,6 +289,45 @@ def sample_session_events():
             meta={"tokens": 50}
         )
     ]
+
+
+@pytest.fixture
+def game_profile_store():
+    """Provide a GameProfileStore instance"""
+    from src.game_profile import GameProfileStore
+    return GameProfileStore()
+
+
+@pytest.fixture
+def macro_store(temp_config_dir):
+    """Provide a MacroStore instance"""
+    from src.macro_store import MacroStore
+    return MacroStore(str(temp_config_dir))
+
+
+@pytest.fixture
+def knowledge_pack_store(temp_config_dir):
+    """Provide a KnowledgePackStore instance"""
+    from src.knowledge_store import KnowledgePackStore
+    return KnowledgePackStore(config_dir=str(temp_config_dir))
+
+
+@pytest.fixture
+def knowledge_index(temp_config_dir):
+    """Provide a KnowledgeIndex instance"""
+    from src.knowledge_index import KnowledgeIndex, SimpleTFIDFEmbedding
+    embedding_provider = SimpleTFIDFEmbedding()
+    return KnowledgeIndex(
+        config_dir=str(temp_config_dir),
+        embedding_provider=embedding_provider
+    )
+
+
+@pytest.fixture
+def session_logger(temp_config_dir):
+    """Provide a SessionLogger instance"""
+    from src.session_logger import SessionLogger
+    return SessionLogger(config_dir=str(temp_config_dir))
 
 
 # ============================================================================
@@ -428,12 +469,8 @@ def clean_env():
     """
     original_env = os.environ.copy()
 
-    # Remove API keys
-    keys_to_remove = [
-        'ANTHROPIC_API_KEY',
-        'OPENAI_API_KEY',
-        'GEMINI_API_KEY',
-    ]
+    # Remove legacy API keys
+    keys_to_remove = []
 
     for key in keys_to_remove:
         os.environ.pop(key, None)
@@ -448,18 +485,16 @@ def clean_env():
 @pytest.fixture
 def test_api_keys():
     """
-    Provide test API keys (fake) for testing.
+    Provide test Ollama settings for testing.
 
     Usage:
         def test_with_keys(test_api_keys):
-            assert os.environ["ANTHROPIC_API_KEY"]
+            assert os.environ["OLLAMA_HOST"]
     """
     original_env = os.environ.copy()
 
-    # Set fake API keys
-    os.environ['ANTHROPIC_API_KEY'] = 'sk-ant-test-key-12345'
-    os.environ['OPENAI_API_KEY'] = 'sk-test-key-12345'
-    os.environ['GEMINI_API_KEY'] = 'test-gemini-key-12345'
+    os.environ.setdefault('OLLAMA_HOST', 'http://localhost:11434')
+    os.environ.setdefault('OLLAMA_MODEL', 'llama3')
 
     yield
 
@@ -492,12 +527,6 @@ def pytest_collection_modifyitems(config, items):
         if "skip_ci" in item.keywords and os.environ.get("CI"):
             item.add_marker(skip_in_ci)
 
-        # Skip tests requiring API keys if not available
+        # Skip tests requiring API keys (deprecated in Ollama-only mode)
         if "requires_api_key" in item.keywords:
-            has_key = any([
-                os.environ.get("ANTHROPIC_API_KEY"),
-                os.environ.get("OPENAI_API_KEY"),
-                os.environ.get("GEMINI_API_KEY")
-            ])
-            if not has_key:
-                item.add_marker(pytest.mark.skip(reason="No API keys available"))
+            item.add_marker(pytest.mark.skip(reason="API-key provider tests disabled (Ollama default)"))

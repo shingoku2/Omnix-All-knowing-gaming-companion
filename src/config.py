@@ -14,23 +14,53 @@ from typing import Dict, Optional
 
 from dotenv import load_dotenv
 
-from credential_store import CredentialDecryptionError, CredentialStore, CredentialStoreError
+from credential_store import (
+    CredentialDecryptionError,
+    CredentialStore,
+    CredentialStoreError,
+)
 from security import ensure_private_dir, ensure_private_file
 
 logger = logging.getLogger(__name__)
 
 # Configuration directory
-CONFIG_DIR = Path.home() / '.gaming_ai_assistant'
-KEYBINDS_FILE = CONFIG_DIR / 'keybinds.json'
-MACROS_FILE = CONFIG_DIR / 'macros.json'
-THEME_FILE = CONFIG_DIR / 'theme.json'
+CONFIG_DIR = Path.home() / ".gaming_ai_assistant"
+KEYBINDS_FILE = CONFIG_DIR / "keybinds.json"
+MACROS_FILE = CONFIG_DIR / "macros.json"
+THEME_FILE = CONFIG_DIR / "theme.json"
+
+# AI Provider Constants
+DEFAULT_AI_PROVIDER = "ollama"
+SUPPORTED_AI_PROVIDERS = [DEFAULT_AI_PROVIDER]  # Currently only Ollama is supported
+
+# Default Configuration Values
+DEFAULT_OLLAMA_HOST = "http://localhost:11434"
+DEFAULT_OLLAMA_MODEL = "llama3"
+DEFAULT_OVERLAY_HOTKEY = "ctrl+shift+g"
+DEFAULT_CHECK_INTERVAL = 5
+DEFAULT_OVERLAY_X = 100
+DEFAULT_OVERLAY_Y = 100
+DEFAULT_OVERLAY_WIDTH = 900
+DEFAULT_OVERLAY_HEIGHT = 700
+DEFAULT_OVERLAY_MINIMIZED = False
+DEFAULT_OVERLAY_OPACITY = 0.95
+DEFAULT_MACROS_ENABLED = False
+DEFAULT_MACRO_SAFETY_UNDERSTOOD = False
+DEFAULT_MAX_MACRO_REPEAT = 10
+DEFAULT_MACRO_EXECUTION_TIMEOUT = 30
+DEFAULT_HRM_ENABLED = False
 
 
 class Config:
     """Application configuration (Ollama-only)"""
 
-    def __init__(self, env_file: Optional[str] = None, require_keys: bool = False,
-                 config_path: Optional[str] = None, config_dir: Optional[str] = None):
+    def __init__(
+        self,
+        env_file: Optional[str] = None,
+        require_keys: bool = False,
+        config_path: Optional[str] = None,
+        config_dir: Optional[str] = None,
+    ):
         """
         Initialize configuration.
 
@@ -50,14 +80,14 @@ class Config:
             self._protect_file(Path(env_file))
         else:
             possible_paths = [
-                Path('.env'),
-                Path(__file__).parent.parent / '.env',
-                Path(sys.executable).parent / '.env',
+                Path(".env"),
+                Path(__file__).parent.parent / ".env",
+                Path(sys.executable).parent / ".env",
             ]
 
-            if getattr(sys, 'frozen', False):
+            if getattr(sys, "frozen", False):
                 bundle_dir = Path(sys.executable).parent
-                possible_paths.insert(0, bundle_dir / '.env')
+                possible_paths.insert(0, bundle_dir / ".env")
 
             for env_path in possible_paths:
                 if env_path.exists():
@@ -70,28 +100,51 @@ class Config:
         self.credential_store = CredentialStore()
 
         # AI Configuration - Ollama only
-        self.ai_provider = "ollama"  # Hardcoded to ollama
-        self.ollama_host = os.getenv('OLLAMA_HOST') or os.getenv('OLLAMA_BASE_URL') or 'http://localhost:11434'
-        self.ollama_model = os.getenv('OLLAMA_MODEL', 'llama3')
+        self.ai_provider = os.getenv("AI_PROVIDER", DEFAULT_AI_PROVIDER)
+        self.ollama_host = (
+            os.getenv("OLLAMA_HOST")
+            or os.getenv("OLLAMA_BASE_URL")
+            or DEFAULT_OLLAMA_HOST
+        )
+        self.ollama_model = os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL)
 
         # Application Settings
-        self.overlay_hotkey = os.getenv('OVERLAY_HOTKEY', 'ctrl+shift+g')
-        self.check_interval = int(os.getenv('CHECK_INTERVAL', '5'))
+        self.overlay_hotkey = os.getenv("OVERLAY_HOTKEY", DEFAULT_OVERLAY_HOTKEY)
+        self.check_interval = int(os.getenv("CHECK_INTERVAL", DEFAULT_CHECK_INTERVAL))
 
         # Overlay Window Settings
-        self.overlay_x = int(os.getenv('OVERLAY_X', '100'))
-        self.overlay_y = int(os.getenv('OVERLAY_Y', '100'))
-        self.overlay_width = int(os.getenv('OVERLAY_WIDTH', '900'))
-        self.overlay_height = int(os.getenv('OVERLAY_HEIGHT', '700'))
-        self.overlay_minimized = os.getenv('OVERLAY_MINIMIZED', 'false').lower() == 'true'
-        opacity = float(os.getenv('OVERLAY_OPACITY', '0.95'))
+        self.overlay_x = int(os.getenv("OVERLAY_X", DEFAULT_OVERLAY_X))
+        self.overlay_y = int(os.getenv("OVERLAY_Y", DEFAULT_OVERLAY_Y))
+        self.overlay_width = int(os.getenv("OVERLAY_WIDTH", DEFAULT_OVERLAY_WIDTH))
+        self.overlay_height = int(os.getenv("OVERLAY_HEIGHT", DEFAULT_OVERLAY_HEIGHT))
+        self.overlay_minimized = (
+            os.getenv("OVERLAY_MINIMIZED", str(DEFAULT_OVERLAY_MINIMIZED)).lower()
+            == "true"
+        )
+        opacity = float(os.getenv("OVERLAY_OPACITY", DEFAULT_OVERLAY_OPACITY))
         self.overlay_opacity = max(0.0, min(1.0, opacity))
 
         # Macro & Keybind Settings
-        self.macros_enabled = os.getenv('MACROS_ENABLED', 'false').lower() == 'true'
-        self.macro_safety_understood = os.getenv('MACRO_SAFETY_UNDERSTOOD', 'false').lower() == 'true'
-        self.max_macro_repeat = int(os.getenv('MAX_MACRO_REPEAT', '10'))
-        self.macro_execution_timeout = int(os.getenv('MACRO_EXECUTION_TIMEOUT', '30'))
+        self.macros_enabled = (
+            os.getenv("MACROS_ENABLED", str(DEFAULT_MACROS_ENABLED)).lower() == "true"
+        )
+        self.macro_safety_understood = (
+            os.getenv(
+                "MACRO_SAFETY_UNDERSTOOD", str(DEFAULT_MACRO_SAFETY_UNDERSTOOD)
+            ).lower()
+            == "true"
+        )
+        self.max_macro_repeat = int(
+            os.getenv("MAX_MACRO_REPEAT", DEFAULT_MAX_MACRO_REPEAT)
+        )
+        self.macro_execution_timeout = int(
+            os.getenv("MACRO_EXECUTION_TIMEOUT", DEFAULT_MACRO_EXECUTION_TIMEOUT)
+        )
+
+        # HRM Settings
+        self.hrm_enabled = (
+            os.getenv("HRM_ENABLED", str(DEFAULT_HRM_ENABLED)).lower() == "true"
+        )
 
         # Extended Settings (stored in separate JSON files)
         self.keybinds: Dict = {}
@@ -114,13 +167,17 @@ class Config:
         try:
             ensure_private_dir(CONFIG_DIR)
         except Exception as exc:
-            logger.warning("Failed to secure default config dir %s: %s", CONFIG_DIR, exc)
+            logger.warning(
+                "Failed to secure default config dir %s: %s", CONFIG_DIR, exc
+            )
 
         if self.config_dir:
             try:
                 ensure_private_dir(Path(self.config_dir))
             except Exception as exc:
-                logger.warning("Failed to secure custom config dir %s: %s", self.config_dir, exc)
+                logger.warning(
+                    "Failed to secure custom config dir %s: %s", self.config_dir, exc
+                )
 
     def _protect_file(self, path: Path) -> None:
         """Ensure a configuration file is restricted to the current user."""
@@ -134,9 +191,11 @@ class Config:
         try:
             self._protect_file(KEYBINDS_FILE)
             if KEYBINDS_FILE.exists():
-                with open(KEYBINDS_FILE, 'r', encoding='utf-8') as f:
+                with open(KEYBINDS_FILE, "r", encoding="utf-8") as f:
                     self.keybinds = json.load(f)
-                    logger.info(f"Loaded {len(self.keybinds)} keybinds from {KEYBINDS_FILE}")
+                    logger.info(
+                        f"Loaded {len(self.keybinds)} keybinds from {KEYBINDS_FILE}"
+                    )
             else:
                 logger.info("No keybinds file found, using defaults")
                 self.keybinds = {}
@@ -149,7 +208,7 @@ class Config:
         try:
             self._protect_file(MACROS_FILE)
             if MACROS_FILE.exists():
-                with open(MACROS_FILE, 'r', encoding='utf-8') as f:
+                with open(MACROS_FILE, "r", encoding="utf-8") as f:
                     self.macros = json.load(f)
                     logger.info(f"Loaded {len(self.macros)} macros from {MACROS_FILE}")
             else:
@@ -164,7 +223,7 @@ class Config:
         try:
             self._protect_file(THEME_FILE)
             if THEME_FILE.exists():
-                with open(THEME_FILE, 'r', encoding='utf-8') as f:
+                with open(THEME_FILE, "r", encoding="utf-8") as f:
                     self.theme = json.load(f)
                     logger.info(f"Loaded theme from {THEME_FILE}")
             else:
@@ -178,7 +237,7 @@ class Config:
         """Save keybinds to JSON file"""
         try:
             CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-            with open(KEYBINDS_FILE, 'w', encoding='utf-8') as f:
+            with open(KEYBINDS_FILE, "w", encoding="utf-8") as f:
                 json.dump(keybinds, f, indent=2)
             self.keybinds = keybinds
             self._protect_file(KEYBINDS_FILE)
@@ -192,7 +251,7 @@ class Config:
         """Save macros to JSON file"""
         try:
             CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-            with open(MACROS_FILE, 'w', encoding='utf-8') as f:
+            with open(MACROS_FILE, "w", encoding="utf-8") as f:
                 json.dump(macros, f, indent=2)
             self.macros = macros
             self._protect_file(MACROS_FILE)
@@ -206,7 +265,7 @@ class Config:
         """Save theme to JSON file"""
         try:
             CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-            with open(THEME_FILE, 'w', encoding='utf-8') as f:
+            with open(THEME_FILE, "w", encoding="utf-8") as f:
                 json.dump(theme, f, indent=2)
             self.theme = theme
             self._protect_file(THEME_FILE)
@@ -258,7 +317,7 @@ class Config:
         """
         return bool(self.ollama_host)
 
-    def get_provider_endpoint(self, provider: str = None) -> Optional[str]:
+    def get_provider_endpoint(self, provider: Optional[str] = None) -> Optional[str]:
         """Get the Ollama host URL."""
         return self.ollama_host
 
@@ -283,23 +342,23 @@ class Config:
 
         try:
             config_data = {
-                'ollama_host': self.ollama_host,
-                'ollama_model': self.ollama_model,
-                'overlay_hotkey': self.overlay_hotkey,
-                'check_interval': self.check_interval,
-                'overlay_x': self.overlay_x,
-                'overlay_y': self.overlay_y,
-                'overlay_width': self.overlay_width,
-                'overlay_height': self.overlay_height,
-                'overlay_minimized': self.overlay_minimized,
-                'overlay_opacity': self.overlay_opacity,
-                'macros_enabled': self.macros_enabled,
-                'macro_safety_understood': self.macro_safety_understood,
-                'max_macro_repeat': self.max_macro_repeat,
-                'macro_execution_timeout': self.macro_execution_timeout
+                "ollama_host": self.ollama_host,
+                "ollama_model": self.ollama_model,
+                "overlay_hotkey": self.overlay_hotkey,
+                "check_interval": self.check_interval,
+                "overlay_x": self.overlay_x,
+                "overlay_y": self.overlay_y,
+                "overlay_width": self.overlay_width,
+                "overlay_height": self.overlay_height,
+                "overlay_minimized": self.overlay_minimized,
+                "overlay_opacity": self.overlay_opacity,
+                "macros_enabled": self.macros_enabled,
+                "macro_safety_understood": self.macro_safety_understood,
+                "max_macro_repeat": self.max_macro_repeat,
+                "macro_execution_timeout": self.macro_execution_timeout,
             }
 
-            with open(self.config_path, 'w', encoding='utf-8') as f:
+            with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, indent=2)
 
             logger.info(f"Saved configuration to {self.config_path}")
@@ -314,7 +373,7 @@ class Config:
             return
 
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             for key, value in data.items():
@@ -329,35 +388,36 @@ class Config:
 
     def reset_to_defaults(self):
         """Reset configuration to default values"""
-        self.ollama_host = 'http://localhost:11434'
-        self.ollama_model = 'llama3'
-        self.overlay_hotkey = 'ctrl+shift+g'
-        self.check_interval = 5
-        self.overlay_x = 100
-        self.overlay_y = 100
-        self.overlay_width = 900
-        self.overlay_height = 700
-        self.overlay_minimized = False
-        self.overlay_opacity = 0.95
-        self.macros_enabled = False
-        self.macro_safety_understood = False
-        self.max_macro_repeat = 10
-        self.macro_execution_timeout = 30
+        self.ollama_host = DEFAULT_OLLAMA_HOST
+        self.ollama_model = DEFAULT_OLLAMA_MODEL
+        self.overlay_hotkey = DEFAULT_OVERLAY_HOTKEY
+        self.check_interval = DEFAULT_CHECK_INTERVAL
+        self.overlay_x = DEFAULT_OVERLAY_X
+        self.overlay_y = DEFAULT_OVERLAY_Y
+        self.overlay_width = DEFAULT_OVERLAY_WIDTH
+        self.overlay_height = DEFAULT_OVERLAY_HEIGHT
+        self.overlay_minimized = DEFAULT_OVERLAY_MINIMIZED
+        self.overlay_opacity = DEFAULT_OVERLAY_OPACITY
+        self.macros_enabled = DEFAULT_MACROS_ENABLED
+        self.macro_safety_understood = DEFAULT_MACRO_SAFETY_UNDERSTOOD
+        self.max_macro_repeat = DEFAULT_MAX_MACRO_REPEAT
+        self.macro_execution_timeout = DEFAULT_MACRO_EXECUTION_TIMEOUT
 
     @staticmethod
     def save_to_env(
-        provider: str = "ollama",
+        provider: str = DEFAULT_AI_PROVIDER,
         session_tokens: Optional[Dict[str, dict]] = None,
-        overlay_hotkey: str = 'ctrl+shift+g',
-        check_interval: int = 5,
-        overlay_x: int = None,
-        overlay_y: int = None,
-        overlay_width: int = None,
-        overlay_height: int = None,
-        overlay_minimized: bool = None,
-        overlay_opacity: float = None,
-        ollama_host: str = None,
-        ollama_model: str = None
+        overlay_hotkey: str = DEFAULT_OVERLAY_HOTKEY,
+        check_interval: int = DEFAULT_CHECK_INTERVAL,
+        overlay_x: Optional[int] = None,
+        overlay_y: Optional[int] = None,
+        overlay_width: Optional[int] = None,
+        overlay_height: Optional[int] = None,
+        overlay_minimized: Optional[bool] = None,
+        overlay_opacity: Optional[float] = None,
+        ollama_host: Optional[str] = None,
+        ollama_model: Optional[str] = None,
+        hrm_enabled: Optional[bool] = None,
     ):
         """
         Save configuration to .env file.
@@ -375,68 +435,89 @@ class Config:
             overlay_opacity: Overlay opacity 0.0-1.0
             ollama_host: Ollama host URL
             ollama_model: Default Ollama model
+            hrm_enabled: Whether HRM features are enabled
         """
         # Determine .env file location
-        if getattr(sys, 'frozen', False):
-            env_path = Path(sys.executable).parent / '.env'
+        if getattr(sys, "frozen", False):
+            env_path = Path(sys.executable).parent / ".env"
         else:
-            env_path = Path(__file__).parent.parent / '.env'
+            env_path = Path(__file__).parent.parent / ".env"
 
         # Read existing .env file if it exists
         existing_content = {}
         if env_path.exists():
-            with open(env_path, 'r', encoding='utf-8') as f:
+            with open(env_path, "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
-                    if line and not line.startswith('#') and '=' in line:
-                        key, value = line.split('=', 1)
+                    if line and not line.startswith("#") and "=" in line:
+                        key, value = line.split("=", 1)
                         existing_content[key.strip()] = value.strip()
 
         # Update with new values
-        existing_content['OVERLAY_HOTKEY'] = overlay_hotkey
-        existing_content['CHECK_INTERVAL'] = str(check_interval)
+        existing_content["OVERLAY_HOTKEY"] = overlay_hotkey
+        existing_content["CHECK_INTERVAL"] = str(check_interval)
 
         if ollama_host:
-            existing_content['OLLAMA_HOST'] = ollama_host
+            existing_content["OLLAMA_HOST"] = ollama_host
         if ollama_model:
-            existing_content['OLLAMA_MODEL'] = ollama_model
+            existing_content["OLLAMA_MODEL"] = ollama_model
 
         # Update overlay settings if provided
         if overlay_x is not None:
-            existing_content['OVERLAY_X'] = str(overlay_x)
+            existing_content["OVERLAY_X"] = str(overlay_x)
         if overlay_y is not None:
-            existing_content['OVERLAY_Y'] = str(overlay_y)
+            existing_content["OVERLAY_Y"] = str(overlay_y)
         if overlay_width is not None:
-            existing_content['OVERLAY_WIDTH'] = str(overlay_width)
+            existing_content["OVERLAY_WIDTH"] = str(overlay_width)
         if overlay_height is not None:
-            existing_content['OVERLAY_HEIGHT'] = str(overlay_height)
+            existing_content["OVERLAY_HEIGHT"] = str(overlay_height)
         if overlay_minimized is not None:
-            existing_content['OVERLAY_MINIMIZED'] = str(overlay_minimized).lower()
+            existing_content["OVERLAY_MINIMIZED"] = str(overlay_minimized).lower()
         if overlay_opacity is not None:
-            existing_content['OVERLAY_OPACITY'] = str(overlay_opacity)
+            existing_content["OVERLAY_OPACITY"] = str(overlay_opacity)
+
+        if hrm_enabled is not None:
+            existing_content["HRM_ENABLED"] = str(hrm_enabled).lower()
 
         # Write to .env file
-        with open(env_path, 'w', encoding='utf-8') as f:
+        with open(env_path, "w", encoding="utf-8") as f:
             f.write("# Gaming AI Assistant Configuration (Ollama)\n")
             f.write("# This file was generated by the Settings dialog\n\n")
 
             f.write("# Ollama Configuration\n")
-            f.write(f"OLLAMA_HOST={existing_content.get('OLLAMA_HOST', 'http://localhost:11434')}\n")
-            f.write(f"OLLAMA_MODEL={existing_content.get('OLLAMA_MODEL', 'llama3')}\n\n")
+            f.write(
+                f"OLLAMA_HOST={existing_content.get('OLLAMA_HOST', 'http://localhost:11434')}\n"
+            )
+            f.write(
+                f"OLLAMA_MODEL={existing_content.get('OLLAMA_MODEL', 'llama3')}\n\n"
+            )
 
             f.write("# Application Settings\n")
             f.write(f"OVERLAY_HOTKEY={existing_content['OVERLAY_HOTKEY']}\n")
             f.write(f"CHECK_INTERVAL={existing_content['CHECK_INTERVAL']}\n\n")
 
             # Write overlay settings if they exist
-            if 'OVERLAY_X' in existing_content:
+            if "OVERLAY_X" in existing_content:
                 f.write("# Overlay Window Settings\n")
                 f.write(f"OVERLAY_X={existing_content.get('OVERLAY_X', '100')}\n")
                 f.write(f"OVERLAY_Y={existing_content.get('OVERLAY_Y', '100')}\n")
-                f.write(f"OVERLAY_WIDTH={existing_content.get('OVERLAY_WIDTH', '900')}\n")
-                f.write(f"OVERLAY_HEIGHT={existing_content.get('OVERLAY_HEIGHT', '700')}\n")
-                f.write(f"OVERLAY_MINIMIZED={existing_content.get('OVERLAY_MINIMIZED', 'false')}\n")
-                f.write(f"OVERLAY_OPACITY={existing_content.get('OVERLAY_OPACITY', '0.95')}\n")
+                f.write(
+                    f"OVERLAY_WIDTH={existing_content.get('OVERLAY_WIDTH', '900')}\n"
+                )
+                f.write(
+                    f"OVERLAY_HEIGHT={existing_content.get('OVERLAY_HEIGHT', '700')}\n"
+                )
+                f.write(
+                    f"OVERLAY_MINIMIZED={existing_content.get('OVERLAY_MINIMIZED', 'false')}\n"
+                )
+                f.write(
+                    f"OVERLAY_OPACITY={existing_content.get('OVERLAY_OPACITY', '0.95')}\n"
+                )
+
+            # Write HRM settings if they exist
+            if "HRM_ENABLED" in existing_content:
+                f.write("\n# HRM (Hierarchical Reasoning Model) Settings\n")
+                f.write(f"HRM_ENABLED={existing_content.get('HRM_ENABLED', 'false')}\n")
 
         ensure_private_file(env_path)
 

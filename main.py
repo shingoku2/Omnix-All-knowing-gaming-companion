@@ -8,102 +8,19 @@ from datetime import datetime
 import sys
 import traceback
 
-# Add src to path
+# Add src to path for executable compatibility
 src_path = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_path))
 
+from src.utils import setup_logging, cleanup_logging
+import atexit
 
-def setup_logging() -> Path:
-    """Setup logging with timestamped file in the current directory (for debug builds) or user's config directory."""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_filename = f"gaming_ai_assistant_{timestamp}.log"
-
-    # Try to write to current directory first (for debug builds)
-    log_file = Path.cwd() / log_filename
-
-    try:
-        # Test if we can write to current directory
-        log_file.parent.mkdir(parents=True, exist_ok=True)
-        test_write = log_file.parent / ".test_write"
-        test_write.touch()
-        test_write.unlink()
-        print(f"✓ Log file will be created at: {log_file}")
-    except (PermissionError, OSError) as e:
-        # Fall back to user's home directory if current directory isn't writable
-        print(f"⚠️  Cannot write to current directory ({e}), using home directory instead")
-        log_dir = Path.home() / ".gaming_ai_assistant" / "logs"
-        log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = log_dir / log_filename
-        print(f"✓ Log file will be created at: {log_file}")
-
-    try:
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[
-                logging.FileHandler(log_file, encoding='utf-8'),
-                logging.StreamHandler(sys.stdout),
-            ],
-            force=True,
-        )
-
-        # Immediately write a test message to ensure file is created
-        test_logger = logging.getLogger("startup")
-        test_logger.info("=" * 70)
-        test_logger.info("Gaming AI Assistant - Log Started")
-        test_logger.info(f"Log file: {log_file}")
-        test_logger.info(f"Timestamp: {datetime.now()}")
-        test_logger.info("=" * 70)
-
-        # Flush to ensure file is created immediately
-        for handler in logging.getLogger().handlers:
-            handler.flush()
-
-        # Verify the file was actually created
-        if log_file.exists():
-            print(f"✓ Log file created successfully: {log_file}")
-        else:
-            print(f"⚠️  Warning: Log file may not have been created at {log_file}")
-
-    except Exception as e:
-        print(f"❌ Error setting up logging: {e}")
-        print(f"   Attempted log file path: {log_file}")
-        traceback.print_exc()
-
-        # As a last resort, try console-only logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler(sys.stdout)],
-            force=True,
-        )
-        print("⚠️  Logging to console only")
-
-    return log_file
-
+from src.utils import setup_logging, cleanup_logging
+import atexit
 
 log_file_path = setup_logging()
 logger = logging.getLogger(__name__)
 
-
-def cleanup_logging():
-    """Ensure all log handlers are flushed and closed properly."""
-    logger.info("=" * 70)
-    logger.info("Application shutting down - closing log file")
-    logger.info(f"Final log location: {log_file_path}")
-    logger.info("=" * 70)
-
-    # Flush and close all handlers
-    for handler in logging.getLogger().handlers[:]:
-        handler.flush()
-        handler.close()
-        logging.getLogger().removeHandler(handler)
-
-    print(f"\n📝 Complete log saved to: {log_file_path}")
-    print()
-
-
-import atexit
 atexit.register(cleanup_logging)
 
 
@@ -167,15 +84,15 @@ def main():
         logger.info("  AI Provider: %s", config.ai_provider)
         logger.info("  Hotkey: %s", config.overlay_hotkey)
         logger.info("  Check interval: %s", config.check_interval)
-        logger.info("  OpenAI key present: %s", bool(config.openai_api_key))
-        logger.info("  Anthropic key present: %s", bool(config.anthropic_api_key))
+        logger.info("  Ollama host: %s", config.ollama_host)
         logger.info("  Configuration complete: %s", config.is_configured())
 
         print("[OK] Configuration loaded")
         print(f"  AI Provider: {config.ai_provider}")
         print(f"  Hotkey: {config.overlay_hotkey}")
+        print(f"  Ollama host: {config.ollama_host}")
         if not config.is_configured():
-            print("  ⚠️  No API keys configured - Settings dialog will open")
+            print("  ⚠️  Ollama not configured - Settings dialog will open")
         print()
 
         credential_store = CredentialStore()
@@ -216,7 +133,9 @@ def main():
             print()
         else:
             logger.info("Step 3: Skipping AI assistant initialization (no credentials)")
-            print("[INFO] AI assistant will be initialized after you configure credentials")
+            print(
+                "[INFO] AI assistant will be initialized after you configure credentials"
+            )
             print()
 
         logger.info("Step 4: Scanning for running games...")
@@ -224,7 +143,11 @@ def main():
 
         game = game_detector.detect_running_game()
         if game:
-            logger.info("Detected game: %s (PID: %s)", game.get("name"), game.get("pid", "unknown"))
+            logger.info(
+                "Detected game: %s (PID: %s)",
+                game.get("name"),
+                game.get("pid", "unknown"),
+            )
             print(f"[OK] Detected game: {game['name']}")
         else:
             logger.info("No game currently running")

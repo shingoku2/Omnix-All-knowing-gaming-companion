@@ -39,7 +39,7 @@ class OmnixThemeManager:
     - Extensible customization
     """
 
-    def __init__(self, config_dir: str = None):
+    def __init__(self, config_dir: Optional[str] = None):
         """
         Initialize theme manager.
 
@@ -517,7 +517,7 @@ def get_theme_manager() -> OmnixThemeManager:
     return _theme_manager_instance
 
 
-def initialize_theme_manager(config_dir: str = None) -> OmnixThemeManager:
+def initialize_theme_manager(config_dir: Optional[str] = None) -> OmnixThemeManager:
     """
     Initialize the global theme manager with custom config directory.
 

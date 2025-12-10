@@ -39,3 +39,6 @@ pre-commit>=3.3.3         # Git hooks
 # Documentation (optional)
 sphinx>=7.1.0
 sphinx-rtd-theme>=1.3.0
+
+types-decorator
+types-requests

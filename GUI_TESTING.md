@@ -73,7 +73,7 @@ Test that the GUI environment is working:
 
 ```bash
 export QT_QPA_PLATFORM=offscreen
-python test_gui_minimal.py
+python tests/ui/test_gui_minimal.py
 ```
 
 Expected output:
@@ -132,7 +132,7 @@ Minimal PyQt6 test that verifies the GUI environment.
 
 ```bash
 export QT_QPA_PLATFORM=offscreen
-python test_gui_minimal.py
+python tests/ui/test_gui_minimal.py
 ```
 
 ### 2. `test_gui.sh`
@@ -258,7 +258,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          python test_gui_minimal.py
+          python tests/ui/test_gui_minimal.py
 ```
 
 ### Docker Example
@@ -286,7 +286,7 @@ COPY . /app
 WORKDIR /app
 
 # Run tests
-CMD ["python", "test_gui_minimal.py"]
+CMD ["python", "tests/ui/test_gui_minimal.py"]
 ```
 
 ## Best Practices
@@ -364,5 +364,5 @@ This provides the best balance of compatibility, performance, and reliability.
 
 ---
 
-**Last Updated:** 2025-11-18
+**Last Updated:** 2025-12-09
 **Environment:** Ubuntu 24.04 (Noble), Python 3.11, PyQt6 6.10.0

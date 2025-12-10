@@ -245,7 +245,7 @@ class AppAppearanceTab(QWidget):
         """)
         button.setText(color.upper())
 
-    def _reset_token(self, category: str, key: str, button: QPushButton = None):
+    def _reset_token(self, category: str, key: str, button: Optional[QPushButton] = None):
         """Reset a specific token to default."""
         self.theme_manager.reset_token(category, key)
 

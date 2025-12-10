@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class GameProfileDialog(QDialog):
     """Dialog for creating/editing game profiles"""
 
-    def __init__(self, parent=None, profile: Optional[GameProfile] = None, available_providers: list = None):
+    def __init__(self, parent=None, profile: Optional[GameProfile] = None, available_providers: Optional[list] = None):
         """
         Initialize profile dialog.
 
@@ -161,7 +161,7 @@ class GameProfilesTab(QWidget):
 
     profile_changed = pyqtSignal()  # Emitted when profiles change
 
-    def __init__(self, parent=None, available_providers: list = None):
+    def __init__(self, parent=None, available_providers: Optional[list] = None):
         """
         Initialize game profiles tab.
 

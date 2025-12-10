@@ -1,5 +1,7 @@
 # Omnix Dashboard Component
 
+> **Note:** The main application window (`src/gui.py`) currently uses a custom "Neon HUD" layout based on `src/omnix_hud.py` primitives. This dashboard component is preserved for reference or alternative layouts.
+
 ## Overview
 
 The Omnix Dashboard is a futuristic gaming overlay interface that provides quick access to all major features of the Omnix AI Gaming Companion. It features a glassmorphism design with neon accents and a cyberpunk aesthetic.

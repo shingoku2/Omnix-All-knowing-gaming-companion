@@ -1,24 +1,22 @@
 # CLAUDE.md - AI Assistant Guide for Omnix Gaming Companion
 
-**Last Updated:** 2025-12-06
+**Last Updated:** 2025-12-09
 **Codebase Version:** 2.0+ (Ollama-only)
 **Total LOC:** ~14,700 (src) + 3,196 (tests)
 
 ---
 
-## Table of Contents
+## Quick Navigation
 
 1. [Project Overview](#project-overview)
 2. [Architecture Summary](#architecture-summary)
-3. [Key Modules & Responsibilities](#key-modules--responsibilities)
+3. [Key Modules](#key-modules)
 4. [Technology Stack](#technology-stack)
-5. [Development Workflows](#development-workflows)
-   - [CI/CD Pipeline](#cicd-pipeline-new---2025-11-20) ⭐ NEW
+5. [Development Guide](#development-guide)
 6. [Code Conventions](#code-conventions)
-7. [Testing Strategy](#testing-strategy)
-8. [Common Tasks & Patterns](#common-tasks--patterns)
-9. [Troubleshooting Guide](#troubleshooting-guide)
-10. [Extension Points](#extension-points)
+7. [Testing](#testing)
+8. [Common Tasks](#common-tasks)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -26,1259 +24,190 @@
 
 ### What is Omnix?
 
-Omnix is a sophisticated desktop AI gaming companion that:
-- **Automatically detects** what game you're playing via process monitoring
-- **Provides AI-powered assistance** using Ollama (local/remote LLM inference)
-- **Integrates game knowledge** from wikis, guides, and custom knowledge packs
-- **Supports macros & automation** with keyboard/mouse input simulation
-- **Tracks gaming sessions** with AI-powered coaching and insights
-- **Offers a modern overlay** with customizable appearance and hotkeys
+Omnix is a desktop AI gaming companion that:
+- **Automatically detects** games via process monitoring
+- **Provides AI assistance** using Ollama (local/remote LLM)
+- **Integrates game knowledge** with semantic search (TF-IDF)
+- **Supports macros** with keyboard/mouse automation
+- **Tracks sessions** with AI-powered coaching
+- **Offers modern overlay** with customizable appearance
 
 ### Key Features
 
-- 🎯 **Automatic Game Detection** - 15 pre-configured games with custom profile support
-- 🤖 **Ollama AI Integration** - Local/remote LLM inference without API keys
-- 📚 **Knowledge System** - Per-game knowledge packs with semantic search (TF-IDF)
-- ⌨️ **Macro System** - Record, create, and execute keyboard/mouse macros
-- 🎨 **Design System** - Consistent UI with design tokens and reusable components
-- 🔧 **Flexible Configuration** - Connect to local or remote Ollama instances
-- 📊 **Session Coaching** - AI-powered gameplay insights and improvement tips
-- 🪟 **Overlay Window** - Movable, resizable, minimizable with auto-save
+- 🎯 Automatic Game Detection (15 pre-configured games)
+- 🤖 Ollama AI Integration (no API keys required)
+- 📚 Knowledge System (per-game knowledge packs)
+- ⌨️ Macro System (record/execute macros)
+- 🎨 Design System (consistent UI tokens)
+- 📊 Session Coaching (AI-powered insights)
 
-### Project Structure
+### Project Structure (Simplified)
 
 ```
-gaming-ai-assistant/
-├── main.py                      # Application entry point
-├── requirements.txt             # Python dependencies
-├── .env.example                 # Configuration template
-├── CLAUDE.md                    # This file - AI assistant guide
-├── README.md                    # User-facing documentation
-├── GamingAIAssistant.spec       # PyInstaller build spec
-├── build_windows_exe.py         # Windows build automation
-│
-├── src/                         # Main source directory (~14,700 LOC)
-│   ├── __init__.py
-│   │
-│   ├── Core Application
-│   ├── config.py                # Configuration management
-│   ├── credential_store.py      # Encrypted API key storage
-│   │
-│   ├── Game Detection
-│   ├── game_detector.py         # Process monitoring & game detection
-│   ├── game_watcher.py          # Background game monitoring thread
-│   ├── game_profile.py          # Per-game configuration profiles
-│   │
-│   ├── AI Integration
-│   ├── ai_assistant.py          # High-level AI interface
-│   ├── ai_router.py             # Multi-provider routing
-│   ├── providers.py             # Provider implementations (OpenAI, Anthropic, Gemini)
-│   ├── provider_tester.py       # Connection testing
-│   │
-│   ├── Knowledge System
-│   ├── knowledge_pack.py        # Knowledge pack data structures
-│   ├── knowledge_store.py       # Knowledge persistence
-│   ├── knowledge_index.py       # Semantic search with TF-IDF
-│   ├── knowledge_integration.py # Knowledge augmentation for AI
-│   ├── knowledge_ingestion.py   # Import content from files/URLs
-│   │
-│   ├── Macro & Automation
-│   ├── macro_manager.py         # Macro definitions & management
-│   ├── macro_store.py           # Macro persistence
-│   ├── macro_runner.py          # Macro execution engine
-│   ├── macro_ai_generator.py    # AI-assisted macro creation
-│   ├── keybind_manager.py       # Global hotkey management
-│   │
-│   ├── Session Management
-│   ├── session_logger.py        # Session event tracking
-│   ├── session_coaching.py      # AI-powered coaching
-│   ├── session_recap_dialog.py  # Session summary UI
-│   │
-│   ├── GUI Layer
-│   ├── gui.py                   # Main application window (1,800 LOC)
-│   ├── overlay_modes.py         # Compact/Full display modes
-│   ├── settings_dialog.py       # Settings UI
-│   ├── settings_tabs.py         # Advanced settings tabs
-│   ├── providers_tab.py         # AI provider configuration
-│   ├── game_profiles_tab.py     # Game profile management
-│   ├── appearance_tabs.py       # Theme & appearance
-│   ├── knowledge_packs_tab.py   # Knowledge pack UI
-│   ├── setup_wizard.py          # First-run setup
-│   ├── theme_manager.py         # Visual theming
-│   │
-│   └── ui/                      # UI Design System
-│       ├── design_system.py     # Design system manager
-│       ├── tokens.py            # Design tokens (colors, typography, spacing)
-│       ├── components/          # Reusable UI components
-│       │   ├── buttons.py
-│       │   ├── inputs.py
-│       │   ├── cards.py
-│       │   ├── layouts.py
-│       │   ├── navigation.py
-│       │   ├── modals.py
-│       │   ├── overlay.py
-│       │   └── dashboard_button.py
-│       └── __init__.py
-│
-└── test_*.py                    # Test files (10 files, ~500+ LOC)
+omnix/
+├── main.py                    # Entry point
+├── BUILD.bat                  # Unified build script
+├── src/
+│   ├── config.py              # Configuration
+│   ├── credential_store.py    # Secure storage
+│   ├── game_*.py              # Game detection
+│   ├── ai_*.py, providers.py  # AI integration
+│   ├── knowledge_*.py         # Knowledge system
+│   ├── macro_*.py             # Macros & automation
+│   ├── session_*.py           # Session tracking
+│   ├── gui.py, settings_*.py  # GUI components
+│   └── ui/                    # Design system
+└── tests/                     # Test suite
+    ├── unit/                  # Unit tests
+    ├── integration/           # Integration tests
+    └── ui/                    # UI tests
 ```
 
-### User Data Directory
-
-```
-~/.gaming_ai_assistant/
-├── game_profiles.json           # User game profiles
-├── macros.json                  # Macro index
-├── keybinds.json                # Hotkey definitions
-├── theme.json                   # Theme preferences
-├── credentials.enc              # Encrypted API keys
-├── macros/{macro_id}.json       # Individual macro files
-├── knowledge_packs/{pack_id}.json  # Knowledge pack files
-├── knowledge_sources/{source_id}.json  # Source files
-└── sessions/{game_profile_id}/{date}.json  # Session logs
-```
+**User Data:** `~/.gaming_ai_assistant/` (profiles, macros, knowledge packs, sessions)
 
 ---
 
 ## Architecture Summary
 
-### High-Level Design
-
-Omnix follows a **layered architecture** with clear separation of concerns:
+### Layered Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Presentation Layer                        │
-│  gui.py, ui/*, settings_*.py, *_dialog.py                   │
-│  (PyQt6-based desktop application with design system)        │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                  Business Logic Layer                        │
-│  ai_assistant.py, game_watcher.py, macro_runner.py,         │
-│  session_coaching.py, knowledge_integration.py               │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│               Data/Integration Layer                         │
-│  providers.py, ai_router.py, game_detector.py,              │
-│  knowledge_index.py                                          │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                  Persistence Layer                           │
-│  config.py, credential_store.py, *_store.py,                │
-│  session_logger.py                                           │
-└─────────────────────────────────────────────────────────────┘
+Presentation (PyQt6 GUI) → Business Logic → Data/Integration → Persistence
 ```
 
 ### Core Data Flow
 
 ```
-User Input (Game Launch / Question)
-    ↓
-Game Detection (game_detector.py) ←→ Game Watcher (game_watcher.py)
-    ↓
-Game Profile Lookup (game_profile.py)
-    ↓
-Knowledge Integration (knowledge_integration.py)
-    ├── Knowledge Index (knowledge_index.py)
-    └── Knowledge Packs (knowledge_pack.py)
-    ↓
-AI Assistant (ai_assistant.py)
-    ↓
-AI Router (ai_router.py) → Provider Selection
-    ├── OpenAI Provider
-    ├── Anthropic Provider
-    └── Google Gemini Provider
-    ↓
-Session Logger (session_logger.py)
-    ↓
-GUI Display (gui.py) → User Response
+User Input → Game Detection → Profile Lookup → Knowledge Integration
+→ AI Assistant → Ollama Provider → Session Logger → GUI Response
 ```
 
 ### Key Design Patterns
 
-| Pattern | Usage | Example |
-|---------|-------|---------|
-| **Provider/Strategy** | AI provider abstraction | `AIProvider` protocol with multiple implementations |
-| **Observer (Qt Signals)** | Event-driven updates | `game_changed.connect(on_game_changed)` |
-| **Singleton** | Global instances | `Config()`, `get_knowledge_index()` |
-| **Factory** | Object creation | `create_provider(provider_name, api_key)` |
-| **Repository** | Data persistence | `GameProfileStore`, `MacroStore`, `KnowledgePackStore` |
-| **Command** | Macro steps | Each `MacroStep` is an executable command |
-| **State Machine** | Macro execution | `MacroExecutionState` enum |
-| **Thread** | Background operations | `AIWorkerThread`, `GameDetectionThread` |
+- **Strategy:** AI provider abstraction (`OllamaProvider`)
+- **Observer:** Qt signals for events (`game_detected`, `response_ready`)
+- **Singleton:** Global instances (`Config()`, `get_knowledge_index()`)
+- **Repository:** Data persistence (`GameProfileStore`, `MacroStore`)
+- **Thread:** Background operations (`AIWorkerThread`, `GameWatcher`)
 
 ---
 
-## Key Modules & Responsibilities
+## Key Modules
 
-### Core Application Layer
+### Core Application
 
-#### **main.py** (250 LOC)
-**Purpose:** Application entry point and initialization orchestrator
+**main.py** - Entry point, initialization orchestrator
+**config.py** - Configuration management (`.env` + JSON)
+**credential_store.py** - Secure API key storage (AES-256, system keyring)
 
-**Key Responsibilities:**
-- Logging setup with file and console output
-- Sequential module initialization with error handling
-- UTF-8 encoding for Windows console
-- Graceful error reporting with user-friendly messages
-- GUI lifecycle management
+### Game Detection
 
-**Initialization Flow:**
-1. Logging setup
-2. Config loading
-3. Credential store initialization
-4. Game detector initialization
-5. AI router initialization (if keys present)
-6. Info scraper initialization
-7. GUI startup
+**game_detector.py** - Process monitoring with psutil
+**game_watcher.py** - Background monitoring thread (QThread)
+**game_profile.py** - Per-game configurations with system prompts
 
-**Important:** Always initialize modules in this order to maintain dependencies.
+### AI Integration
 
-#### **config.py** (350 LOC)
-**Purpose:** Centralized configuration management
-
-**Key Classes:**
-```python
-class Config:
-    # AI Provider
-    ai_provider: str  # "ollama" (only supported provider)
-
-    # Ollama Configuration
-    ollama_base_url: str  # Default: "http://localhost:11434"
-    ollama_model: str     # Default: "llama3"
-    ollama_api_key: str   # Optional (for secured endpoints)
-
-    # Application Settings
-    overlay_hotkey: str  # Default: "ctrl+shift+g"
-    check_interval: int  # Game detection interval (seconds)
-
-    # Window Settings (auto-saved)
-    overlay_x: int
-    overlay_y: int
-    overlay_width: int
-    overlay_height: int
-    overlay_minimized: bool
-    overlay_opacity: float
-
-    # Extended Settings (loaded from JSON)
-    keybinds: Dict
-    macros: Dict
-    theme: Dict
-```
-
-**Configuration Sources:**
-- `.env` file for basic settings
-- `~/.gaming_ai_assistant/*.json` for extended settings
-- System keyring for API keys (via `credential_store.py`)
-
-**Important Methods:**
-- `is_configured() -> bool` - Check if API keys are set
-- `has_provider_key() -> bool` - Check if current provider has key
-- `save()` - Persist configuration to .env
-- `load_extended_settings()` - Load JSON configuration files
-
-#### **credential_store.py** (250 LOC)
-**Purpose:** Secure credential storage using system keyring
-
-**Note:** With the migration to Ollama, API key storage is **optional** and only needed if connecting to a secured Ollama endpoint.
-
-**Security Features:**
-- AES-256 encryption (Fernet from cryptography library)
-- Platform-specific keyring integration
-- Automatic fallback to encrypted file storage
-
-**Platform Support:**
-- **Windows:** Windows Credential Manager (via pywin32)
-- **macOS:** Keychain
-- **Linux:** SecretService / keyring with encrypted file fallback
-
-**Key Methods:**
-```python
-class CredentialStore:
-    def set_credential(service: str, key: str, value: str)
-    def get_credential(service: str, key: str) -> Optional[str]
-    def delete_credential(service: str, key: str)
-```
-
-**Usage (Optional - for secured Ollama endpoints):**
-```python
-store = CredentialStore()
-store.set_credential("omnix.ai", "ollama_api_key", "your-key...")
-api_key = store.get_credential("omnix.ai", "ollama_api_key")
-```
-
-### Game Detection Layer
-
-#### **game_detector.py** (300 LOC)
-**Purpose:** Detect running games via process monitoring
-
-**Key Features:**
-- Process monitoring using `psutil` library
-- 50+ pre-configured game mappings
-- Executable name normalization (case-insensitive)
-- Legacy game mapping support
-
-**Data Structure:**
-```python
-common_games = {
-    "League of Legends": ["LeagueClient.exe", "League of Legends.exe"],
-    "Elden Ring": ["eldenring.exe"],
-    "Cyberpunk 2077": ["Cyberpunk2077.exe"],
-    # ... more games (15 built-in profiles total)
-}
-```
-
-**Key Methods:**
-```python
-class GameDetector:
-    def detect_running_game() -> Optional[Dict]
-    # Returns: {"name": str, "process": psutil.Process, "pid": int, "timestamp": datetime}
-
-    def is_game_running(game_name: str) -> bool
-    def get_game_process(game_name: str) -> Optional[psutil.Process]
-```
-
-**Adding New Games:**
-```python
-# In game_detector.py, add to common_games dict:
-"Your Game Name": ["yourgame.exe", "alternate.exe"]
-```
-
-#### **game_watcher.py** (250 LOC)
-**Purpose:** Background thread for continuous game monitoring
-
-**Qt Signals:**
-```python
-class GameWatcher(QThread):
-    game_changed = pyqtSignal(str, object)  # game_name, profile
-    game_detected = pyqtSignal(str)         # game_name
-    game_closed = pyqtSignal()              # No args
-```
-
-**Usage:**
-```python
-watcher = GameWatcher(game_detector, profile_store, check_interval=5)
-watcher.game_detected.connect(on_game_detected)
-watcher.start()
-```
-
-#### **game_profile.py** (350 LOC)
-**Purpose:** Per-game configuration profiles
-
-**Data Structure:**
-```python
-@dataclass
-class GameProfile:
-    id: str                           # Unique identifier (slug)
-    display_name: str                 # Human-readable name
-    exe_names: List[str]              # Executable names to match
-    system_prompt: str                # AI behavior customization
-    default_provider: str             # "ollama" (only supported provider)
-    default_model: Optional[str]      # Model override (e.g., "gpt-4")
-    overlay_mode_default: str         # "compact" | "full"
-    extra_settings: Dict              # Extensible settings
-    is_builtin: bool                  # Built-in vs user-created
-```
-
-**Built-in Profiles:** 15 games with optimized system prompts
-
-**Creating Custom Profiles:**
-```python
-profile = GameProfile(
-    id="my-game",
-    display_name="My Game",
-    exe_names=["mygame.exe"],
-    system_prompt="You are an expert at My Game...",
-    default_provider="ollama",
-    default_model="llama3",  # or any installed Ollama model
-    is_builtin=False
-)
-profile_store.save_profile(profile)
-```
-
-### AI Integration Layer
-
-#### **ai_router.py** (300 LOC)
-**Purpose:** Central routing for AI requests across providers
-
-**Key Responsibilities:**
-- Provider initialization and lifecycle
-- Default provider selection
-- Fallback provider logic
-- Error handling and retry
-
-**Key Methods:**
-```python
-class AIRouter:
-    def get_default_provider() -> Optional[AIProvider]
-    def get_provider(provider_name: str) -> Optional[AIProvider]
-    def route_request(messages, model=None, **kwargs) -> Dict
-```
-
-#### **providers.py** (400 LOC)
-**Purpose:** Ollama AI provider implementation
-
-**Provider Protocol:**
-```python
-class AIProvider(Protocol):
-    name: str
-
-    def is_configured() -> bool
-    def test_connection() -> ProviderHealth
-    def chat(messages: List[Dict], model: str = None, **kwargs) -> Dict[str, Any]
-```
-
-**Implementation:**
-- `OllamaProvider` - Local/remote Ollama inference with model management
-  - Default model: llama3
-  - Default base URL: http://localhost:11434
-  - No API key required (unless using secured endpoint)
-  - Dynamic model listing via `list_models()`
-  - Parameter translation for compatibility (max_tokens → num_predict, etc.)
-
-**Error Classification:**
-```python
-class ProviderError(Exception): pass
-class ProviderAuthError(ProviderError): pass  # Kept for compatibility
-class ProviderQuotaError(ProviderError): pass  # Kept for compatibility
-class ProviderRateLimitError(ProviderError): pass  # Kept for compatibility
-class ProviderConnectionError(ProviderError): pass  # Used for Ollama connection errors
-```
-
-**Ollama-Specific Features:**
-- **Model Discovery:** Automatic detection of installed Ollama models
-- **Connection Testing:** Validates Ollama daemon availability
-- **Flexible Hosting:** Supports both local and remote Ollama instances
-- **No API Keys:** Works out-of-the-box without authentication (optional API key for secured endpoints)
-
-#### **ai_assistant.py** (400 LOC)
-**Purpose:** High-level AI interaction interface
-
-**Key Features:**
-- Conversation context management (max 20 messages)
-- Game context integration
-- Knowledge pack retrieval
-- Error formatting
-
-**Key Methods:**
-```python
-class AIAssistant:
-    MAX_CONVERSATION_MESSAGES = 20
-
-    def ask_question(question: str, game_context: Optional[Dict] = None) -> str
-    def update_current_game(game: Dict, profile: GameProfile)
-    def update_conversation_history(role: str, content: str)
-    def clear_conversation()
-    def get_conversation_history() -> List[Dict]
-```
-
-**Message Format:**
-```python
-messages = [
-    {"role": "system", "content": "You are a gaming assistant..."},
-    {"role": "user", "content": "How do I beat this boss?"},
-    {"role": "assistant", "content": "To defeat the boss..."}
-]
-```
+**ai_assistant.py** - High-level AI interface (conversation management)
+**ai_router.py** - Provider routing and fallback logic
+**providers.py** - `OllamaProvider` implementation
+- Default: llama3 @ http://localhost:11434
+- No API key required (optional for secured endpoints)
+- Automatic model discovery
+- Parameter translation (max_tokens → num_predict)
 
 ### Knowledge System
 
-#### **knowledge_pack.py** (200 LOC)
-**Purpose:** Knowledge pack data structures
+**knowledge_pack.py** - Data structures (sources, packs)
+**knowledge_index.py** - TF-IDF semantic search (no external API)
+**knowledge_integration.py** - AI conversation augmentation
+**knowledge_ingestion.py** - Import from PDF/DOCX/TXT/URLs
 
-**Core Classes:**
-```python
-@dataclass
-class KnowledgeSource:
-    id: str
-    type: str              # "file" | "url" | "note"
-    title: str
-    path: Optional[str]    # For files
-    url: Optional[str]     # For URLs
-    tags: List[str]
-    content: Optional[str] # For notes or cached content
+### Macro & Automation
 
-@dataclass
-class KnowledgePack:
-    id: str
-    name: str
-    description: str
-    game_profile_id: str
-    sources: List[KnowledgeSource]
-    enabled: bool
-    created_at: datetime
-    updated_at: datetime
-```
-
-**Source Types:**
-- **file:** PDF, DOCX, TXT, Markdown documents
-- **url:** Web pages, wikis, guides
-- **note:** User-written tips and notes
-
-#### **knowledge_index.py** (450 LOC)
-**Purpose:** Semantic search with TF-IDF embeddings
-
-**Key Features:**
-- Local TF-IDF embedding generation (no external API)
-- Chunk-based indexing
-- Similarity search with scoring
-
-**Key Classes:**
-```python
-@dataclass
-class RetrievedChunk:
-    source_id: str
-    content: str
-    score: float
-    metadata: Dict
-
-class SimpleTFIDFEmbedding(EmbeddingProvider):
-    def generate_embedding(text: str) -> List[float]
-    def fit(documents: List[str])
-    def search(query: str, top_k: int = 5) -> List[RetrievedChunk]
-
-class KnowledgeIndex:
-    def index_pack(pack: KnowledgePack)
-    def search(query: str, game_profile_id: str, top_k: int = 5) -> List[RetrievedChunk]
-    def clear_index(game_profile_id: str)
-```
-
-**Usage:**
-```python
-index = get_knowledge_index()
-index.index_pack(knowledge_pack)
-chunks = index.search("how to beat boss", game_profile_id="elden-ring", top_k=5)
-```
-
-#### **knowledge_integration.py** (250 LOC)
-**Purpose:** Integrate knowledge into AI conversations
-
-**Key Methods:**
-```python
-class KnowledgeIntegration:
-    def should_use_knowledge_packs(game_profile_id: str, extra_settings: Dict) -> bool
-    def get_knowledge_context(game_profile_id: str, question: str, extra_settings: Dict) -> Optional[str]
-    def format_knowledge_context(chunks: List[RetrievedChunk]) -> str
-```
-
-**Knowledge Augmentation Flow:**
-1. Check if knowledge packs are enabled for game
-2. Retrieve relevant chunks via semantic search
-3. Format chunks into context string
-4. Prepend to AI conversation
-
-#### **knowledge_ingestion.py** (350 LOC)
-**Purpose:** Import content from external sources
-
-**Supported Formats:**
-- PDF documents
-- DOCX files
-- TXT/Markdown files
-- Web pages (via BeautifulSoup)
-
-**Key Methods:**
-```python
-def ingest_file(file_path: str) -> str
-def ingest_url(url: str) -> str
-def chunk_text(text: str, chunk_size: int = 500) -> List[str]
-```
-
-### Macro & Automation System
-
-#### **macro_manager.py** (600 LOC)
-**Purpose:** Macro definition and management
-
-**Macro Step Types:**
-```python
-class MacroStepType(Enum):
-    KEY_PRESS = "key_press"        # Press and release
-    KEY_DOWN = "key_down"          # Hold key
-    KEY_UP = "key_up"              # Release key
-    KEY_SEQUENCE = "key_sequence"  # Type string
-    MOUSE_MOVE = "mouse_move"      # Move cursor
-    MOUSE_CLICK = "mouse_click"    # Click button
-    MOUSE_SCROLL = "mouse_scroll"  # Scroll wheel
-    DELAY = "delay"                # Wait
-```
-
-**Data Structures:**
-```python
-@dataclass
-class MacroStep:
-    type: str
-    key: Optional[str]         # For keyboard actions
-    duration_ms: int           # For delays
-    button: Optional[str]      # "left" | "right" | "middle"
-    x: Optional[int]           # Mouse X coordinate
-    y: Optional[int]           # Mouse Y coordinate
-    scroll_amount: int         # For scroll actions
-    delay_jitter_ms: int       # Random variation
-
-@dataclass
-class Macro:
-    id: str
-    name: str
-    description: str
-    game_profile_id: Optional[str]  # None = global
-    steps: List[MacroStep]
-    enabled: bool
-    created_at: datetime
-    max_repeat: int = 10       # Safety limit
-    execution_timeout: int = 30 # Safety limit (seconds)
-```
-
-**Creating Macros:**
-```python
-macro = Macro(
-    id="quick-heal",
-    name="Quick Heal",
-    description="Press H for health potion",
-    game_profile_id="elden-ring",
-    steps=[
-        MacroStep(type="KEY_PRESS", key="h", duration_ms=0),
-        MacroStep(type="DELAY", duration_ms=100)
-    ],
-    enabled=True
-)
-macro_store.save_macro(macro)
-```
-
-#### **macro_runner.py** (450 LOC)
-**Purpose:** Execute macros with safety limits
-
-**Key Features:**
-- Keyboard/mouse simulation via `pynput`
-- Execution state tracking
-- Safety limits (max repeat, timeout)
-- Manual stop capability
-
-**Execution States:**
-```python
-class MacroExecutionState(Enum):
-    IDLE = "idle"
-    RUNNING = "running"
-    PAUSED = "paused"
-    COMPLETED = "completed"
-    ERRORED = "errored"
-```
-
-**Key Methods:**
-```python
-class MacroRunner:
-    def execute_macro(macro: Macro) -> MacroExecutionResult
-    def is_running() -> bool
-    def stop_macro()
-    def get_state() -> MacroExecutionState
-```
-
-**Safety Features:**
-- Max repeat protection prevents infinite loops
-- Execution timeout prevents hung macros
-- Manual stop capability
-- Detailed error reporting
-
-#### **keybind_manager.py** (550 LOC)
-**Purpose:** Global hotkey management
-
-**Key Features:**
-- Global hotkey listening via `pynput`
-- Game-specific keybind scoping
-- Conflict detection
-- Action-based triggers
-
-**Keybind Actions:**
-```python
-class KeybindAction(Enum):
-    TOGGLE_OVERLAY = "toggle_overlay"
-    START_RECORDING = "start_recording"
-    RUN_MACRO = "run_macro"
-    STOP_MACRO = "stop_macro"
-    SHOW_TIPS = "show_tips"
-    CLEAR_CHAT = "clear_chat"
-```
-
-**Data Structures:**
-```python
-@dataclass
-class Keybind:
-    action: str
-    keys: str              # e.g., "ctrl+shift+g"
-    description: str
-    enabled: bool
-    system_wide: bool
-
-@dataclass
-class MacroKeybind:
-    macro_id: str
-    keys: str
-    description: str
-    game_profile_id: Optional[str]
-    enabled: bool
-    system_wide: bool
-```
+**macro_manager.py** - Macro definitions (8 step types: KEY_PRESS, MOUSE_CLICK, DELAY, etc.)
+**macro_runner.py** - Execution engine with safety limits
+**keybind_manager.py** - Global hotkey management
 
 ### Session Management
 
-#### **session_logger.py** (350 LOC)
-**Purpose:** Track user interactions and AI responses
+**session_logger.py** - Event tracking (questions, answers, macros)
+**session_coaching.py** - AI-powered insights and tips
 
-**Event Types:**
-- `question` - User asked a question
-- `answer` - AI provided response
-- `macro` - Macro executed
-- `knowledge_query` - Knowledge pack searched
-- `game_detected` - Game launched
-- `game_closed` - Game exited
+### GUI & Design
 
-**Data Structure:**
-```python
-@dataclass
-class SessionEvent:
-    timestamp: datetime
-    event_type: str
-    game_profile_id: str
-    content: str
-    meta: Dict  # Additional metadata
-```
-
-**Key Methods:**
-```python
-class SessionLogger:
-    MAX_EVENTS_IN_MEMORY = 100
-    MAX_EVENTS_ON_DISK = 500
-    SESSION_TIMEOUT = timedelta(hours=2)
-
-    def log_event(event_type: str, game_profile_id: str, content: str, meta: Dict = None)
-    def get_session_events(game_profile_id: str) -> List[SessionEvent]
-    def get_all_sessions() -> Dict[str, List[SessionEvent]]
-    def clear_session(game_profile_id: str)
-```
-
-#### **session_coaching.py** (300 LOC)
-**Purpose:** AI-powered gameplay insights
-
-**Key Features:**
-- Session recap generation using AI
-- Pattern identification
-- Personalized coaching tips
-- Performance insights
-
-**Key Methods:**
-```python
-class SessionCoach:
-    def generate_recap(game_profile_id: str, session_events: List[SessionEvent]) -> str
-    def generate_insights(game_profile_id: str) -> Dict
-    def get_coaching_tips(game_profile_id: str) -> List[str]
-```
-
-### GUI Layer
-
-#### **gui.py** (1,800 LOC)
-**Purpose:** Main application window and UI orchestration
-
-**Key Components:**
-```python
-class AIWorkerThread(QThread):
-    """Background thread for AI queries (prevents GUI freezing)"""
-    response_ready = pyqtSignal(str)
-    error_occurred = pyqtSignal(str)
-
-class GameDetectionThread(QThread):
-    """Background game monitoring"""
-    game_detected = pyqtSignal(dict)
-    game_lost = pyqtSignal()
-
-class OmnixMainWindow(QMainWindow):
-    """Main application window"""
-    # Features:
-    # - Chat interface
-    # - Game detection status
-    # - Settings access
-    # - Overlay controls
-    # - System tray integration
-```
-
-**Important UI Patterns:**
-- **Always use worker threads** for long-running operations (AI calls, game detection)
-- **Never block the main GUI thread** - use signals/slots for communication
-- **Auto-save window geometry** on close
-
-#### **overlay_modes.py** (200 LOC)
-**Purpose:** Display mode configurations
-
-**Modes:**
-```python
-class OverlayMode(Enum):
-    COMPACT = "compact"  # Single-line input with preview
-    FULL = "full"        # Complete chat interface
-
-MODES = {
-    "compact": {
-        "min_width": 300,
-        "default_width": 500,
-        "default_height": 120,
-        "show_conversation_history": False,
-        "input_rows": 1
-    },
-    "full": {
-        "min_width": 400,
-        "default_width": 900,
-        "default_height": 700,
-        "show_conversation_history": True,
-        "input_rows": 3
-    }
-}
-```
-
-#### **settings_dialog.py** & **settings_tabs.py** (1,500 LOC total)
-**Purpose:** Comprehensive settings UI
-
-**Tabs:**
-- **General:** Basic application settings
-- **AI Providers:** Provider selection and API keys
-- **Game Profiles:** Game-specific configurations
-- **Knowledge Packs:** Knowledge management
-- **Macros:** Macro creation and editing
-- **Keybinds:** Hotkey configuration
-- **Appearance:** Themes and visual customization
-- **Advanced:** Debug options and expert settings
-
-### UI Design System
-
-#### **ui/design_system.py** (500 LOC)
-**Purpose:** Centralized styling and design tokens
-
-**Key Features:**
-- Design token system (colors, typography, spacing)
-- QSS stylesheet generation
-- Component styling utilities
-- Theme management
-
-**Usage:**
-```python
-from ui.design_system import design_system
-
-# Apply design system to app
-app.setStyleSheet(design_system.generate_base_stylesheet())
-
-# Get component style
-button_style = design_system.get_component_style("button")
-```
-
-#### **ui/tokens.py** (200 LOC)
-**Purpose:** Design tokens definition
-
-**Color Palette:**
-```python
-COLORS = {
-    "primary_bg": "#1A1A2E",      # Deep charcoal
-    "secondary_bg": "#2C2C4A",    # Dark muted blue
-    "accent_primary": "#00BFFF",  # Electric blue
-    "accent_secondary": "#39FF14", # Neon green
-    "text_primary": "#FFFFFF",
-    "text_secondary": "#B0B0C8",
-    "success": "#39FF14",
-    "warning": "#FFB800",
-    "error": "#FF3B3B",
-    "info": "#00BFFF"
-}
-```
-
-**Typography:**
-```python
-TYPOGRAPHY = {
-    "font_family": "'Segoe UI', 'Roboto', sans-serif",
-    "font_size_xs": "10px",
-    "font_size_sm": "12px",
-    "font_size_base": "14px",
-    "font_size_lg": "16px",
-    "font_size_xl": "20px",
-    "font_weight_normal": "400",
-    "font_weight_medium": "500",
-    "font_weight_bold": "700"
-}
-```
-
-**Spacing:**
-```python
-SPACING = {
-    "xs": "4px",
-    "sm": "8px",
-    "md": "16px",
-    "lg": "24px",
-    "xl": "32px"
-}
-```
-
-#### **ui/components/** (1,500 LOC)
-**Purpose:** Reusable UI components
-
-**Component Library:**
-```python
-# Buttons
-from ui.components.buttons import OmnixButton, OmnixIconButton
-
-# Inputs
-from ui.components.inputs import OmnixLineEdit, OmnixTextEdit, OmnixComboBox
-
-# Cards
-from ui.components.cards import OmnixCard, OmnixPanel, OmnixInfoCard
-
-# Layouts
-from ui.components.layouts import OmnixVBox, OmnixHBox, OmnixGrid, OmnixFormLayout
-
-# Navigation
-from ui.components.navigation import OmnixSidebar, OmnixHeaderBar
-
-# Modals
-from ui.components.modals import OmnixDialog, OmnixConfirmDialog, OmnixMessageDialog
-
-# Overlay
-from ui.components.overlay import OmnixOverlayWidget
-
-# Dashboard
-from ui.components.dashboard_button import OmnixDashboardButton
-```
-
-**Component Design Principles:**
-- All components use design tokens
-- Consistent API across components
-- Built-in accessibility features
-- Extensible through inheritance
+**gui.py** - Main window (1,800 LOC)
+**ui/design_system.py** - Token-based styling system
+**ui/tokens.py** - Design tokens (colors, typography, spacing)
+**ui/components/** - Reusable components (buttons, inputs, cards, etc.)
 
 ---
 
 ## Technology Stack
 
-### Core Technologies
+| Category | Technology | Purpose |
+|----------|-----------|---------|
+| **Language** | Python 3.8+ | Core language |
+| **GUI** | PyQt6 6.6.0+ | Desktop UI |
+| **AI** | Ollama 0.1.0+ | Local/remote LLM |
+| **Process** | psutil 5.9.0+ | Game detection |
+| **Automation** | pynput 1.7.6+ | Input simulation |
+| **Encryption** | cryptography 41.0.0+ | Credential security |
+| **Build** | PyInstaller | Executable creation |
 
-| Category | Technology | Version | Purpose |
-|----------|-----------|---------|---------|
-| **Language** | Python | 3.8+ | Core language |
-| **GUI Framework** | PyQt6 | 6.6.0+ | Desktop application |
-
-### AI Integration
-
-| Provider | Library | Version | Models |
-|----------|---------|---------|--------|
-| **Ollama** | ollama | 0.1.0+ | llama3, mistral, codellama, etc. (any Ollama model) |
-
-**Note:** Ollama runs models locally without requiring API keys. Can also connect to remote Ollama instances via base URL configuration.
-
-### System Integration
-
-| Feature | Library | Version | Purpose |
-|---------|---------|---------|---------|
-| **Process Monitoring** | psutil | 5.9.0+ | Game detection |
-| **Web Scraping** | requests | 2.31.0+ | HTTP requests |
-| | beautifulsoup4 | 4.12.0+ | HTML parsing |
-| | lxml | 4.9.0+ | XML/HTML processing |
-| **Input Simulation** | pynput | 1.7.6+ | Keyboard/mouse control |
-| **Encryption** | cryptography | 41.0.0+ | API key security |
-| **Keyring** | keyring | 24.2.0+ | System credential storage |
-| **Configuration** | python-dotenv | 1.0.0+ | .env file loading |
-| **Windows APIs** | pywin32 | 306+ | Windows-specific features |
-
-### Development Tools
-
-| Tool | Purpose |
-|------|---------|
-| **PyInstaller** | Windows executable building |
-| **pytest** | Unit testing |
-| **logging** | Application logging |
-
-### Platform Support
-
-- ✅ **Windows** 10/11 (Primary)
-- ✅ **macOS** (Supported)
-- ✅ **Linux** (Supported)
+**Platforms:** Windows 10/11 (primary), macOS, Linux
 
 ---
 
-## Development Workflows
+## Development Guide
 
-### Setting Up Development Environment
+### Setup
 
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/Omnix-All-knowing-gaming-companion.git
+# Clone and setup
+git clone https://github.com/shingoku2/Omnix-All-knowing-gaming-companion.git
 cd Omnix-All-knowing-gaming-companion
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# Copy environment template
 cp .env.example .env
 
-# Edit .env and configure Ollama (or use Setup Wizard on first run)
-# AI_PROVIDER=ollama
-# OLLAMA_BASE_URL=http://localhost:11434  # Optional: override default
-# OLLAMA_MODEL=llama3  # Optional: override default model
-```
+# Install and configure Ollama
+curl https://ollama.ai/install.sh | sh
+ollama serve
+ollama pull llama3
 
-### Running the Application
-
-```bash
-# Run from source
+# Run application
 python main.py
-
-# The Setup Wizard will guide first-time setup:
-# 1. Configure Ollama connection (base URL, model)
-# 2. Test connection to Ollama daemon
-# 3. Select preferred model from available models
-# 4. Save configuration
-
-# Make sure Ollama is installed and running:
-# Visit: https://ollama.ai
-# Or run: curl https://ollama.ai/install.sh | sh
-# Start Ollama: ollama serve
-# Pull a model: ollama pull llama3
 ```
 
-### Running Tests
+### Testing
 
 ```bash
-# Run all tests
-python -m pytest
-
-# Run specific test file
-python test_modules.py
-python test_macro_system.py
-python test_knowledge_system.py
-
-# Run with verbose output
-python -m pytest -v
-
-# Test before building executable
-python test_before_build.py
+python -m pytest                  # Run all tests
+python test_before_build.py       # Pre-build validation
 ```
 
-### Building Windows Executable
+### Building
 
 ```bash
-# Automated build
-python build_windows_exe.py
-
-# Manual build with PyInstaller
-pyinstaller GamingAIAssistant.spec
-
-# Debug build (shows console)
-pyinstaller GamingAIAssistant_DEBUG.spec
+BUILD.bat                         # Automated build (Release)
+BUILD.bat debug                   # Debug build (with console)
 ```
 
-**Build Output:**
-```
-dist/GamingAIAssistant/
-├── GamingAIAssistant.exe
-├── .env.example
-├── README.md
-├── SETUP.md
-└── _internal/  (all dependencies)
-```
+### CI/CD
 
-### Git Workflow
+**Self-hosted pipeline** on Proxmox infrastructure. See `docs/CI_CD_GUIDE.md` for details.
 
+**Quick verification:**
 ```bash
-# Create feature branch (must start with 'claude/' for this session)
-git checkout -b claude/feature-name
-
-# Make changes and commit
-git add .
-git commit -m "Add feature: description"
-
-# Push to remote
-git push -u origin claude/feature-name
-
-# Create pull request (via GitHub UI or gh CLI)
-gh pr create --title "Feature: description" --body "Details..."
+python scripts/verify_ci.py       # Health check
+./scripts/deploy_staging.sh       # Deploy to staging
 ```
 
-**Important:** For this session, always use branch: `claude/update-context-files-014mNueuX6ktLe9z76DJrpY9`
-
-### CI/CD Pipeline (NEW - 2025-11-20)
-
-Omnix now uses a **self-hosted CI/CD pipeline** running on Proxmox infrastructure for automated testing and deployment.
-
-#### Infrastructure
-
-**Self-Hosted Runner:**
-- **Host:** Proxmox LXC Container (omnix-staging, ID 200)
-- **OS:** Ubuntu 24.04 LTS
-- **Location:** `/opt/omnix/`
-- **Runner:** `/opt/actions-runner/` (systemd service)
-- **Labels:** `self-hosted`, `linux`, `proxmox`
-
-**Access:**
-```bash
-# SSH to Proxmox container
-ssh pve
-sudo pct enter 200
-
-# Check runner status
-sudo systemctl status actions-runner
-
-# View logs
-sudo journalctl -u actions-runner -f
-```
-
-#### Workflows
-
-**1. CI Pipeline (`.github/workflows/ci.yml`)**
-
-Runs on every push to `main`, `staging`, `dev` branches and pull requests:
-
-```yaml
-# Triggers: Push to main/staging/dev, PRs to main/staging
-# Steps:
-1. Checkout code
-2. Set up Python environment
-3. Install dependencies (requirements.txt + requirements-dev.txt)
-4. Run flake8 linting
-5. Run pytest with xvfb (headless Qt testing)
-```
-
-**2. Staging Deployment (`.github/workflows/staging-deploy.yml`)**
-
-Automated deployment to staging environment:
-
-```yaml
-# Triggers: Push to staging branch, manual dispatch
-# Steps:
-1. Checkout and verify branch
-2. Update deployment directory with rsync
-3. Install dependencies
-4. Run pre-deployment tests
-5. Create deployment marker
-6. Verify deployment
-7. Show summary
-```
-
-**Trigger Deployment:**
-```bash
-# Automatic
-git checkout staging
-git merge main
-git push origin staging
-
-# Manual
-gh workflow run staging-deploy.yml
-```
-
-#### CI/CD Tools
-
-**Verification Script (`scripts/verify_ci.py`):**
-
-Comprehensive pipeline health check:
-```bash
-python scripts/verify_ci.py
-```
-
-Checks:
-- ✅ Git repository status
-- ✅ Workflow file configuration
-- ✅ Test suite organization
-- ✅ Python dependencies
-- ✅ Self-hosted runner connectivity
-- ✅ Sample test execution
-
-**Deployment Script (`scripts/deploy_staging.sh`):**
-
-Manual deployment with automated backups:
-```bash
-./scripts/deploy_staging.sh
-```
-
-Features:
-- Prerequisite checking
-- Automatic backup (keeps last 5)
-- Code synchronization
-- Dependency installation
-- Pre-deployment tests
-- Deployment verification
-
-#### Testing in CI
-
-**Headless Qt Testing:**
-```bash
-# CI uses offscreen platform
-export QT_QPA_PLATFORM=offscreen
-xvfb-run -a pytest tests/ -v
-```
-
-**CI-Specific Tests:**
-- `tests/integration/test_ci_pipeline.py` - 20+ CI integration tests
-- Tests environment setup, module imports, headless components
-- Validates deployment readiness
-- Verifies data persistence
-
-**Test Markers:**
-```python
-@pytest.mark.unit           # Unit tests
-@pytest.mark.integration    # Integration tests
-@pytest.mark.skip_ci        # Skip in CI environment
-@pytest.mark.requires_api_key  # Requires API keys
-```
-
-#### Deployment Process
-
-**Staging Environment:**
-- **Directory:** `/opt/omnix/staging/`
-- **Backups:** `/opt/omnix/backups/`
-- **Virtual Env:** `/opt/omnix/venv/`
-
-**Deployment Marker:**
-```bash
-# Check deployment info
-cat /opt/omnix/staging/.deployment_info
-```
-
-**Recovery:**
-```bash
-# List backups
-ls -lt /opt/omnix/backups/
-
-# Restore from backup
-cp -r /opt/omnix/backups/staging_backup_YYYYMMDD_HHMMSS /opt/omnix/staging/
-```
-
-#### Documentation
-
-**Comprehensive Guides:**
-- `docs/CI_CD_GUIDE.md` - Full CI/CD documentation
-- `docs/QUICK_START_CI.md` - Quick reference guide
-- `scripts/README.md` - Scripts documentation
-- `CHANGELOG_CI_CD.md` - Enhancement changelog
-- `aicontext.md` - Quick AI assistant reference
-
-#### Monitoring
-
-**Check Workflow Status:**
-```bash
-# List recent runs
-gh run list --limit 10
-
-# View specific run
-gh run view [run-id] --log
-
-# Re-run failed workflow
-gh run rerun [run-id]
-```
-
-**Runner Health:**
-```bash
-# Check status
-sudo systemctl status actions-runner
-
-# Restart if needed
-sudo systemctl restart actions-runner
-```
+**Workflows:**
+- `.github/workflows/ci.yml` - Automated testing (flake8, pytest)
+- `.github/workflows/staging-deploy.yml` - Staging deployment
 
 ---
 
@@ -1286,94 +215,21 @@ sudo systemctl restart actions-runner
 
 ### Python Style
 
-- **PEP 8** compliance for all code
-- **Type hints** for function signatures
-- **Docstrings** for public methods (Google style)
-- **4 spaces** for indentation (no tabs)
+- **PEP 8** compliance
+- **Type hints** for functions
+- **Docstrings** (Google style)
+- **4 spaces** indentation
 
-**Example:**
-```python
-def detect_running_game(self, timeout: int = 5) -> Optional[Dict[str, Any]]:
-    """
-    Detect currently running game from process list.
-
-    Args:
-        timeout: Maximum time to wait for detection (seconds)
-
-    Returns:
-        Dictionary with game info if detected, None otherwise
-
-    Raises:
-        ProcessLookupError: If process monitoring fails
-    """
-    # Implementation...
-```
-
-### Naming Conventions
+### Naming
 
 | Type | Convention | Example |
 |------|-----------|---------|
-| **Classes** | PascalCase | `GameDetector`, `AIAssistant` |
-| **Functions/Methods** | snake_case | `detect_running_game()`, `ask_question()` |
-| **Constants** | UPPER_SNAKE_CASE | `MAX_CONVERSATION_MESSAGES`, `SESSION_TIMEOUT` |
-| **Private Methods** | _leading_underscore | `_normalize_process_name()` |
-| **Modules** | snake_case | `game_detector.py`, `ai_assistant.py` |
+| Classes | PascalCase | `GameDetector` |
+| Functions | snake_case | `detect_running_game()` |
+| Constants | UPPER_SNAKE_CASE | `MAX_RETRIES` |
+| Private | _leading_underscore | `_normalize_name()` |
 
-### File Organization
-
-**Module Structure:**
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Module docstring explaining purpose
-"""
-
-# Standard library imports
-import sys
-import os
-from typing import Optional, Dict, List
-
-# Third-party imports
-import psutil
-from PyQt6.QtCore import QThread, pyqtSignal
-
-# Local imports
-from config import Config
-from game_profile import GameProfile
-
-# Constants
-MAX_RETRIES = 3
-DEFAULT_TIMEOUT = 5
-
-# Classes
-class MyClass:
-    pass
-
-# Functions
-def my_function():
-    pass
-```
-
-### Qt Signal/Slot Patterns
-
-**Define signals in class:**
-```python
-class GameWatcher(QThread):
-    game_detected = pyqtSignal(str)  # game_name
-    game_changed = pyqtSignal(str, object)  # game_name, profile
-
-    def run(self):
-        # Emit signals
-        self.game_detected.emit("Elden Ring")
-```
-
-**Connect signals:**
-```python
-watcher = GameWatcher()
-watcher.game_detected.connect(self.on_game_detected)
-watcher.start()
-```
+### Qt Patterns
 
 **Always use worker threads for long operations:**
 ```python
@@ -1382,60 +238,11 @@ response = ai_assistant.ask_question(question)
 
 # GOOD: Non-blocking
 worker = AIWorkerThread(ai_assistant, question)
-worker.response_ready.connect(self.display_response)
+worker.response_ready.connect(display_response)
 worker.start()
 ```
 
-### Error Handling
-
-**Use specific exceptions:**
-```python
-try:
-    provider.chat(messages)
-except ProviderAuthError:
-    show_error("Invalid API key")
-except ProviderQuotaError:
-    show_error("API quota exceeded")
-except ProviderRateLimitError:
-    show_warning("Rate limited, please wait")
-except ProviderError as e:
-    show_error(f"Provider error: {e}")
-```
-
-**Log errors with context:**
-```python
-import logging
-logger = logging.getLogger(__name__)
-
-try:
-    result = risky_operation()
-except Exception as e:
-    logger.error(f"Operation failed: {e}", exc_info=True)
-    raise
-```
-
-### Configuration Management
-
-**Always use Config class:**
-```python
-# GOOD
-from config import Config
-config = Config()
-api_key = config.anthropic_api_key
-
-# BAD
-import os
-api_key = os.getenv("ANTHROPIC_API_KEY")
-```
-
-**Save configuration changes:**
-```python
-config.overlay_width = 900
-config.overlay_height = 700
-config.save()  # Persist to .env
-```
-
-### UI Component Usage
+### UI Components
 
 **Use design system components:**
 ```python
@@ -1443,1317 +250,293 @@ config.save()  # Persist to .env
 from ui.components.buttons import OmnixButton
 button = OmnixButton("Click Me", variant="primary")
 
-# BAD
-from PyQt6.QtWidgets import QPushButton
+# BAD - hardcoded styles
 button = QPushButton("Click Me")
-button.setStyleSheet("background-color: blue;")  # Hardcoded styles
-```
-
-**Apply design tokens:**
-```python
-from ui.design_system import design_system
-from ui.tokens import COLORS, SPACING
-
-# Use tokens instead of hardcoded values
-label.setStyleSheet(f"color: {COLORS['text_primary']}; padding: {SPACING['md']};")
+button.setStyleSheet("background: blue;")
 ```
 
 ---
 
-## Testing Strategy
+## Testing
 
-### Test File Organization
+### Test Organization
 
 ```
-test_modules.py           # Module import tests
-test_macro_system.py      # Macro functionality
-test_knowledge_system.py  # Knowledge pack operations
-test_game_profiles.py     # Game profile management
-test_edge_cases.py        # Error handling
-test_before_build.py      # Pre-build validation
-test_minimal.py           # Quick smoke test
-test_gui_minimal.py       # Minimal GUI test (PyQt6 environment)
-test_gui.sh               # Full GUI test with virtual display
-live_test.py              # Live API testing (requires API keys)
-api_key_test.py           # Provider credentials testing
-ui/test_design_system.py  # UI design system
+tests/
+├── unit/                 # Logic tests (no GUI)
+│   ├── test_game_detector.py
+│   ├── test_knowledge_system.py
+│   └── ...
+├── ui/                   # GUI tests
+│   ├── test_gui_minimal.py
+│   └── ...
+└── integration/          # Integration tests
+    ├── test_ollama_integration.py
+    └── ...
 ```
 
-### Testing Levels
-
-#### Unit Tests
-**Focus:** Individual components in isolation
-
-```python
-def test_game_detector_initialization():
-    detector = GameDetector()
-    assert len(detector.common_games) > 0
-
-def test_config_loading():
-    config = Config(require_keys=False)
-    assert config.ai_provider in ["openai", "anthropic", "gemini"]
-```
-
-#### Integration Tests
-**Focus:** Component interactions
-
-```python
-def test_game_detection_with_profile_matching():
-    detector = GameDetector()
-    profile_store = GameProfileStore()
-
-    # Simulate game detection
-    game = detector.detect_running_game()
-    if game:
-        profile = profile_store.get_profile_for_game(game['name'])
-        assert profile is not None
-```
-
-#### System Tests
-**Focus:** End-to-end workflows
-
-```python
-def test_full_qa_workflow():
-    # Setup
-    config = Config()
-    ai_assistant = AIAssistant(provider=config.ai_provider, config=config)
-
-    # Detect game
-    game_detector = GameDetector()
-    game = game_detector.detect_running_game()
-
-    # Ask question
-    response = ai_assistant.ask_question("How do I play?", game_context=game)
-
-    # Verify
-    assert response is not None
-    assert len(response) > 0
-```
-
-### Running Tests
+### Headless Testing
 
 ```bash
-# Run all tests
+# Offscreen platform (recommended for CI)
+export QT_QPA_PLATFORM=offscreen
 python -m pytest
 
-# Run specific test file
-python test_macro_system.py
-
-# Run with coverage
-python -m pytest --cov=src
-
-# Run only tests matching pattern
-python -m pytest -k "test_game"
-
-# Verbose output
-python -m pytest -v
-```
-
-### Test Best Practices
-
-1. **Mock external dependencies** (API calls, file I/O)
-2. **Test edge cases** (empty inputs, None values, errors)
-3. **Verify error handling** (exception types, error messages)
-4. **Test thread safety** for Qt components
-5. **Clean up resources** after tests (temp files, threads)
-
-### GUI Testing (Headless Environment)
-
-**Overview:** The application can be tested in headless/CLI environments using Qt's offscreen platform or Xvfb (X Virtual Framebuffer).
-
-**Quick Start:**
-```bash
-# Method 1: Offscreen Platform (Recommended)
-export QT_QPA_PLATFORM=offscreen
-python main.py
-
-# Method 2: Virtual Display (Xvfb)
+# Xvfb virtual display
 Xvfb :99 -screen 0 1920x1080x24 &
 export DISPLAY=:99
-python main.py
+python -m pytest
 ```
 
-**Test Files:**
-- `test_gui_minimal.py` - Minimal PyQt6 test (verifies GUI environment)
-- `test_gui.sh` - Full application test with virtual display
-- `GUI_TESTING.md` - Comprehensive GUI testing documentation
-
-**Environment Setup:**
-```bash
-# Install Qt dependencies (already done in this environment)
-apt-get install -y libegl1 libegl-mesa0 libxcb-cursor0 libxkbcommon-x11-0
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Test minimal GUI
-export QT_QPA_PLATFORM=offscreen
-python test_gui_minimal.py
-```
-
-**Available Qt Platforms:**
-- `offscreen` - Memory-only rendering (fastest, recommended for CI/CD)
-- `xcb` - X11 display (requires Xvfb or X server)
-- `minimal` - Minimal platform plugin
-- `vnc` - VNC remote display
-- `wayland` - Wayland compositor
-
-**Common Issues:**
-
-1. **Missing EGL libraries**
-   ```bash
-   # Error: libEGL.so.1: cannot open shared object file
-   apt-get install -y libegl1 libegl-mesa0
-   ```
-
-2. **Qt platform plugin errors**
-   ```bash
-   # Use offscreen platform
-   export QT_QPA_PLATFORM=offscreen
-   ```
-
-3. **Application hangs**
-   ```python
-   # Add timeout for automated testing
-   QTimer.singleShot(5000, app.quit)
-   ```
-
-**CI/CD Integration:**
-```yaml
-# GitHub Actions example
-- name: Test GUI
-  env:
-    QT_QPA_PLATFORM: offscreen
-  run: python test_gui_minimal.py
-```
-
-**See:** `GUI_TESTING.md` for comprehensive documentation.
+See `GUI_TESTING.md` for comprehensive documentation.
 
 ---
 
-## Common Tasks & Patterns
+## Common Tasks
 
 ### Adding a New Game
 
-**1. Add to game detector:**
 ```python
-# src/game_detector.py
+# 1. Add to game_detector.py
 common_games = {
-    "Your Game Name": ["yourgame.exe", "alternate.exe"],
-    # ... existing games
+    "Your Game": ["yourgame.exe"],
 }
-```
 
-**2. Create game profile:**
-```python
-# Via UI or programmatically
+# 2. Create profile (via UI or programmatically)
 profile = GameProfile(
     id="your-game",
-    display_name="Your Game Name",
+    display_name="Your Game",
     exe_names=["yourgame.exe"],
-    system_prompt="You are an expert at Your Game. Provide tips and strategies.",
-    default_provider="anthropic",
-    default_model=None,
-    overlay_mode_default="full",
-    is_builtin=False
+    system_prompt="You are an expert at Your Game...",
+    default_provider="ollama",
+    default_model="llama3"
 )
-profile_store.save_profile(profile)
 ```
 
 ### Configuring Ollama
 
-**Current Architecture:** Omnix now uses Ollama exclusively. There is no support for adding other AI providers.
-
-**Ollama Configuration:**
-
-**1. Install Ollama:**
 ```bash
-# Linux/Mac
-curl https://ollama.ai/install.sh | sh
-
-# Or visit https://ollama.ai for manual installation
-```
-
-**2. Configure Base URL (Optional):**
-```python
 # .env file
-OLLAMA_BASE_URL=http://localhost:11434  # Default
-# Or use remote Ollama instance:
-# OLLAMA_BASE_URL=http://your-server:11434
-```
+AI_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434  # Optional
+OLLAMA_MODEL=llama3                      # Optional
 
-**3. Set Default Model (Optional):**
-```python
-# .env file
-OLLAMA_MODEL=llama3  # Default
-# Or use any installed model:
-# OLLAMA_MODEL=mistral
-# OLLAMA_MODEL=codellama
-```
-
-**4. Pull Models:**
-```bash
-# Pull models you want to use
+# Pull models
 ollama pull llama3
 ollama pull mistral
-ollama pull codellama
-
-# List available models
-ollama list
-```
-
-**5. Test Connection:**
-```python
-from src.providers import OllamaProvider
-
-provider = OllamaProvider()
-health = provider.test_connection()
-print(health.message)
-
-# List available models
-models = provider.list_models()
-print(f"Available models: {models}")
 ```
 
 ### Creating a Knowledge Pack
 
-**1. Define knowledge pack:**
 ```python
 from knowledge_pack import KnowledgePack, KnowledgeSource
-from datetime import datetime
 
 pack = KnowledgePack(
-    id="elden-ring-bosses",
-    name="Elden Ring Boss Guide",
-    description="Comprehensive guide for all bosses",
+    id="game-guide",
+    name="Game Guide",
     game_profile_id="elden-ring",
-    sources=[],
-    enabled=True,
-    created_at=datetime.now(),
-    updated_at=datetime.now()
-)
-```
-
-**2. Add sources:**
-```python
-# File source
-file_source = KnowledgeSource(
-    id="boss-guide-pdf",
-    type="file",
-    title="Boss Strategy Guide",
-    path="/path/to/guide.pdf",
-    tags=["bosses", "strategy"]
+    sources=[
+        KnowledgeSource(
+            id="wiki", type="url",
+            url="https://wiki.example.com",
+            tags=["bosses"]
+        )
+    ],
+    enabled=True
 )
 
-# URL source
-url_source = KnowledgeSource(
-    id="wiki-bosses",
-    type="url",
-    title="Elden Ring Wiki - Bosses",
-    url="https://eldenring.wiki.fextralife.com/Bosses",
-    tags=["bosses", "wiki"]
-)
-
-# Note source
-note_source = KnowledgeSource(
-    id="personal-tips",
-    type="note",
-    title="My Boss Tips",
-    content="Margit: Stay close, dodge to the left...",
-    tags=["bosses", "tips"]
-)
-
-pack.sources = [file_source, url_source, note_source]
-```
-
-**3. Save and index:**
-```python
+# Save and index
 from knowledge_store import get_knowledge_store
 from knowledge_index import get_knowledge_index
 
-store = get_knowledge_store()
-store.save_pack(pack)
-
-index = get_knowledge_index()
-index.index_pack(pack)
-```
-
-**4. Query knowledge:**
-```python
-chunks = index.search(
-    query="How do I beat Margit?",
-    game_profile_id="elden-ring",
-    top_k=5
-)
-
-for chunk in chunks:
-    print(f"Score: {chunk.score:.2f}")
-    print(f"Content: {chunk.content}\n")
+get_knowledge_store().save_pack(pack)
+get_knowledge_index().index_pack(pack)
 ```
 
 ### Creating a Macro
 
-**1. Define macro:**
 ```python
 from macro_manager import Macro, MacroStep
 
 macro = Macro(
     id="quick-heal",
     name="Quick Heal",
-    description="Press H for health potion",
-    game_profile_id="elden-ring",
     steps=[
-        MacroStep(
-            type="KEY_PRESS",
-            key="h",
-            duration_ms=0
-        ),
-        MacroStep(
-            type="DELAY",
-            duration_ms=100
-        )
-    ],
-    enabled=True,
-    max_repeat=10,
-    execution_timeout=30
+        MacroStep(type="KEY_PRESS", key="h"),
+        MacroStep(type="DELAY", duration_ms=100)
+    ]
 )
-```
 
-**2. Save macro:**
-```python
 from macro_store import get_macro_store
-
-store = get_macro_store()
-store.save_macro(macro)
-```
-
-**3. Execute macro:**
-```python
-from macro_runner import MacroRunner
-
-runner = MacroRunner()
-result = runner.execute_macro(macro)
-
-if result.success:
-    print("Macro executed successfully")
-else:
-    print(f"Macro failed: {result.error}")
-```
-
-**4. Bind to hotkey:**
-```python
-from keybind_manager import MacroKeybind, get_keybind_manager
-
-keybind = MacroKeybind(
-    macro_id="quick-heal",
-    keys="ctrl+h",
-    description="Quick heal hotkey",
-    game_profile_id="elden-ring",
-    enabled=True,
-    system_wide=False
-)
-
-manager = get_keybind_manager()
-manager.register_macro_keybind(keybind)
-```
-
-### Adding a UI Component
-
-**1. Create component file:**
-```python
-# src/ui/components/my_component.py
-from PyQt6.QtWidgets import QWidget, QLabel
-from ui.tokens import COLORS, SPACING, TYPOGRAPHY
-
-class OmnixMyComponent(QWidget):
-    def __init__(self, title: str, parent=None):
-        super().__init__(parent)
-        self.title = title
-        self._init_ui()
-
-    def _init_ui(self):
-        # Use design tokens
-        self.setStyleSheet(f"""
-            QWidget {{
-                background-color: {COLORS['secondary_bg']};
-                border-radius: 8px;
-                padding: {SPACING['md']};
-            }}
-        """)
-
-        label = QLabel(self.title)
-        label.setStyleSheet(f"""
-            QLabel {{
-                color: {COLORS['text_primary']};
-                font-size: {TYPOGRAPHY['font_size_lg']};
-                font-weight: {TYPOGRAPHY['font_weight_bold']};
-            }}
-        """)
-```
-
-**2. Export component:**
-```python
-# src/ui/components/__init__.py
-from .my_component import OmnixMyComponent
-
-__all__ = ['OmnixMyComponent']
-```
-
-**3. Use component:**
-```python
-from ui.components import OmnixMyComponent
-
-widget = OmnixMyComponent("My Title")
-layout.addWidget(widget)
-```
-
-### Customizing Game Behavior
-
-**1. Edit game profile system prompt:**
-```python
-profile = profile_store.get_profile("elden-ring")
-profile.system_prompt = """
-You are an expert Elden Ring guide specializing in boss strategies.
-Always provide:
-1. Boss weaknesses and resistances
-2. Recommended equipment and stats
-3. Phase-specific tips
-4. Common mistakes to avoid
-"""
-profile_store.save_profile(profile)
-```
-
-**2. Set preferred model:**
-```python
-profile.default_provider = "ollama"  # Only supported provider
-profile.default_model = "llama3"  # or "mistral", "codellama", etc.
-profile_store.save_profile(profile)
-```
-
-**3. Configure overlay mode:**
-```python
-profile.overlay_mode_default = "compact"  # or "full"
-profile_store.save_profile(profile)
-```
-
-### Working with Sessions
-
-**1. Log events:**
-```python
-from session_logger import get_session_logger
-
-logger = get_session_logger()
-logger.log_event(
-    event_type="question",
-    game_profile_id="elden-ring",
-    content="How do I beat Margit?",
-    meta={"difficulty": "hard"}
-)
-```
-
-**2. Retrieve session data:**
-```python
-events = logger.get_session_events("elden-ring")
-for event in events:
-    print(f"{event.timestamp}: {event.event_type} - {event.content}")
-```
-
-**3. Generate coaching:**
-```python
-from session_coaching import SessionCoach
-
-coach = SessionCoach(ai_assistant, session_logger)
-recap = coach.generate_recap("elden-ring", events)
-print(recap)
+get_macro_store().save_macro(macro)
 ```
 
 ---
 
-## Troubleshooting Guide
+## Troubleshooting
 
-### Common Issues
+### Game Not Detected
 
-#### Game Not Detected
+**Check:** Executable name in `game_detector.py:common_games`
 
-**Symptoms:** Game is running but not detected
-
-**Diagnosis:**
-1. Check if executable is in `game_detector.common_games`
-2. Verify process name matches exactly
-3. Check case sensitivity
-
-**Solution:**
-```python
-# src/game_detector.py
-# Add game executable
-common_games = {
-    "Your Game": ["correct_process_name.exe"],
-}
-```
-
-**Debugging:**
 ```python
 import psutil
 for proc in psutil.process_iter(['name']):
     print(proc.info['name'])  # Find exact process name
 ```
 
-#### API Key Not Working
+### Knowledge Pack Search Issues
 
-**Symptoms:** "Invalid API key" or authentication errors
-
-**Diagnosis:**
-1. Verify key is saved in credential store
-2. Check key format (correct prefix: `sk-ant-`, `sk-`, etc.)
-3. Test key with provider directly
-
-**Solution:**
-```python
-from credential_store import CredentialStore
-store = CredentialStore()
-
-# Re-save key
-store.set_credential("omnix.ai", "anthropic_api_key", "sk-ant-...")
-
-# Verify
-key = store.get_credential("omnix.ai", "anthropic_api_key")
-print(f"Stored key: {key[:10]}...")  # Should show first 10 chars
-```
-
-**Test connection:**
-```python
-from provider_tester import ProviderTester
-tester = ProviderTester()
-result = tester.test_connection("anthropic", api_key)
-print(result.message)
-```
-
-#### Knowledge Pack Not Loading
-
-**Symptoms:** Knowledge not appearing in AI responses
-
-**Diagnosis:**
-1. Check if pack is enabled
-2. Verify pack is associated with game profile
-3. Check index is built
-
-**Solution:**
-```python
-from knowledge_store import get_knowledge_store
-from knowledge_index import get_knowledge_index
-
-store = get_knowledge_store()
-index = get_knowledge_index()
-
-# Verify pack
-pack = store.load_pack("pack-id")
-print(f"Enabled: {pack.enabled}")
-print(f"Sources: {len(pack.sources)}")
-
-# Rebuild index
-index.index_pack(pack)
-
-# Test search
-chunks = index.search("test query", pack.game_profile_id)
-print(f"Found {len(chunks)} chunks")
-```
-
-#### Knowledge Pack Search Quality Degraded After Restart
-
-**Symptoms:** Search results are irrelevant or random after restarting the application
-
-**Diagnosis:**
-1. Check if you're running an older version (before 2025-11-19)
-2. Verify index files exist in `~/.gaming_ai_assistant/knowledge_index/`
-3. Look for warning: "Loaded legacy index format without embedding model"
-
-**Root Cause (Fixed in v1.3+):**
-- **Bug:** TF-IDF model vocabulary was not being persisted to disk
-- **Impact:** After restart, queries used hash embeddings vs TF-IDF vectors
-- **Result:** Mathematically invalid comparisons produced random results
-
-**Solution:**
+**Symptom:** Irrelevant results after restart
+**Cause:** Legacy index format (pre-2025-11-19)
+**Fix:**
 ```python
 from knowledge_index import get_knowledge_index
-from knowledge_store import get_knowledge_store
-
-# Rebuild index for affected game to fix legacy indices
 index = get_knowledge_index()
-store = get_knowledge_store()
-
-# Get game profile ID
-game_profile_id = "elden-ring"  # Replace with your game
-
-# Rebuild index (this will save with new format)
-index.rebuild_index_for_game(game_profile_id)
-
-print(f"✓ Index rebuilt with TF-IDF model persistence")
+index.rebuild_index_for_game("your-game-id")
 ```
 
-**Verification:**
+### Circular Import Errors
+
+**Check:** Consistent `src.` prefix in imports
+**Fix:** Use `from src.module import X` everywhere
+**Avoid:** Module names conflicting with stdlib (e.g., `types.py`)
+**Test:** `python test_circular_import.py`
+
+### GUI Freezing
+
+**Always use worker threads:**
 ```python
-# After rebuild, test search quality
-results = index.query(
-    game_profile_id="elden-ring",
-    question="How do I beat Margit?",
-    top_k=5
-)
-
-for i, result in enumerate(results, 1):
-    print(f"{i}. Score: {result.score:.3f}")
-    print(f"   Text: {result.text[:100]}...")
-```
-
-**Status:** ✅ Fixed in commit `78a2050` (2025-11-19)
-
-#### Macro Not Executing
-
-**Symptoms:** Hotkey pressed but macro doesn't run
-
-**Diagnosis:**
-1. Check if macro is enabled
-2. Verify keybind is registered
-3. Check for conflicts
-
-**Solution:**
-```python
-from macro_store import get_macro_store
-from keybind_manager import get_keybind_manager
-
-macro_store = get_macro_store()
-keybind_mgr = get_keybind_manager()
-
-# Verify macro
-macro = macro_store.load_macro("macro-id")
-print(f"Enabled: {macro.enabled}")
-print(f"Steps: {len(macro.steps)}")
-
-# Verify keybind
-keybinds = keybind_mgr.get_macro_keybinds()
-for kb in keybinds:
-    if kb.macro_id == "macro-id":
-        print(f"Keybind: {kb.keys}, Enabled: {kb.enabled}")
-```
-
-#### GUI Freezing
-
-**Symptoms:** UI becomes unresponsive
-
-**Diagnosis:**
-- Long-running operation in main thread
-- Missing worker thread for AI calls
-- Blocking I/O operation
-
-**Solution:**
-Always use worker threads:
-```python
-# BAD: Blocks GUI thread
-response = ai_assistant.ask_question(question)
-display_response(response)
-
-# GOOD: Non-blocking with worker thread
 worker = AIWorkerThread(ai_assistant, question)
 worker.response_ready.connect(display_response)
-worker.error_occurred.connect(display_error)
 worker.start()
 ```
 
-#### Build Errors
+### Build Errors
 
-**Symptoms:** PyInstaller fails or executable crashes
+**Check PyInstaller spec for missing:**
+- Hidden imports
+- Data files
+- Dependencies
 
-**Diagnosis:**
-1. Check all imports are found
-2. Verify data files are included
-3. Check for missing dependencies
+**Test:** `BUILD.bat debug` (shows console errors)
 
-**Solution:**
-```python
-# GamingAIAssistant.spec
-# Add missing imports
-hiddenimports = [
-    'missing_module',
-    'another_module'
-]
+---
 
-# Add data files
-datas = [
-    ('.env.example', '.'),
-    ('src/ui/icons/*.svg', 'ui/icons/')
-]
-```
+## Recent Changes
 
-**Test build:**
-```bash
-# Clean build
-python build_windows_exe.py
+### HRM Integration (2025-12-10) ⭐
 
-# Debug build (shows console)
-pyinstaller GamingAIAssistant_DEBUG.spec
-
-# Run debug exe
-dist/GamingAIAssistant/GamingAIAssistant.exe
-```
-
-#### PyInstaller --dry-run Error
-
-**Symptoms:** `pyinstaller: error: unrecognized arguments: --dry-run` (exit code 1)
-
-**Diagnosis:**
-PyInstaller does not recognize `--dry-run` as a valid command-line option. This argument is not supported by PyInstaller.
-
-**Solution:**
-Remove the `--dry-run` argument from the PyInstaller command in your workflow or build script.
-
-```bash
-# BAD: Causes error
-pyinstaller --noconfirm --log-level=DEBUG --clean --dry-run GamingAIAssistant.spec
-
-# GOOD: Valid PyInstaller command
-pyinstaller --noconfirm --log-level=DEBUG --clean GamingAIAssistant.spec
-```
-
-**Alternative for Testing:**
-If you need to test your build steps without creating a full executable, consider:
-- Using `--log-level=DEBUG` for diagnostic output (already included)
-- Running a quick syntax validation of the spec file with Python:
-  ```bash
-  python -c "exec(open('GamingAIAssistant.spec').read())"
-  ```
-- Using PyInstaller's `--onefile` mode which is faster than `--onedir`
-
-**Resolution History:**
-- **2025-11-19:** Removed `--dry-run` argument from `.github/workflows/tests.yml` as PyInstaller does not support this option
-
-#### Circular Import Errors
-
-**Symptoms:** Application fails to start with `ImportError: cannot import name 'X' from partially initialized module 'Y' (most likely due to a circular import)`
-
-**Diagnosis:**
-1. Identify the circular dependency chain in the error traceback
-2. Check for inconsistent import patterns (some using `src.` prefix, others not)
-3. Verify import order in `src/__init__.py`
-
-**Common Causes:**
-- Inconsistent import prefixes (`from module import X` vs `from src.module import X`)
-- Modules importing from `src/__init__.py` while also being imported by it
-- Circular dependencies between modules
-- **Module names conflicting with Python standard library** (e.g., `types.py`, `collections.py`)
-
-**Solution:**
-```python
-# BAD: Inconsistent import pattern in src/ai_assistant.py
-from knowledge_integration import get_knowledge_integration
-
-# GOOD: Consistent with other src/ modules
-from src.knowledge_integration import get_knowledge_integration
-
-# BAD: Module name conflicts with Python stdlib
-src/types.py  # Shadows built-in 'types' module
-
-# GOOD: Use descriptive, non-conflicting names
-src/type_definitions.py  # No conflict with stdlib
-```
-
-**Prevention:**
-```bash
-# Run the circular import test
-python test_circular_import.py
-
-# This test checks for:
-# 1. Consistent use of 'src.' prefix in imports
-# 2. Import pattern analysis across core modules
-# 3. Circular dependency detection
-```
-
-**Resolution History:**
-- **2025-11-18:** Fixed circular import in `ai_assistant.py` by adding `src.` prefix to `knowledge_integration` import
-- **2025-11-18:** Fixed critical circular import caused by `src/types.py` shadowing Python's built-in `types` module; renamed to `src/type_definitions.py` and updated all references
-
-### Debugging Tips
-
-#### Enable Debug Logging
-
-```python
-# main.py
-logging.basicConfig(
-    level=logging.DEBUG,  # Change from INFO to DEBUG
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-```
-
-#### Qt Debug Messages
-
-```python
-from PyQt6.QtCore import qDebug, qWarning, qCritical
-
-qDebug("Debug message")
-qWarning("Warning message")
-qCritical("Critical error")
-```
-
-#### Profile Performance
-
-```python
-import cProfile
-import pstats
-
-profiler = cProfile.Profile()
-profiler.enable()
-
-# Code to profile
-ai_assistant.ask_question("test")
-
-profiler.disable()
-stats = pstats.Stats(profiler)
-stats.sort_stats('cumulative')
-stats.print_stats(10)  # Top 10 slowest
-```
-
-### Theme System (Unified as of 2025-11-17) ✅
-
-**Migration Completed:** Omnix now uses a **unified token-based design system** with full backward compatibility.
-
-#### Current Architecture
-
-1. **Modern System** (`src/ui/theme_manager.py`):
-   - `OmnixThemeManager` - Main theme management class
-   - Direct manipulation of design tokens
-   - Real-time UI updates via observer pattern
-   - Automatic theme.json v1 → v2 migration
-   - Full customization tracking
-
-2. **Design Tokens** (`src/ui/tokens.py`):
-   - `OmnixDesignTokens` - Color, typography, spacing, radius tokens
-   - Single source of truth for all styling
-   - Extensible and maintainable
-
-3. **Compatibility Layer** (`src/theme_compat.py`):
-   - `ThemeManagerCompat` - Wrapper providing legacy API
-   - Allows existing code to work unchanged
-   - Automatic bidirectional translation
-   - Zero breaking changes
-
-4. **Deprecated Files** (kept for reference):
-   - `src/theme_manager.py` - Legacy theme manager (deprecated)
-
-#### Using the Theme System
-
-**For New Code:**
-```python
-from ui.theme_manager import get_theme_manager
-
-theme_mgr = get_theme_manager()
-
-# Update colors
-theme_mgr.update_color('accent_primary', '#00FFFF')
-
-# Update typography
-theme_mgr.update_typography('size_base', 12)
-
-# Save changes
-theme_mgr.save_theme()
-
-# Get stylesheet
-stylesheet = theme_mgr.get_stylesheet()
-```
-
-**For Legacy Code:**
-```python
-from theme_compat import ThemeManager
-
-theme_mgr = ThemeManager()
-# Works exactly like old ThemeManager
-# Automatically uses OmnixThemeManager backend
-```
-
-**Migration Details:** See `THEME_MIGRATION_PLAN.md`
-
-#### ✅ Recent Enhancements & Fixes
-
-**Status:** Latest update 2025-12-06
-
-**1. Ollama-Only Migration (2025-12-06)** ⭐ **MAJOR REFACTOR**
-
-Complete architectural simplification to use Ollama exclusively for AI inference.
-
-**Why Ollama?**
-- **Privacy First:** All models run locally by default
-- **No API Keys:** No cost, no rate limits, no external dependencies
-- **Flexibility:** Supports both local and remote Ollama instances
-- **Model Freedom:** Use any Ollama model (llama3, mistral, codellama, etc.)
-- **Open Source:** Fully open-source stack
+**Why:** Enhanced reasoning capabilities for complex gaming scenarios like puzzles and strategy games
 
 **Changes:**
-- ✅ Removed OpenAI, Anthropic, and Google Gemini providers
-- ✅ Simplified to single OllamaProvider implementation
-- ✅ No API key storage/management needed (unless using secured endpoints)
-- ✅ Added automatic model discovery and selection
-- ✅ Added connection testing for Ollama daemon
-- ✅ Updated UI to show available Ollama models in dropdown
-- ✅ Maintained backward compatibility for error types
-- ✅ Added parameter translation (max_tokens → num_predict, etc.)
+- Added Hierarchical Reasoning Model (HRM) integration for enhanced strategic analysis
+- Intelligent routing to HRM for complex reasoning questions in gaming contexts
+- New settings tab for HRM configuration and dependency management
+- Conditional loading with graceful degradation when HRM is unavailable
+- Added PyTorch and HRM dependencies as optional requirements with clear installation instructions
 
-**Migration Guide:**
+**Setup:**
 ```bash
-# 1. Install Ollama
+# Optional: Install PyTorch for HRM features
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# Or CPU-only: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# Enable HRM in Settings → HRM Settings tab
+# HRM automatically identifies complex reasoning questions and enhances responses
+```
+
+### Ollama-Only Migration (2025-12-06) ⭐
+
+**Why:** Privacy-first, no API costs, local inference, model freedom
+
+**Changes:**
+- Removed OpenAI, Anthropic, Gemini providers
+- Simplified to single `OllamaProvider`
+- No API key storage needed (unless secured endpoint)
+- Automatic model discovery
+- UI shows available Ollama models
+
+**Setup:**
+```bash
 curl https://ollama.ai/install.sh | sh
-
-# 2. Start Ollama service
 ollama serve
-
-# 3. Pull a model
 ollama pull llama3
-
-# 4. Run Omnix (will auto-detect Ollama)
-python main.py
+python main.py  # Auto-detects Ollama
 ```
 
-**Configuration:**
-```python
-# .env file
-AI_PROVIDER=ollama
-OLLAMA_BASE_URL=http://localhost:11434  # Optional
-OLLAMA_MODEL=llama3  # Optional
-```
+### CI/CD Enhancement (2025-11-20)
 
-**Commits:**
-- `aa9794e` - Simplify to Ollama-only AI provider
-- `8de03a6` - Translate chat params for Ollama
-- `fee2059` - Add automatic Ollama model dropdown population
-- `bf9d8fb` - Fix AI provider selection and Ollama integration
+- Self-hosted runner on Proxmox LXC
+- Automated testing and deployment
+- See `docs/CI_CD_GUIDE.md`
+
+### Search Index Fix (2025-11-19) ⭐
+
+**Fixed:** TF-IDF model persistence - search results now consistent across restarts
+
+### Theme System Unification (2025-11-17)
+
+**Unified token-based design system** with backward compatibility
 
 ---
 
-**2. CI/CD Pipeline Enhancement (2025-11-20)**
-
-Comprehensive CI/CD pipeline implementation with self-hosted infrastructure, automated testing, and staging deployment.
-
-**New Features:**
-- **Self-Hosted Runner** - Proxmox LXC container with GitHub Actions runner
-- **CI Workflow** - Automated linting and testing on push/PR
-- **Staging Deployment** - Automated deployment to staging environment
-- **Verification Tool** - `scripts/verify_ci.py` for pipeline health checks
-- **Deployment Script** - `scripts/deploy_staging.sh` with automated backups
-- **CI Tests** - 20+ integration tests for CI/CD scenarios in `tests/integration/test_ci_pipeline.py`
-
-**Infrastructure:**
-- Host: Proxmox LXC (omnix-staging, ID 200)
-- Runner: `/opt/actions-runner/` (systemd service)
-- Staging: `/opt/omnix/staging/`
-- Backups: `/opt/omnix/backups/`
-
-**Documentation:**
-- `docs/CI_CD_GUIDE.md` - Comprehensive CI/CD guide
-- `docs/QUICK_START_CI.md` - Quick reference
-- `scripts/README.md` - Scripts documentation
-- `CHANGELOG_CI_CD.md` - Enhancement changelog
-- `aicontext.md` - AI assistant quick reference
-
-**Workflows:**
-```yaml
-.github/workflows/ci.yml              # Main CI pipeline
-.github/workflows/staging-deploy.yml  # Staging deployment
-```
-
-**Usage:**
-```bash
-# Verify pipeline
-python scripts/verify_ci.py
-
-# Deploy to staging
-./scripts/deploy_staging.sh
-
-# Or push to staging branch (automatic)
-git push origin staging
-```
-
-**Benefits:**
-- ✅ Automated testing on every push
-- ✅ Self-hosted infrastructure (faster, cost-effective)
-- ✅ Automated staging deployments
-- ✅ Pre-deployment test validation
-- ✅ Automatic backups (keeps last 5)
-- ✅ Comprehensive documentation
-
-**Commit:** `17b7d69` | **Branch:** `claude/proxmox-staging-cicd-01EfJQvejjX64Rs7vD4sFpzq`
-
----
-
-**2. Search Index Corruption Fix (2025-11-19)** ⭐ **CRITICAL**
-
-The knowledge pack search system was experiencing a critical bug where TF-IDF model state was not persisted to disk, causing search results to become random garbage after application restarts.
-
-- **Issue:** Knowledge pack search returned irrelevant/random results after restarting application
-- **Root Cause:** `SimpleTFIDFEmbedding` vocabulary and IDF values were not saved to disk
-  - `_save_index()` only saved the index dict, not the TF-IDF model state
-  - On restart, queries used hash-based embeddings while comparing against TF-IDF vectors
-  - Resulted in mathematically invalid comparisons (different embedding spaces)
-- **Fix:** Updated `src/knowledge_index.py:251-286`
-  - `_save_index()` now serializes both index and embedding provider
-  - `_load_index()` restores TF-IDF model state from disk
-  - Backward compatible with legacy index files (logs warning, degrades gracefully)
-- **Testing:** Added comprehensive `test_index_persistence_after_restart()` in `tests/unit/test_knowledge_system.py:316-405`
-- **Impact:** Search results now remain accurate and consistent across restarts
-
-**Verification:**
-```python
-# Verify TF-IDF model persistence
-python -c "
-import sys
-sys.path.insert(0, 'src')
-from knowledge_index import SimpleTFIDFEmbedding
-import pickle
-
-embedding = SimpleTFIDFEmbedding()
-embedding.fit(['test doc one', 'test doc two'])
-pickled = pickle.dumps(embedding)
-unpickled = pickle.loads(pickled)
-print(f'✓ Vocabulary: {len(unpickled.vocabulary)} terms')
-print(f'✓ IDF: {len(unpickled.idf)} terms')
-"
-```
-
-**Commit:** `78a2050` | **Branch:** `claude/fix-search-index-corruption-018pjySXbV9WEEHojJQgmkrY`
-
----
-
-**2. Circular Import Resolution (2025-11-18)**
-
-The application was experiencing a circular import error that prevented startup. The issue was resolved by ensuring consistent import patterns across all `src/` modules.
-
-- **Issue:** `ImportError: cannot import name 'get_knowledge_integration' from partially initialized module 'knowledge_integration'`
-- **Root Cause:** `src/ai_assistant.py` was importing `knowledge_integration` without the `src.` prefix, while all other modules used `from src.X import Y`
-- **Fix:** Updated `src/ai_assistant.py:17` to use `from src.knowledge_integration import...`
-- **Prevention:** Added `test_circular_import.py` to detect import pattern inconsistencies
-- **Impact:** Application now starts successfully without import errors
-
-**Testing:**
-```bash
-# Verify no circular imports
-python test_circular_import.py
-```
-
-See [Troubleshooting Guide - Circular Import Errors](#circular-import-errors) for more details.
-
----
-
-#### ✅ Recently Removed Features
-
-**Status:** Completed in 2025-11-17
-
-The following features were removed to streamline the codebase and reduce complexity:
-
-1. **info_scraper.py** - Web scraping module for game wikis
-   - **Reason:** Unstable and fragile; broke when websites changed HTML
-   - **Replacement:** Knowledge System (knowledge_packs) provides more robust, user-controlled solution
-   - **Impact:** Users can add specific wiki/guide URLs to Knowledge Packs instead
-
-2. **login_dialog.py** - Embedded web browser for OAuth authentication
-   - **Reason:** Redundant with secure API key management; insecure session cookie capture
-   - **Replacement:** Setup Wizard and Providers Tab for API key management
-   - **Impact:** No impact; embedded login was unused in production code
-
-3. **PyQt6-WebEngine** dependency
-   - **Reason:** Massive dependency only needed for removed login_dialog
-   - **Impact:** Significantly reduced application size and build complexity
-
-**Benefits:**
-- Reduced codebase complexity (~350 LOC removed)
-- Smaller application binary size (no WebEngine)
-- More stable knowledge system (user-controlled vs. fragile web scraping)
-- Single, secure authentication method (API keys via credential store)
-
-#### ✅ Dependencies Clarification
-
-**Note:** Some analysis tools may flag `scikit-learn` as a missing dependency for the knowledge system. This is **incorrect**.
-
-The `SimpleTFIDFEmbedding` class in `src/knowledge_index.py` implements TF-IDF **from scratch** using only Python standard library:
-- `re` module for tokenization
-- `math` module for TF-IDF calculations
-- `hashlib` for fallback embeddings
-
-**No additional dependencies are required** for the knowledge system to function.
-
-#### ✅ Build Files
-
-**Note:** Only use the following build files:
-- `GamingAIAssistant.spec` - Production build
-- `GamingAIAssistant_DEBUG.spec` - Debug build with console
-- `build_windows_exe.py` - Automated build script
-- All `.bat` files in the repository
-
-Any other `.spec` files found in older documentation should be ignored as they may be outdated.
-
----
-
-## Extension Points
-
-### Easy Extensions
-
-#### 1. New Game Support
-- **Difficulty:** Easy
-- **Files:** `game_detector.py`, `game_profile.py`
-- **Steps:** Add executable mapping, create profile
-
-#### 2. New AI Provider
-- **Difficulty:** Medium
-- **Files:** `providers.py`, `ai_router.py`, `providers_tab.py`
-- **Steps:** Implement provider interface, add UI configuration
-
-#### 3. New Macro Step Type
-- **Difficulty:** Easy
-- **Files:** `macro_manager.py`, `macro_runner.py`
-- **Steps:** Add enum value, implement execution logic
-
-#### 4. New UI Component
-- **Difficulty:** Easy
-- **Files:** `ui/components/`
-- **Steps:** Create component file, use design tokens
-
-#### 5. New Knowledge Source Type
-- **Difficulty:** Medium
-- **Files:** `knowledge_pack.py`, `knowledge_ingestion.py`
-- **Steps:** Add source type, implement ingestion
-
-#### 6. New Session Event Type
-- **Difficulty:** Easy
-- **Files:** `session_logger.py`
-- **Steps:** Add event type to enum, log events
-
-### Future Features (Roadmap)
-
-From README.md:
-- [ ] Voice input support
-- [ ] Advanced overlay transparency modes
-- [ ] Custom hotkeys for quick actions
-- [ ] Game-specific plugins
-- [ ] Multi-language support
-- [ ] Mobile companion app
-- [ ] Replay analysis
-- [ ] Performance tracking
-
-### Plugin System Ideas
-
-**1. Game-Specific Plugins:**
-```python
-# src/plugins/elden_ring_plugin.py
-class EldenRingPlugin(GamePlugin):
-    def on_game_detected(self, game):
-        # Custom behavior for Elden Ring
-        pass
-
-    def enhance_ai_response(self, response, context):
-        # Add Elden Ring-specific formatting
-        pass
-```
-
-**2. Custom Scrapers:**
-```python
-# src/scrapers/custom_scraper.py
-class CustomWikiScraper(WikiScraper):
-    def scrape(self, url):
-        # Custom scraping logic
-        pass
-```
-
-**3. AI Enhancement Plugins:**
-```python
-# src/ai_plugins/fact_checker.py
-class FactCheckerPlugin(AIPlugin):
-    def post_process(self, response):
-        # Verify facts against knowledge base
-        pass
-```
-
----
-
-## Best Practices Summary
+## Best Practices
 
 ### ✅ DO
 
-1. **Use design system components** for all UI elements
-2. **Use worker threads** for long-running operations
-3. **Log events** for debugging and coaching
-4. **Type hint** function signatures
-5. **Handle errors** with specific exception types
-6. **Test before committing** - run test suite
-7. **Save configuration** changes explicitly
-8. **Use credential store** for API keys
-9. **Follow naming conventions** consistently
-10. **Document public APIs** with docstrings
+1. Use design system components
+2. Use worker threads for long operations
+3. Type hint function signatures
+4. Test before committing
+5. Follow naming conventions
 
 ### ❌ DON'T
 
-1. **Don't block the GUI thread** with long operations
-2. **Don't hardcode styles** - use design tokens
-3. **Don't store API keys in .env** - use credential store
-4. **Don't skip error handling** on external API calls
-5. **Don't modify built-in game profiles** - create custom ones
-6. **Don't commit API keys** or credentials
-7. **Don't use raw Qt widgets** - use design system components
-8. **Don't ignore test failures** - fix before committing
-9. **Don't bypass safety limits** in macro execution
-10. **Don't modify core architecture** without discussion
+1. Block GUI thread
+2. Hardcode styles
+3. Store API keys in .env
+4. Skip error handling
+5. Modify core architecture without discussion
 
 ---
 
 ## Quick Reference
 
-### Important File Locations
+### File Locations
 
 ```
-Main entry:           main.py
-Configuration:        src/config.py
-Game detection:       src/game_detector.py
-AI integration:       src/ai_assistant.py, src/providers.py
-Knowledge system:     src/knowledge_*.py
-Macro system:         src/macro_*.py
-GUI:                  src/gui.py
-Design system:        src/ui/design_system.py
-Components:           src/ui/components/
-
-User data:            ~/.gaming_ai_assistant/
-Logs:                 ./gaming_ai_assistant_*.log
+Main:        main.py
+Config:      src/config.py
+Game:        src/game_detector.py
+AI:          src/ai_assistant.py, src/providers.py
+Knowledge:   src/knowledge_*.py
+Macros:      src/macro_*.py
+GUI:         src/gui.py
+UI System:   src/ui/design_system.py
+User Data:   ~/.gaming_ai_assistant/
 ```
 
 ### Key Commands
 
 ```bash
-# Development
-python main.py                    # Run application
-python test_before_build.py       # Run tests
-python build_windows_exe.py       # Build executable
-
-# Testing
-python -m pytest                  # Run all tests
-python test_modules.py            # Test imports
-python test_macro_system.py       # Test macros
-
-# Git
-git checkout -b claude/feature    # Create branch
-git commit -m "message"           # Commit changes
-git push -u origin claude/feature # Push branch
+python main.py                    # Run app
+python test_before_build.py       # Test
+BUILD.bat                         # Build
+python -m pytest                  # All tests
 ```
 
-### Contact & Resources
+### Resources
 
 - **Repository:** https://github.com/shingoku2/Omnix-All-knowing-gaming-companion
-- **Current Branch:** `claude/update-context-files-014mNueuX6ktLe9z76DJrpY9`
-- **Issues:** GitHub Issues
-- **Documentation:** README.md, SETUP.md, this file
-- **Ollama:** https://ollama.ai - Download and documentation
+- **Branch:** `claude/update-context-files-014mNueuX6ktLe9z76DJrpY9`
+- **Ollama:** https://ollama.ai
+- **CI/CD:** `docs/CI_CD_GUIDE.md`
+- **Testing:** `GUI_TESTING.md`
 
 ---
 
-**Last Updated:** 2025-12-06
+**Last Updated:** 2025-12-09
 **Maintained by:** AI assistants working on Omnix
-**Current Branch:** `claude/update-context-files-014mNueuX6ktLe9z76DJrpY9`
 
----
-
-*This guide is designed to help AI assistants understand and work with the Omnix codebase effectively. For user-facing documentation, see README.md.*
+*For user documentation, see README.md*

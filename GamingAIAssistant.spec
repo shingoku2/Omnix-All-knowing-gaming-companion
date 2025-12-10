@@ -35,8 +35,6 @@ a = Analysis(
         'knowledge_integration', 'knowledge_packs_tab', 'session_logger', 'session_coaching', 'session_recap_dialog',
         # Managers
         'keybind_manager', 'macro_manager', 'theme_manager',
-        # AI providers
-        'anthropic', 'openai', 'google.generativeai',
         # Utilities
         'psutil', 'requests', 'bs4', 'dotenv', 'cryptography', 'keyring', 'pynput',
         # UI Design System
@@ -44,7 +42,8 @@ a = Analysis(
         'ui.components.buttons', 'ui.components.inputs', 'ui.components.cards',
         'ui.components.layouts', 'ui.components.navigation', 'ui.components.modals',
         'ui.components.dashboard_button', 'ui.components.avatar_display', 'ui.components.overlay',
-        'ui.components.dashboard'
+        'ui.components.dashboard',
+        'omnix_hud'
     ],
     hookspath=[],
     hooksconfig={},

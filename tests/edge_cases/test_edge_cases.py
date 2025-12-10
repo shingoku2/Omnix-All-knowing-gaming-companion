@@ -27,7 +27,7 @@ class TestConfigEdgeCases:
         assert config is not None
 
         # Should be back to defaults
-        assert config.get("ai_provider") == "anthropic"
+        assert config.get("ai_provider") == "ollama"
 
     def test_config_get_with_default(self, temp_dir):
         """Test Config.get() with default value"""
@@ -278,4 +278,4 @@ class TestErrorRecovery:
         assert config is not None
 
         # Should be back to defaults
-        assert config.get("ai_provider") == "anthropic"
+        assert config.get("ai_provider") == "ollama"

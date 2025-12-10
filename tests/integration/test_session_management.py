@@ -45,14 +45,14 @@ class TestSessionEvent:
 class TestSessionLogger:
     """Test SessionLogger functionality"""
 
-    def test_logger_initialization(self, clean_config_dir):
+    def test_logger_initialization(self, temp_config_dir):
         """Test logger initialization"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
         assert logger is not None
 
-    def test_log_question_event(self, clean_config_dir):
+    def test_log_question_event(self, temp_config_dir):
         """Test logging a question event"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
 
         logger.log_event(
             game_profile_id="test_game",
@@ -66,9 +66,9 @@ class TestSessionLogger:
         assert events[-1].event_type == "question"
         assert events[-1].content == "Test question"
 
-    def test_log_answer_event(self, clean_config_dir):
+    def test_log_answer_event(self, temp_config_dir):
         """Test logging an answer event"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
 
         logger.log_event(
             game_profile_id="test_game",
@@ -80,9 +80,9 @@ class TestSessionLogger:
         assert len(events) > 0
         assert events[-1].event_type == "answer"
 
-    def test_multiple_sessions(self, clean_config_dir):
+    def test_multiple_sessions(self, temp_config_dir):
         """Test handling multiple game sessions"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
 
         # Log events for different games
         logger.log_event("game1", "question", "Question 1")
@@ -95,9 +95,9 @@ class TestSessionLogger:
         assert len(game1_events) == 2
         assert len(game2_events) == 1
 
-    def test_session_summary(self, clean_config_dir):
+    def test_session_summary(self, temp_config_dir):
         """Test generating session summary"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
 
         # Log multiple events
         for i in range(5):
@@ -110,9 +110,9 @@ class TestSessionLogger:
         assert summary["event_types"]["question"] == 5
         assert summary["event_types"]["answer"] == 5
 
-    def test_clear_session(self, clean_config_dir):
+    def test_clear_session(self, temp_config_dir):
         """Test clearing session events"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
 
         logger.log_event("test_game", "question", "Test")
         assert len(logger.get_current_session_events("test_game")) > 0
@@ -120,22 +120,22 @@ class TestSessionLogger:
         logger.clear_session("test_game")
         assert len(logger.get_current_session_events("test_game")) == 0
 
-    def test_session_persistence(self, clean_config_dir):
+    def test_session_persistence(self, temp_config_dir):
         """Test that sessions persist to disk"""
-        logger1 = SessionLogger(config_dir=clean_config_dir)
+        logger1 = SessionLogger(config_dir=temp_config_dir)
         logger1.log_event("test_game", "question", "Persistent question")
 
         # Create new logger instance
-        logger2 = SessionLogger(config_dir=clean_config_dir)
+        logger2 = SessionLogger(config_dir=temp_config_dir)
         events = logger2.get_current_session_events("test_game")
 
         # May or may not persist depending on implementation
         # Just verify method doesn't crash
         assert isinstance(events, list)
 
-    def test_max_events_limit(self, clean_config_dir):
+    def test_max_events_limit(self, temp_config_dir):
         """Test that logger respects max events limit"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
 
         # Log many events
         for i in range(150):  # More than typical MAX_EVENTS_IN_MEMORY (100)
@@ -227,9 +227,9 @@ class TestSessionCoach:
 class TestSessionIntegration:
     """Integration tests for session management"""
 
-    def test_full_session_workflow(self, clean_config_dir):
+    def test_full_session_workflow(self, temp_config_dir):
         """Test complete session logging and coaching workflow"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
 
         # Simulate a gaming session
         game_id = "test_game"
@@ -264,41 +264,41 @@ class TestSessionIntegration:
 class TestEventTypes:
     """Test different event types"""
 
-    def test_question_event(self, clean_config_dir):
+    def test_question_event(self, temp_config_dir):
         """Test question event logging"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
         logger.log_event("test", "question", "Test question")
 
         events = logger.get_current_session_events("test")
         assert events[-1].event_type == "question"
 
-    def test_answer_event(self, clean_config_dir):
+    def test_answer_event(self, temp_config_dir):
         """Test answer event logging"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
         logger.log_event("test", "answer", "Test answer")
 
         events = logger.get_current_session_events("test")
         assert events[-1].event_type == "answer"
 
-    def test_macro_event(self, clean_config_dir):
+    def test_macro_event(self, temp_config_dir):
         """Test macro event logging"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
         logger.log_event("test", "macro", "Macro executed")
 
         events = logger.get_current_session_events("test")
         assert events[-1].event_type == "macro"
 
-    def test_game_detected_event(self, clean_config_dir):
+    def test_game_detected_event(self, temp_config_dir):
         """Test game detected event"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
         logger.log_event("test", "game_detected", "Game launched")
 
         events = logger.get_current_session_events("test")
         assert events[-1].event_type == "game_detected"
 
-    def test_game_closed_event(self, clean_config_dir):
+    def test_game_closed_event(self, temp_config_dir):
         """Test game closed event"""
-        logger = SessionLogger(config_dir=clean_config_dir)
+        logger = SessionLogger(config_dir=temp_config_dir)
         logger.log_event("test", "game_closed", "Game exited")
 
         events = logger.get_current_session_events("test")

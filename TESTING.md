@@ -46,13 +46,12 @@ start htmlcov/index.html  # Windows
 
 | File | Purpose | Coverage |
 |------|---------|----------|
-| `test_modules.py` | Module imports, basic integration | Core modules |
-| `test_macro_system.py` | Macro creation, storage, execution | Macro system |
-| `test_knowledge_system.py` | Knowledge packs, indexing | Knowledge system |
-| `test_game_profiles.py` | Game profiles, overlay modes | Game detection |
-| `test_edge_cases.py` | Error handling, edge cases | Error recovery |
-| `test_gui_minimal.py` | GUI environment validation | PyQt6 GUI |
-| `src/ui/test_design_system.py` | UI design system | UI components |
+| `tests/unit/test_ai_assistant.py` | AI logic and context | AI Assistant |
+| `tests/unit/test_macro_system.py` | Macro creation, storage | Macro system |
+| `tests/unit/test_knowledge_system.py` | Knowledge packs, indexing | Knowledge system |
+| `tests/unit/test_game_profiles.py` | Game profiles | Game detection |
+| `tests/ui/test_gui_minimal.py` | GUI environment validation | PyQt6 GUI |
+| `tests/integration/test_ollama_integration.py` | Ollama API integration | AI Providers |
 
 ### Configuration Files
 
@@ -619,5 +618,5 @@ def mock_api_call(monkeypatch):
 
 ---
 
-**Last Updated:** 2025-11-18
+**Last Updated:** 2025-12-09
 **Maintained by:** Omnix Development Team

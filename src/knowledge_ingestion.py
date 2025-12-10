@@ -395,7 +395,7 @@ class IngestionPipeline:
         Returns:
             List of extracted contents (None for failures)
         """
-        results = []
+        results: List[Optional[str]] = []
         for source in sources:
             try:
                 source_type = source.pop('type')

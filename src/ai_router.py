@@ -8,8 +8,8 @@ Handles provider instantiation, error handling, and model management.
 import logging
 from typing import Any, Dict, List, Optional
 
-from src.config import Config
-from src.providers import (
+from config import Config
+from providers import (
     OllamaProvider,
     create_provider,
     ProviderError,
@@ -40,15 +40,15 @@ class AIRouter:
             default_model = self.config.ollama_model
 
             self._provider = create_provider(
-                "ollama",
-                base_url=base_url,
-                default_model=default_model
+                "ollama", base_url=base_url, default_model=default_model
             )
             logger.info(f"Initialized Ollama provider at {base_url}")
         except Exception as e:
             logger.warning(f"Failed to initialize Ollama provider: {e}")
 
-    def get_provider(self, provider_name: str = None) -> Optional[OllamaProvider]:
+    def get_provider(
+        self, provider_name: Optional[str] = None
+    ) -> Optional[OllamaProvider]:
         """
         Get the Ollama provider.
 
@@ -96,7 +96,7 @@ class AIRouter:
         messages: List[Dict[str, str]],
         provider: Optional[str] = None,
         model: Optional[str] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Send a chat request to Ollama.
@@ -142,7 +142,7 @@ class AIRouter:
         except ProviderError as e:
             raise ProviderError(f"Ollama error: {str(e)}")
 
-    def test_provider(self, provider_name: str = None) -> tuple[bool, str]:
+    def test_provider(self, provider_name: Optional[str] = None) -> tuple[bool, str]:
         """
         Test connection to Ollama.
 
@@ -161,7 +161,9 @@ class AIRouter:
         except Exception as e:
             return False, f"Test failed: {str(e)}"
 
-    def get_provider_status(self, provider_name: str = None) -> Dict[str, Any]:
+    def get_provider_status(
+        self, provider_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Get status information for Ollama.
 
@@ -175,7 +177,7 @@ class AIRouter:
             return {
                 "name": "ollama",
                 "configured": False,
-                "message": "Provider not initialized"
+                "message": "Provider not initialized",
             }
 
         health = self._provider.test_connection()
@@ -185,7 +187,7 @@ class AIRouter:
             "healthy": health.is_healthy,
             "message": health.message,
             "error_type": health.error_type,
-            "details": health.details or {}
+            "details": health.details or {},
         }
 
     def set_model(self, model: str) -> None:

@@ -10,27 +10,24 @@ visual design.
 from __future__ import annotations
 
 import logging
-import math
 import sys
 from pathlib import Path
 from typing import Dict, Optional
 
-from PyQt6.QtCore import QEvent, QPoint, Qt, QThread, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
+from PyQt6.QtCore import QEvent, Qt, QThread, QTimer, pyqtSignal, QSize
+from PyQt6.QtGui import QColor, QFont, QAction
 from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
-    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
-    QPushButton,
-    QScrollArea,
-    QSizePolicy,
-    QStackedWidget,
     QVBoxLayout,
     QWidget,
+    QPushButton,
+    QSpacerItem,
+    QSizePolicy,
 )
 
 from config import Config
@@ -38,18 +35,77 @@ from credential_store import CredentialStore
 from ui.design_system import OmnixDesignSystem, design_system
 from keybind_manager import KeybindManager
 from macro_manager import MacroManager
-from theme_compat import ThemeManager
+from ui.theme_manager import OmnixThemeManager
 from settings_dialog import TabbedSettingsDialog
+
+# New HUD primitives
+from omnix_hud import (
+    HudPanel,
+    NeonButton,
+    ChatPanel,
+    GameStatusWidget,
+    StatBlock,
+    OMNIX_GLOBAL_QSS,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def _load_qss() -> str:
-    """Load the legacy Omnix QSS stylesheet."""
+    """Load the legacy Omnix QSS stylesheet.
+
+    DEPRECATED: This function loads hardcoded styles that should be replaced
+    with design system tokens. This is kept for backward compatibility only.
+
+    TODO: Migrate all styling to use OmnixDesignSystem tokens instead.
+    """
     qss_path = Path(__file__).parent / "ui" / "omnix.qss"
     if not qss_path.exists():
-        return ""
-    return qss_path.read_text(encoding="utf-8")
+        logger.warning("Legacy QSS stylesheet not found at %s", qss_path)
+        return _generate_token_based_styles()
+
+    try:
+        legacy_qss = qss_path.read_text(encoding="utf-8")
+        logger.warning(
+            "Loading legacy QSS stylesheet - consider migrating to design system tokens"
+        )
+        # For now, return legacy styles but log migration warning
+        return legacy_qss
+    except Exception as e:
+        logger.error("Failed to load legacy QSS stylesheet: %s", e)
+        return _generate_token_based_styles()
+
+
+def _generate_token_based_styles() -> str:
+    """Generate QSS styles using design system tokens (future migration target)."""
+    try:
+        from .ui.design_system import design_system
+
+        # Generate minimal styles using design tokens
+        styles = f"""
+        /* Omnix Design System Generated Styles */
+        QWidget {{
+            background-color: {design_system.colors.background.primary};
+            color: {design_system.colors.text.primary};
+            font-family: {design_system.typography.font_primary};
+        }}
+        
+        QPushButton {{
+            background-color: {design_system.colors.primary.default};
+            color: {design_system.colors.primary.foreground};
+            border: none;
+            border-radius: {design_system.radius.md}px;
+            padding: {design_system.spacing.sm}px {design_system.spacing.md}px;
+        }}
+        
+        QPushButton:hover {{
+            background-color: {design_system.colors.primary.hover};
+        }}
+        """
+        return styles
+    except ImportError:
+        # Fallback if design system not available
+        return "/* Design system not available - using minimal fallback styles */"
 
 
 class AIWorkerThread(QThread):
@@ -64,164 +120,78 @@ class AIWorkerThread(QThread):
         self.question = question
         self.game_context = game_context or {}
 
-    def run(self) -> None:  # pragma: no cover - exercised via tests with monkeypatch
+    def run(self) -> None:
         try:
             if self.assistant is None:
                 response = "Omnix is standing by. Configure an AI provider to begin."
             else:
-                response = self.assistant.ask_question(self.question, game_context=self.game_context)
+                response = self.assistant.ask_question(
+                    self.question, game_context=self.game_context
+                )
             self.finished.emit(response or "")
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except Exception as exc:
             logger.exception("AI worker failed")
             self.error.emit(str(exc))
 
 
-class NeonCard(QFrame):
-    """Frameless card that maps to the QSS `NeonCard` selector."""
-
-    def __init__(self, parent: Optional[QWidget] = None):
-        super().__init__(parent)
-        self.setObjectName("NeonCard")
-        self.setFrameShape(QFrame.Shape.StyledPanel)
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-
-
-class NeonButton(QPushButton):
-    """Custom button that exposes `variant` and `active` state for QSS styling."""
-
-    def __init__(self, text: str, variant: Optional[str] = None, checkable: bool = False, parent: Optional[QWidget] = None):
-        super().__init__(text, parent)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        if variant:
-            self.setProperty("variant", variant)
-        self.setCheckable(checkable)
-        self.toggled.connect(self._sync_state)
-        self._sync_state(self.isChecked())
-
-    def _sync_state(self, checked: bool) -> None:
-        self.setProperty("active", "true" if checked else "false")
-        self.style().unpolish(self)
-        self.style().polish(self)
-
-
 class ChatWidget(QWidget):
-    """Neon-styled chat surface with threaded AI responses."""
+    """
+    HUD-styled chat surface with threaded AI responses.
+    Wraps the primitive ChatPanel (bubbles) with an input field and send logic.
+    """
 
-    def __init__(self, assistant, title: str = "Chat", parent: Optional[QWidget] = None):
+    def __init__(
+        self, assistant, title: str = "Chat", parent: Optional[QWidget] = None
+    ):
         super().__init__(parent)
         self.assistant = assistant
         self.ai_worker: Optional[AIWorkerThread] = None
 
-        self.setObjectName("ChatWidget")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
 
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(14, 14, 14, 14)
-        main_layout.setSpacing(12)
+        # 1. Chat History Panel
+        self.chat_panel = ChatPanel()
+        layout.addWidget(self.chat_panel, 1)
 
-        header = QVBoxLayout()
-        title_label = QLabel(title)
-        title_label.setObjectName("ChatTitle")
-        subtitle = QLabel("How can I help?")
-        subtitle.setObjectName("ChatSubtitle")
-        header.addWidget(title_label)
-        header.addWidget(subtitle)
-        main_layout.addLayout(header)
+        # 2. Input Area
+        input_row = QHBoxLayout()
+        input_row.setSpacing(8)
 
-        divider = QFrame()
-        divider.setFixedHeight(2)
-        divider.setObjectName("ChatDivider")
-        main_layout.addWidget(divider)
+        self.input_field = QLineEdit()
+        self.input_field.setObjectName("chat-input")
+        self.input_field.setPlaceholderText("Ask Omnix...")
+        self.input_field.returnPressed.connect(self._on_submit)
+        input_row.addWidget(self.input_field, 1)
 
-        self._build_message_list(main_layout)
-        self._build_quick_responses(main_layout)
-        self._build_input_area(main_layout)
+        self.send_button = NeonButton("SEND", primary=True)
+        self.send_button.setFixedSize(80, 32)
+        self.send_button.clicked.connect(self._on_submit)
+        input_row.addWidget(self.send_button)
+
+        layout.addLayout(input_row)
 
         self._seed_intro()
 
-    def _build_message_list(self, main_layout: QVBoxLayout) -> None:
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setObjectName("ChatScroll")
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-
-        container = QWidget()
-        self.messages_layout = QVBoxLayout(container)
-        self.messages_layout.setContentsMargins(10, 10, 10, 10)
-        self.messages_layout.setSpacing(10)
-        self.messages_layout.addStretch()
-
-        self.scroll_area.setWidget(container)
-        main_layout.addWidget(self.scroll_area, 1)
-
-    def _build_quick_responses(self, main_layout: QVBoxLayout) -> None:
-        title = QLabel("Quick responses")
-        title.setObjectName("SectionTitle")
-        main_layout.addWidget(title)
-
-        row = QHBoxLayout()
-        for text in ["Focus mode", "Assist call outs", "Cooldown alerts"]:
-            button = NeonButton(text, variant="toggle", checkable=True)
-            button.clicked.connect(lambda _, t=text: self._send_message(t))
-            row.addWidget(button)
-        row.addStretch()
-        main_layout.addLayout(row)
-
-    def _build_input_area(self, main_layout: QVBoxLayout) -> None:
-        row = QHBoxLayout()
-        row.setSpacing(8)
-        self.input_field = QLineEdit()
-        self.input_field.setPlaceholderText("Ask Omnix...")
-        self.input_field.returnPressed.connect(self._on_submit)
-        row.addWidget(self.input_field, 1)
-
-        self.send_button = NeonButton("Send")
-        self.send_button.clicked.connect(self._on_submit)
-        row.addWidget(self.send_button)
-
-        main_layout.addLayout(row)
-
     def _seed_intro(self) -> None:
-        self.add_message("AI", "Hello!")
-        self.add_message("AI", "Hi! How can I assist you?")
-        self.add_message("AI", "Sure, analyzing the game now...", role="ai")
+        self.add_message("SYSTEM", "Omnix Online.", role="system")
+        self.add_message("AI", "Systems nominal. How can I assist?", role="ai")
 
     def add_message(self, sender: str, message: str, role: str = "ai") -> None:
-        bubble = QFrame()
-        bubble.setProperty("role", "ai" if role.lower() in {"ai", "omnix"} else "user")
-        bubble.setObjectName("ChatBubbleAI" if bubble.property("role") == "ai" else "ChatBubbleUser")
-
-        layout = QVBoxLayout(bubble)
-        layout.setContentsMargins(10, 8, 10, 8)
-        sender_label = QLabel(sender)
-        sender_label.setObjectName("ChatSender")
-        text_label = QLabel(message)
-        text_label.setWordWrap(True)
-        text_label.setObjectName("ChatText")
-        layout.addWidget(sender_label)
-        layout.addWidget(text_label)
-
-        insert_index = max(self.messages_layout.count() - 1, 0)
-        self.messages_layout.insertWidget(insert_index, bubble)
-
-        # Auto-scroll to show the new message
-        self._scroll_to_bottom()
-
-    def _scroll_to_bottom(self) -> None:
-        """Scroll the chat to the bottom to show latest messages"""
-        # Use QTimer.singleShot to ensure the scroll happens after layout updates
-        from PyQt6.QtCore import QTimer
-        QTimer.singleShot(0, lambda: self.scroll_area.verticalScrollBar().setValue(
-            self.scroll_area.verticalScrollBar().maximum()
-        ))
+        is_user = role.lower() == "user"
+        self.chat_panel.add_message(sender, message, is_user)
 
     def _on_submit(self) -> None:
+        if self.ai_worker is not None:
+            return
         text = self.input_field.text().strip()
         if not text:
             return
         self._send_message(text)
 
     def _send_message(self, text: str) -> None:
-        self.add_message("You", text, role="user")
+        self.add_message("YOU", text, role="user")
         self.input_field.clear()
         self.send_button.setEnabled(False)
 
@@ -231,269 +201,14 @@ class ChatWidget(QWidget):
         self.ai_worker.start()
 
     def _handle_response(self, response: str) -> None:
-        self.add_message("Omnix", response, role="ai")
+        self.add_message("OMNIX", response, role="ai")
         self.send_button.setEnabled(True)
         self.ai_worker = None
 
     def _handle_error(self, message: str) -> None:
-        self.add_message("Error", message, role="ai")
+        self.add_message("ERROR", f"System Failure: {message}", role="system")
         self.send_button.setEnabled(True)
         self.ai_worker = None
-
-
-class HexStatusWidget(QWidget):
-    """Custom painted hexagon status indicator for the central card."""
-
-    def __init__(self, parent: Optional[QWidget] = None):
-        super().__init__(parent)
-        self.setMinimumSize(260, 260)
-        self.game_label = "No Game Detected"
-        self.status_text = "Waiting..."
-        self.game_info = None
-        self._load_default_icon()
-
-    def _load_default_icon(self):
-        """Load the default Omnix logo"""
-        icon_path = (Path(__file__).parent / ".." / "OMNIX-LOGO-PLAIN.png").resolve()
-        pixmap = QPixmap(str(icon_path)) if icon_path.exists() else QPixmap()
-        self.icon = pixmap.scaled(96, 96, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation) if not pixmap.isNull() else pixmap
-
-    def _load_game_icon(self, game_name: str):
-        """
-        Load game-specific icon or fall back to default.
-
-        Args:
-            game_name: Name of the game to load icon for
-        """
-        # Normalize game name for file lookup (lowercase, replace spaces with underscores)
-        normalized_name = game_name.lower().replace(" ", "_").replace(":", "")
-
-        # Try to load game-specific icon
-        icon_paths = [
-            Path(__file__).parent / ".." / "assets" / "game_icons" / f"{normalized_name}.png",
-            Path(__file__).parent / ".." / "assets" / "game_icons" / f"{normalized_name}.jpg",
-        ]
-
-        for icon_path in icon_paths:
-            if icon_path.exists():
-                pixmap = QPixmap(str(icon_path))
-                if not pixmap.isNull():
-                    self.icon = pixmap.scaled(96, 96, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                    logger.info(f"Loaded game icon: {icon_path}")
-                    return
-
-        # Fall back to default icon
-        logger.debug(f"No custom icon found for {game_name}, using default")
-        self._load_default_icon()
-
-    def update_game(self, game_info: Optional[Dict] = None):
-        """
-        Update widget with new game information.
-
-        Args:
-            game_info: Dictionary containing game details (name, pid, timestamp, etc.)
-        """
-        if game_info:
-            self.game_info = game_info
-            self.game_label = game_info.get('name', 'Unknown Game')
-            self.status_text = "Detected"
-            self._load_game_icon(self.game_label)
-        else:
-            self.game_info = None
-            self.game_label = "No Game Detected"
-            self.status_text = "Waiting..."
-            self._load_default_icon()
-
-        self.update()
-
-    def paintEvent(self, event: QEvent) -> None:  # pragma: no cover - visual only
-        painter = QPainter(self)
-        painter.setRenderHints(QPainter.RenderHint.Antialiasing, True)
-
-        center = QPoint(self.width() // 2, self.height() // 2)
-        radius = min(self.width(), self.height()) // 2 - 12
-
-        # Use different colors based on game detection status
-        hex_color = "#13d5ff" if self.game_info else "#666677"
-        pen = QPen(QColor(hex_color))
-        pen.setWidth(3)
-        painter.setPen(pen)
-
-        points = []
-        for i in range(6):
-            angle = 60 * i - 30
-            radians = math.radians(angle)
-            x = center.x() + radius * 0.9 * math.cos(radians)
-            y = center.y() + radius * 0.9 * math.sin(radians)
-            points.append(QPoint(int(x), int(y)))
-        painter.drawPolygon(points)
-
-        # Game name at top
-        title_color = "#ff4e4e" if self.game_info else "#888899"
-        painter.setPen(QColor(title_color))
-        painter.setFont(QFont("Orbitron", 16, QFont.Weight.Bold))
-        painter.drawText(self.rect().adjusted(5, 10, -5, 0), Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, self.game_label)
-
-        # Game icon in center
-        if not self.icon.isNull():
-            icon_rect = self.rect().adjusted(40, 50, -40, -70)
-            painter.drawPixmap(icon_rect, self.icon)
-
-        # Status text at bottom
-        status_color = "#63f5a4" if self.game_info else "#888899"
-        painter.setPen(QColor(status_color))
-        painter.setFont(QFont("Rajdhani", 12, QFont.Weight.DemiBold))
-        painter.drawText(self.rect().adjusted(0, 0, 0, -10), Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignBottom, self.status_text)
-
-
-class GameStatusPanel(NeonCard):
-    """Central card showing game detection and statistics."""
-
-    def __init__(self, parent: Optional[QWidget] = None):
-        super().__init__(parent)
-        self.setObjectName("GameStatusPanel")
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(12)
-
-        self.title = QLabel("Game Status")
-        self.title.setObjectName("SectionTitle")
-        layout.addWidget(self.title, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        self.hex_widget = HexStatusWidget()
-        self.hex_widget.setObjectName("HexWidget")
-        layout.addWidget(self.hex_widget, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # Stats grid - will be populated dynamically
-        self.stats_layout = QGridLayout()
-        self.stats_layout.setSpacing(10)
-
-        # Create stat containers
-        self.stat_containers = {}
-        self.stat_labels = {}
-        self._build_stat(0, "STATUS", "Waiting")
-        self._build_stat(1, "PROFILE", "None")
-        self._build_stat(2, "PID", "--")
-
-        layout.addLayout(self.stats_layout)
-
-    def _build_stat(self, column: int, label_text: str, value: str) -> QLabel:
-        """Build a stat display container"""
-        container = QFrame()
-        container.setObjectName("StatContainer")
-        vbox = QVBoxLayout(container)
-        vbox.setContentsMargins(8, 8, 8, 8)
-
-        lbl = QLabel(label_text)
-        lbl.setObjectName("StatLabel")
-
-        val = QLabel(value)
-        val.setObjectName("StatValue")
-
-        vbox.addWidget(lbl)
-        vbox.addWidget(val)
-        self.stats_layout.addWidget(container, 0, column)
-
-        self.stat_containers[label_text] = container
-        self.stat_labels[label_text] = val
-        return val
-
-    def update_game_info(self, game_info: Optional[Dict] = None, profile = None):
-        """
-        Update panel with game information.
-
-        Args:
-            game_info: Dictionary with game details (name, pid, timestamp, etc.)
-            profile: Game profile object with additional metadata
-        """
-        # Update hex widget
-        self.hex_widget.update_game(game_info)
-
-        # Update title
-        if game_info:
-            self.title.setText(f"Game Detected: {game_info.get('name', 'Unknown')}")
-        else:
-            self.title.setText("Game Status")
-
-        # Update stats
-        if game_info:
-            self.stat_labels["STATUS"].setText("Active")
-            self.stat_labels["PID"].setText(str(game_info.get('pid', '--')))
-
-            if profile:
-                self.stat_labels["PROFILE"].setText(profile.display_name[:15] + "..." if len(profile.display_name) > 15 else profile.display_name)
-            else:
-                self.stat_labels["PROFILE"].setText("Generic")
-        else:
-            self.stat_labels["STATUS"].setText("Waiting")
-            self.stat_labels["PROFILE"].setText("None")
-            self.stat_labels["PID"].setText("--")
-
-
-class SettingsPanel(NeonCard):
-    """Right side panel with quick settings and provider selection."""
-
-    settings_requested = pyqtSignal(int)  # Signal to open settings dialog at specific tab
-    provider_changed = pyqtSignal(str)  # Signal when user changes provider
-
-    def __init__(self, config: Config = None, parent: Optional[QWidget] = None):
-        super().__init__(parent)
-        self.config = config
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-
-        title = QLabel("Quick Settings")
-        title.setObjectName("SectionTitle")
-        layout.addWidget(title)
-
-        self.menu_buttons: Dict[str, NeonButton] = {}
-        menu = QVBoxLayout()
-
-        # Quick access buttons that open full settings dialog
-        settings_items = [
-            ("AI Providers", 0),  # Tab index 0
-            ("Game Profiles", 1),  # Tab index 1
-            ("Knowledge Packs", 2),  # Tab index 2
-            ("Macros", 4),  # Tab index 4
-        ]
-
-        for name, tab_index in settings_items:
-            button = NeonButton(name, variant="toggle")
-            button.clicked.connect(lambda _, idx=tab_index: self.settings_requested.emit(idx))
-            menu.addWidget(button)
-            self.menu_buttons[name] = button
-
-        layout.addLayout(menu)
-        layout.addStretch()
-
-        provider_label = QLabel("AI Provider")
-        provider_label.setObjectName("SectionTitle")
-        layout.addWidget(provider_label)
-
-        # Ollama status display (only provider now)
-        ollama_row = QHBoxLayout()
-        self.provider_ollama = NeonButton("🤖 Ollama (Local)", variant="provider", checkable=True)
-        self.provider_ollama.setChecked(True)  # Always active
-        self.provider_ollama.setEnabled(False)  # Not switchable
-        self.provider_ollama.setToolTip("Using local Ollama for AI inference")
-        ollama_row.addWidget(self.provider_ollama)
-        layout.addLayout(ollama_row)
-
-        layout.addStretch()
-
-    def _switch_provider(self, provider: str) -> None:
-        """Provider switching is disabled - Ollama only"""
-        # Ollama is the only provider now
-        logger.debug("Provider is always Ollama (local)")
-
-    def _update_provider_buttons(self, provider: str = "ollama") -> None:
-        """Update provider button state - always Ollama"""
-        self.provider_ollama.setChecked(True)
-
-    def _open_providers_settings(self) -> None:
-        """Open full settings dialog at providers tab"""
-        self.settings_requested.emit(0)  # Tab index 0 is AI Providers
 
 
 class OverlayWindow(QWidget):
@@ -523,100 +238,80 @@ class OverlayWindow(QWidget):
         # Enable mouse tracking for drag and resize
         self.setMouseTracking(True)
         self._drag_position = None
-        self._resize_mode = None
-        self._resize_margin = 10  # Pixels from edge to trigger resize
+        self._resize_mode: Optional[str] = None
+        self._resize_margin = 10
 
-        # Main layout with no margins (transparent background)
+        # Main layout
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Create background panel with semi-transparent background
+        # Background panel
         self.background_panel = QFrame()
         self.background_panel.setObjectName("OverlayBackground")
         self.background_panel.setMouseTracking(True)
 
         # Apply semi-transparent background styling
         opacity = getattr(config, "overlay_opacity", 0.8)
-        bg_alpha = format(int(opacity * 255), '02x')
+        bg_alpha = format(int(opacity * 255), "02x")
+        # We'll allow the QSS to handle borders, but set bg alpha here
         self.background_panel.setStyleSheet(f"""
             QFrame#OverlayBackground {{
-                background-color: #0F0F1A{bg_alpha};
-                border: 2px solid #00BFFF;
+                background-color: #050816{bg_alpha};
+                border: 1px solid #22d3ee;
                 border-radius: 12px;
             }}
         """)
 
-        # Layout for the panel content
         panel_layout = QVBoxLayout(self.background_panel)
         panel_layout.setContentsMargins(8, 8, 8, 8)
         panel_layout.setSpacing(8)
 
-        # Add title bar for dragging
+        # Title bar
         self.title_bar = QFrame()
-        self.title_bar.setObjectName("OverlayTitleBar")
         self.title_bar.setFixedHeight(30)
-        self.title_bar.setMouseTracking(True)
-        self.title_bar.setStyleSheet("""
-            QFrame#OverlayTitleBar {
-                background-color: rgba(0, 191, 255, 0.2);
-                border-radius: 6px;
-            }
-        """)
+        self.title_bar.setStyleSheet("background: transparent;")
         title_bar_layout = QHBoxLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(8, 4, 8, 4)
+        title_bar_layout.setContentsMargins(4, 0, 4, 0)
 
-        title_label = QLabel("🎮 Omnix Overlay")
-        title_label.setStyleSheet("color: #00BFFF; font-weight: bold;")
+        title_label = QLabel("OMNIX OVERLAY")
+        title_label.setStyleSheet(
+            "font-weight: bold; color: #22d3ee; letter-spacing: 1px;"
+        )
         title_bar_layout.addWidget(title_label)
         title_bar_layout.addStretch()
 
-        # Minimize button
-        minimize_btn = QPushButton("−")
-        minimize_btn.setFixedSize(20, 20)
-        minimize_btn.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(255, 184, 0, 0.3);
-                color: #FFB800;
-                border: 1px solid #FFB800;
-                border-radius: 10px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 184, 0, 0.5);
-            }
-        """)
-        minimize_btn.clicked.connect(self.toggle_minimize)
-        title_bar_layout.addWidget(minimize_btn)
+        min_btn = QPushButton("−")
+        min_btn.setFixedSize(20, 20)
+        min_btn.setStyleSheet(
+            "background: transparent; color: #22d3ee; font-weight: bold; border: none;"
+        )
+        min_btn.clicked.connect(self.toggle_minimize)
+        title_bar_layout.addWidget(min_btn)
 
         panel_layout.addWidget(self.title_bar)
 
-        # Add chat widget to panel
+        # Chat
         self.chat = ChatWidget(assistant, title="Overlay")
         panel_layout.addWidget(self.chat)
 
-        # Add panel to main layout
         main_layout.addWidget(self.background_panel)
 
-        # Apply overlay styles
-        overlay_styles = ds.generate_overlay_stylesheet(opacity) if ds else ""
-        self.setStyleSheet(overlay_styles + "\n" + _load_qss())
+        # Apply styles
+        self.setStyleSheet(OMNIX_GLOBAL_QSS)
 
-        # Forward mouse events from child panels to enable drag/resize
         self.background_panel.installEventFilter(self)
         self.title_bar.installEventFilter(self)
 
-        # Debounce timer for position/size saving (reduces I/O during drag/resize)
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
         self._save_timer.timeout.connect(self._save_position_and_size)
-        self._save_delay_ms = 500  # Wait 500ms after last move/resize before saving
+        self._save_delay_ms = 500
 
         if self.minimized:
             self.toggle_minimize()
 
-    def eventFilter(self, watched, event):  # type: ignore[override]
-        """Forward mouse events from child panels so overlay drag/resize works."""
+    def eventFilter(self, watched, event):
         if watched in (self.background_panel, self.title_bar):
             if event.type() == QEvent.Type.MouseButtonPress:
                 self.mousePressEvent(event)
@@ -627,13 +322,9 @@ class OverlayWindow(QWidget):
         return super().eventFilter(watched, event)
 
     def mousePressEvent(self, event) -> None:
-        """Handle mouse press for window dragging and resizing"""
         if event.button() == Qt.MouseButton.LeftButton:
-            # Determine if click is in resize zone
             pos = event.position().toPoint()
             rect = self.rect()
-
-            # Check for resize zones (corners and edges)
             margin = self._resize_margin
             on_left = pos.x() < margin
             on_right = pos.x() > rect.width() - margin
@@ -641,33 +332,32 @@ class OverlayWindow(QWidget):
             on_bottom = pos.y() > rect.height() - margin
 
             if on_bottom and on_right:
-                self._resize_mode = 'bottom_right'
+                self._resize_mode = "bottom_right"
             elif on_bottom and on_left:
-                self._resize_mode = 'bottom_left'
+                self._resize_mode = "bottom_left"
             elif on_top and on_right:
-                self._resize_mode = 'top_right'
+                self._resize_mode = "top_right"
             elif on_top and on_left:
-                self._resize_mode = 'top_left'
+                self._resize_mode = "top_left"
             elif on_bottom:
-                self._resize_mode = 'bottom'
+                self._resize_mode = "bottom"
             elif on_top:
-                self._resize_mode = 'top'
+                self._resize_mode = "top"
             elif on_left:
-                self._resize_mode = 'left'
+                self._resize_mode = "left"
             elif on_right:
-                self._resize_mode = 'right'
+                self._resize_mode = "right"
             else:
-                # Not in resize zone, enable dragging
                 self._resize_mode = None
-                self._drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+                self._drag_position = (
+                    event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+                )
 
     def mouseMoveEvent(self, event) -> None:
-        """Handle mouse move for window dragging, resizing, and cursor changes"""
         pos = event.position().toPoint()
         rect = self.rect()
         margin = self._resize_margin
 
-        # Update cursor based on position
         on_left = pos.x() < margin
         on_right = pos.x() > rect.width() - margin
         on_top = pos.y() < margin
@@ -684,46 +374,37 @@ class OverlayWindow(QWidget):
         else:
             self.setCursor(Qt.CursorShape.ArrowCursor)
 
-        # Handle dragging
         if event.buttons() == Qt.MouseButton.LeftButton:
             if self._resize_mode:
-                # Handle resizing
                 global_pos = event.globalPosition().toPoint()
                 geo = self.geometry()
-
-                if 'right' in self._resize_mode:
+                if "right" in self._resize_mode:
                     geo.setRight(global_pos.x())
-                if 'left' in self._resize_mode:
+                if "left" in self._resize_mode:
                     geo.setLeft(global_pos.x())
-                if 'bottom' in self._resize_mode:
+                if "bottom" in self._resize_mode:
                     geo.setBottom(global_pos.y())
-                if 'top' in self._resize_mode:
+                if "top" in self._resize_mode:
                     geo.setTop(global_pos.y())
 
-                # Enforce minimum size
                 if geo.width() < 300:
                     geo.setWidth(300)
                 if geo.height() < 200:
                     geo.setHeight(200)
-
                 self.setGeometry(geo)
             elif self._drag_position is not None:
-                # Handle dragging
                 self.move(event.globalPosition().toPoint() - self._drag_position)
 
     def mouseReleaseEvent(self, event) -> None:
-        """Handle mouse release to finish dragging or resizing"""
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_position = None
             self._resize_mode = None
 
     def closeEvent(self, event: QEvent) -> None:
-        """Save config when overlay is closed"""
         super().closeEvent(event)
         self._save_overlay_config()
 
     def _save_overlay_config(self) -> None:
-        """Persist overlay configuration to .env"""
         try:
             Config.save_to_env(
                 provider=self.config.ai_provider,
@@ -735,9 +416,8 @@ class OverlayWindow(QWidget):
                 overlay_width=self.config.overlay_width,
                 overlay_height=self.config.overlay_height,
                 overlay_minimized=self.config.overlay_minimized,
-                overlay_opacity=self.config.overlay_opacity
+                overlay_opacity=self.config.overlay_opacity,
             )
-            logger.info("Overlay configuration saved")
         except Exception as e:
             logger.error(f"Failed to save overlay config: {e}")
 
@@ -747,41 +427,32 @@ class OverlayWindow(QWidget):
         if self.minimized:
             self._saved_height = self.height()
             self.chat.setVisible(False)
-            self.setFixedHeight(80)
+            self.setFixedHeight(40)
         else:
             self.chat.setVisible(True)
-            self.setFixedHeight(getattr(self, "_saved_height", self.sizeHint().height()))
+            self.setFixedHeight(getattr(self, "_saved_height", 400))
 
     def moveEvent(self, event) -> None:
-        """Handle window move - debounce save to reduce I/O."""
         super().moveEvent(event)
-        # Restart the debounce timer on every move
         self._save_timer.start(self._save_delay_ms)
 
     def resizeEvent(self, event) -> None:
-        """Handle window resize - debounce save to reduce I/O."""
         super().resizeEvent(event)
-        # Restart the debounce timer on every resize
         self._save_timer.start(self._save_delay_ms)
 
     def _save_position_and_size(self) -> None:
-        """Save current window position and size to config (called after debounce delay)."""
         try:
-            # Update config with current geometry
             self.config.overlay_x = self.x()
             self.config.overlay_y = self.y()
             self.config.overlay_width = self.width()
             self.config.overlay_height = self.height()
-
-            # Persist to disk
             self.config.save()
-            logger.debug(f"Saved overlay position: ({self.x()}, {self.y()}) size: ({self.width()}x{self.height()})")
         except Exception as e:
-            logger.error(f"Failed to save overlay position: {e}")
+            logger.warning(f"Failed to save overlay position: {e}")
 
 
 class MainWindow(QMainWindow):
-    """Omnix main dashboard window."""
+    """Omnix main dashboard window with new HUD layout."""
 
     def __init__(
         self,
@@ -789,7 +460,7 @@ class MainWindow(QMainWindow):
         config: Config,
         credential_store: CredentialStore,
         design_system: OmnixDesignSystem = design_system,
-        game_detector=None
+        game_detector=None,
     ):
         super().__init__()
         self.ai_assistant = ai_assistant
@@ -799,88 +470,173 @@ class MainWindow(QMainWindow):
         self.game_detector = game_detector
         self.current_game = None
 
-        self.setWindowTitle("Omnix - All Knowing AI Companion")
-        self.resize(1280, 760)
+        self.setWindowTitle("OMNIX // HUD")
+        self.resize(1280, 800)
 
-        base_styles = self.design_system.generate_complete_stylesheet()
-        self.setStyleSheet(base_styles + "\n" + _load_qss())
+        # Apply Global QSS
+        self.setStyleSheet(OMNIX_GLOBAL_QSS)
 
-        # Initialize managers for settings dialog
         self.keybind_manager = KeybindManager()
         self.macro_manager = MacroManager()
-        self.theme_manager = ThemeManager()
-
-        # Initialize settings dialog (but don't show it yet)
+        self.theme_manager = OmnixThemeManager()
         self.settings_dialog = None
 
         self.overlay_window = OverlayWindow(ai_assistant, config, self.design_system)
 
+        # Central Container
         central = QWidget()
-        central.setObjectName("MainContainer")
         self.setCentralWidget(central)
 
-        layout = QVBoxLayout(central)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        # Main Layout (Vertical: Header -> Content -> Footer)
+        main_layout = QVBoxLayout(central)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(16)
 
-        layout.addLayout(self._build_header())
-        layout.addLayout(self._build_main_grid())
-        layout.addLayout(self._build_footer())
+        # 1. Header
+        main_layout.addLayout(self._build_header())
 
-        # Initialize provider button states
-        self._update_provider_display(self.config.ai_provider)
+        # 2. Content (3 Columns)
+        content_layout = QHBoxLayout()
+        content_layout.setSpacing(20)
 
-        # Start game detection if available
+        # -- Left: Chat --
+        self.left_panel = HudPanel()
+        left_layout = QVBoxLayout(self.left_panel)
+        left_layout.setContentsMargins(16, 16, 16, 16)
+        left_layout.setSpacing(12)
+
+        left_title = QLabel("COMMUNICATIONS")
+        left_title.setStyleSheet(
+            "font-size: 11px; letter-spacing: 2px; color: #94a3b8; font-weight: bold;"
+        )
+        left_layout.addWidget(left_title)
+
+        self.chat_widget = ChatWidget(self.ai_assistant)
+        left_layout.addWidget(self.chat_widget)
+
+        content_layout.addWidget(self.left_panel, 2)
+
+        # -- Center: Game Status --
+        self.center_panel = QWidget()  # Transparent container
+        center_layout = QVBoxLayout(self.center_panel)
+        center_layout.setSpacing(24)
+        center_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.game_status = GameStatusWidget()
+        center_layout.addWidget(self.game_status)
+
+        self.stat_block = StatBlock()
+        center_layout.addWidget(self.stat_block)
+
+        # Quick Actions (Buttons below stats)
+        actions_layout = QHBoxLayout()
+        actions_layout.setSpacing(12)
+        for label in ["SCAN", "OPTIMIZE", "LOG"]:
+            btn = NeonButton(label, primary=False)
+            actions_layout.addWidget(btn)
+        center_layout.addLayout(actions_layout)
+
+        center_layout.addStretch()
+
+        content_layout.addWidget(self.center_panel, 2)
+
+        # -- Right: Settings & Tools --
+        self.right_panel = HudPanel()
+        right_layout = QVBoxLayout(self.right_panel)
+        right_layout.setContentsMargins(16, 16, 16, 16)
+        right_layout.setSpacing(16)
+
+        right_title = QLabel("SYSTEMS")
+        right_title.setStyleSheet(
+            "font-size: 11px; letter-spacing: 2px; color: #94a3b8; font-weight: bold;"
+        )
+        right_layout.addWidget(right_title)
+
+        # Menu Buttons
+        settings_items = [
+            ("AI PROVIDERS", 0),
+            ("GAME PROFILES", 1),
+            ("KNOWLEDGE PACKS", 2),
+            ("MACRO SYSTEM", 4),
+        ]
+
+        for name, idx in settings_items:
+            btn = NeonButton(name, primary=False)
+            btn.clicked.connect(lambda _, x=idx: self._open_settings_at_tab(x))
+            right_layout.addWidget(btn)
+
+        right_layout.addStretch()
+
+        # Provider Toggle (Visual only since we are Ollama only)
+        provider_frame = QFrame()
+        provider_frame.setObjectName("settings-row")
+        provider_frame.setProperty("active", "true")
+        prov_layout = QVBoxLayout(provider_frame)
+        prov_label = QLabel("ACTIVE PROVIDER")
+        prov_label.setStyleSheet("font-size: 9px; color: #22d3ee; font-weight: bold;")
+        prov_val = QLabel("OLLAMA (LOCAL)")
+        prov_val.setStyleSheet("font-size: 14px; font-weight: bold;")
+        prov_layout.addWidget(prov_label)
+        prov_layout.addWidget(prov_val)
+        right_layout.addWidget(provider_frame)
+
+        content_layout.addWidget(self.right_panel, 1)
+
+        main_layout.addLayout(content_layout)
+
+        # 3. Footer
+        main_layout.addLayout(self._build_footer())
+
+        # Start services
         if self.game_detector:
             self._start_game_detection()
 
     def _build_header(self) -> QHBoxLayout:
-        header = QHBoxLayout()
-        header.setSpacing(6)
-        title = QLabel("OMNIX")
-        title.setObjectName("BrandTitle")
-        subtitle = QLabel("ALL KNOWING AI COMPANION")
-        subtitle.setObjectName("BrandSubtitle")
-        header.addWidget(title)
-        header.addWidget(subtitle)
-        header.addStretch()
-        return header
+        # Recreating header to match logic flow
+        layout = QHBoxLayout()
 
-    def _build_main_grid(self) -> QHBoxLayout:
-        row = QHBoxLayout()
-        row.setSpacing(12)
+        frame = QFrame()
+        frame.setObjectName("top-bar")
+        frame.setFixedHeight(50)
+        frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        self.chat_panel = NeonCard()
-        chat_layout = QVBoxLayout(self.chat_panel)
-        chat_layout.setContentsMargins(0, 0, 0, 0)
-        chat_layout.addWidget(ChatWidget(self.ai_assistant))
-        row.addWidget(self.chat_panel, 2)
+        h_layout = QHBoxLayout(frame)
+        h_layout.setContentsMargins(20, 0, 20, 0)
 
-        self.game_status_panel = GameStatusPanel()
-        row.addWidget(self.game_status_panel, 2)
+        logo = QLabel("OMNIX")
+        logo.setObjectName("omnix-logo")
+        h_layout.addWidget(logo)
 
-        self.settings_panel = SettingsPanel(config=self.config)
-        self.settings_panel.settings_requested.connect(self._open_settings_at_tab)
-        self.settings_panel.provider_changed.connect(self._on_provider_switched)
-        row.addWidget(self.settings_panel, 2)
+        sub = QLabel(" // SYSTEM READY")
+        sub.setObjectName("omnix-logo-subtitle")
+        sub.setContentsMargins(10, 6, 0, 0)
+        h_layout.addWidget(sub)
 
-        return row
+        h_layout.addStretch()
+
+        user = QLabel("PILOT ID: ADMIN")
+        user.setObjectName("top-bar-user")
+        h_layout.addWidget(user)
+
+        layout.addWidget(frame)
+        return layout
 
     def _build_footer(self) -> QHBoxLayout:
         footer = QHBoxLayout()
-        footer.setSpacing(10)
+        footer.setSpacing(20)
 
-        overlay_button = NeonButton("Overlay", variant="primary")
-        overlay_button.setObjectName("OverlayButton")
-        overlay_button.clicked.connect(self._toggle_overlay)
-        footer.addWidget(overlay_button)
+        # Large Overlay Button
+        overlay_btn = NeonButton("TOGGLE OVERLAY", primary=True)
+        overlay_btn.setMinimumHeight(48)
+        overlay_btn.clicked.connect(self._toggle_overlay)
+        footer.addWidget(overlay_btn, 1)
 
-        settings_button = NeonButton("Settings")
-        settings_button.setObjectName("FooterSettingsButton")
-        settings_button.clicked.connect(self._open_settings)
-        footer.addWidget(settings_button)
+        # Large Settings Button
+        settings_btn = NeonButton("SYSTEM SETTINGS", primary=False)
+        settings_btn.setMinimumHeight(48)
+        settings_btn.clicked.connect(self._open_settings)
+        footer.addWidget(settings_btn, 1)
 
-        footer.addStretch()
         return footer
 
     def _toggle_overlay(self) -> None:
@@ -891,131 +647,64 @@ class MainWindow(QMainWindow):
             self.overlay_window.raise_()
 
     def _open_settings(self) -> None:
-        """Open the comprehensive settings dialog"""
-        self._open_settings_at_tab(0)  # Default to first tab
+        self._open_settings_at_tab(0)
 
     def _open_settings_at_tab(self, tab_index: int) -> None:
-        """Open settings dialog at specific tab"""
         if self.settings_dialog is None:
             self.settings_dialog = TabbedSettingsDialog(
                 self,
                 self.config,
                 self.keybind_manager,
                 self.macro_manager,
-                self.theme_manager
+                self.theme_manager,
             )
-            # Connect settings dialog signals
             self.settings_dialog.settings_saved.connect(self._on_settings_saved)
-            self.settings_dialog.provider_config_changed.connect(self._on_provider_changed)
-
         self.settings_dialog.set_current_tab(tab_index)
         self.settings_dialog.exec()
 
     def _on_settings_saved(self, settings: dict) -> None:
-        """Handle settings saved from dialog"""
-        logger.info("Settings saved from dialog")
-        # Update UI to reflect new settings
-        if 'default_provider' in settings:
-            self._update_provider_display(settings['default_provider'])
-
-    def _on_provider_changed(self, provider: str, credentials: dict) -> None:
-        """Handle AI provider configuration change from settings dialog"""
-        logger.info(f"Provider changed to: {provider}")
-        self._update_provider_display(provider)
-        self._reinitialize_ai_assistant()
-
-    def _on_provider_switched(self, provider: str) -> None:
-        """Handle provider switched from quick settings buttons"""
-        logger.info(f"Provider switched to: {provider}")
-        self._reinitialize_ai_assistant()
-
-    def _reinitialize_ai_assistant(self) -> None:
-        """Reinitialize AI assistant with new provider"""
-        try:
-            # Reinitialize the AI router with updated config
-            from src.ai_router import AIRouter
-            ai_router = AIRouter(self.config)
-
-            # Update the assistant's provider
-            if hasattr(self.ai_assistant, 'router'):
-                self.ai_assistant.router = ai_router
-                logger.info("AI assistant reinitialized with new provider")
-        except Exception as e:
-            logger.error(f"Failed to reinitialize AI assistant: {e}")
-
-    def _update_provider_display(self, provider: str) -> None:
-        """Update provider button states in settings panel"""
-        self.settings_panel._update_provider_buttons(provider)
+        pass
 
     def _start_game_detection(self) -> None:
-        """Start periodic game detection"""
-        from PyQt6.QtCore import QTimer
         self.game_check_timer = QTimer()
         self.game_check_timer.timeout.connect(self._check_for_game)
-        self.game_check_timer.start(5000)  # Check every 5 seconds
-        # Do initial check
+        self.game_check_timer.start(5000)
         self._check_for_game()
 
     def _check_for_game(self) -> None:
-        """Check if a game is running and update UI"""
         if not self.game_detector:
             return
-
         game = self.game_detector.detect_running_game()
-        if game and game.get('name') != self.current_game:
-            self.current_game = game.get('name')
+
+        if game and game.get("name") != self.current_game:
+            self.current_game = game.get("name")
             self._update_game_status(game)
-            logger.info(f"Game detected: {self.current_game}")
         elif not game and self.current_game:
             self.current_game = None
-            self._clear_game_status()
-            logger.info("No game detected")
+            self._update_game_status(None)
 
-    def _update_game_status(self, game: dict) -> None:
-        """Update the game status panel with detected game"""
-        # Try to find a matching game profile
-        profile = None
-        if hasattr(self, 'game_profile_store'):
-            try:
-                from src.game_profile import GameProfileStore
-                store = GameProfileStore()
-                profile = store.get_profile_for_game(game.get('name', ''))
-            except Exception as e:
-                logger.debug(f"Could not load game profile: {e}")
+    def _update_game_status(self, game: Optional[Dict]) -> None:
+        online = bool(game)
+        name = game.get("name") if game else None
+        pid = str(game.get("pid", "--")) if game else "--"
 
-        # Update the panel with game info and profile
-        if hasattr(self.game_status_panel, 'update_game_info'):
-            self.game_status_panel.update_game_info(game, profile)
-        elif hasattr(self.game_status_panel, 'hex_widget'):
-            # Fallback for older interface
-            self.game_status_panel.hex_widget.game_label = game.get('name', 'Unknown')
-            self.game_status_panel.hex_widget.status_text = "Detected"
-            self.game_status_panel.hex_widget.update()
+        # Update Center Widget
+        self.game_status.set_game(name, online)
 
-        # Inform the AI assistant about the detected game
+        # Update Stats (Mock stats for now, could come from DB)
+        if online:
+            self.stat_block.set_stats(kd="1.2", matches="42", wins="54%")
+        else:
+            self.stat_block.set_stats(kd="--", matches="--", wins="--")
+
+        # Notify AI
         if self.ai_assistant:
             self.ai_assistant.set_current_game(game)
-            logger.info(f"AI assistant notified of game: {game.get('name', 'Unknown')}")
-
-    def _clear_game_status(self) -> None:
-        """Clear the game status display"""
-        if hasattr(self.game_status_panel, 'update_game_info'):
-            self.game_status_panel.update_game_info(None, None)
-        elif hasattr(self.game_status_panel, 'hex_widget'):
-            # Fallback for older interface
-            self.game_status_panel.hex_widget.game_label = "No Game"
-            self.game_status_panel.hex_widget.status_text = "Waiting..."
-            self.game_status_panel.hex_widget.update()
-
-        # Clear the AI assistant's game context
-        if self.ai_assistant:
-            self.ai_assistant.set_current_game(None)
-            logger.info("AI assistant game context cleared")
 
     def cleanup(self) -> None:
         if self.overlay_window:
             self.overlay_window.close()
-        if hasattr(self, 'game_check_timer'):
+        if hasattr(self, "game_check_timer"):
             self.game_check_timer.stop()
 
 
@@ -1024,11 +713,14 @@ def run_gui(
     config: Config,
     credential_store: CredentialStore,
     ds: OmnixDesignSystem = design_system,
-    game_detector=None
+    game_detector=None,
 ) -> None:
     """Launch the Omnix GUI."""
-
     app = QApplication.instance() or QApplication(sys.argv)
+
+    # Set dark palette as fallback
+    app.setStyle("Fusion")
+
     window = MainWindow(ai_assistant, config, credential_store, ds, game_detector)
     window.show()
     sys.exit(app.exec())

@@ -6,7 +6,7 @@ This guide will walk you through setting up the Gaming AI Assistant step by step
 
 1. [System Requirements](#system-requirements)
 2. [Installation](#installation)
-3. [API Key Setup](#api-key-setup)
+3. [Ollama Setup](#ollama-setup)
 4. [First Run](#first-run)
 5. [Troubleshooting](#troubleshooting)
 
@@ -96,43 +96,38 @@ sudo apt-get install python3-dev
 brew install pyqt6
 ```
 
-## API Key Setup
+## Ollama Setup
 
 ### Using Setup Wizard (Recommended)
 
-The **Setup Wizard** handles API key configuration automatically:
+The **Setup Wizard** now focuses on local Ollama configuration (no API keys):
 
 1. Run `python main.py`
-2. Select your AI provider from the dropdown
-3. Paste your API key when prompted
-4. The wizard tests the connection to verify it works
+2. Confirm the Ollama host (default `http://localhost:11434`)
+3. Choose a model (defaults to `llama3`; pulls it if missing)
+4. Run the connection test to verify the daemon is reachable
 5. Configuration is saved automatically to `.env`
 
 ### Manual Configuration (Optional)
 
 If you prefer to configure manually or skip the Setup Wizard:
 
-#### Get API Key
+1) Install Ollama and pull a model:
+```bash
+ollama pull llama3
+```
 
-**Anthropic (Claude) - Recommended**:
-- Go to [console.anthropic.com](https://console.anthropic.com/)
-- Sign up or log in
-- Navigate to API Keys
-- Create a new API key
-- Copy the key
+2) Create your env file:
+```bash
+cp .env.example .env
+```
 
-**OpenAI (GPT)**:
-- Go to [platform.openai.com](https://platform.openai.com/)
-- Sign up or log in
-- Navigate to API Keys
-- Create a new API key
-- Copy the key
-
-**Google Gemini**:
-- Go to [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
-- Sign in with your Google account
-- Create a new API key
-- Copy the key
+3) Edit `.env` with your host/model:
+```env
+AI_PROVIDER=ollama
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3
+```
 
 #### Configure `.env` File
 
@@ -147,27 +142,12 @@ If you prefer to configure manually or skip the Setup Wizard:
    # macOS/Linux: nano .env
    ```
 
-3. Add your key:
+3. Set your Ollama host/model (no API key needed):
    ```env
-   # For Anthropic:
-   ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
-   AI_PROVIDER=anthropic
-
-   # OR for OpenAI:
-   OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxx
-   AI_PROVIDER=openai
-
-   # OR for Google Gemini:
-   GEMINI_API_KEY=AIzaSyDxxxxxxxxxxxxxxxxxxxxxxx
-   AI_PROVIDER=gemini
+   AI_PROVIDER=ollama
+   OLLAMA_HOST=http://localhost:11434
+   OLLAMA_MODEL=llama3
    ```
-
-### Cost Considerations
-
-- **Anthropic Claude**: Pay-as-you-go, ~$0.003 per request
-- **OpenAI GPT-4**: Pay-as-you-go, ~$0.01-0.03 per request
-
-*Costs are approximate and based on typical usage*
 
 ## First Run
 
@@ -179,10 +159,10 @@ python main.py
 
 The **Setup Wizard** will automatically appear on your first run to guide you through configuration:
 
-1. **Select AI Provider** - Choose between Anthropic, OpenAI, or Google Gemini
-2. **Enter API Key** - Paste your API key securely
-3. **Test Connection** - The wizard tests your key to ensure it works
-4. **Save Configuration** - Your settings are automatically saved to `.env`
+1. **Confirm Ollama Host** - Defaults to `http://localhost:11434`
+2. **Choose Model** - Defaults to `llama3`; pulls if not present
+3. **Test Connection** - Verifies the Ollama daemon is reachable
+4. **Save Configuration** - Settings are automatically saved to `.env`
 
 ### Step 2: Verify Installation (Optional)
 
@@ -202,8 +182,8 @@ python src/config.py
 Expected output:
 ```
 Configuration loaded successfully:
-Config(provider=anthropic, hotkey=ctrl+shift+g)
-API Key present: Yes
+Config(provider=ollama, hotkey=ctrl+shift+g)
+Ollama reachable: Yes
 ```
 
 ### Step 3: Test Game Detection (Optional)
@@ -224,7 +204,7 @@ Once the Setup Wizard completes:
 
 Loading configuration...
 ✓ Configuration loaded
-  AI Provider: anthropic
+  AI Provider: ollama
   Hotkey: ctrl+shift+g
 
 Initializing game detector...
@@ -252,25 +232,22 @@ On Linux:
 sudo apt-get install python3-pyqt6
 ```
 
-### "No API key found"
+### "Cannot reach Ollama" / "Connection refused"
 
 **Solution**:
-1. Make sure `.env` file exists (not `.env.example`)
-2. Check that the API key is correctly copied
-3. Ensure no extra spaces or quotes around the key
-4. Verify the `AI_PROVIDER` matches your key type
+1. Ensure the Ollama daemon is running (`ollama serve` or service)
+2. Verify `.env` has the right host (default `http://localhost:11434`)
+3. Pull the model: `ollama pull llama3`
+4. Use Settings → AI Providers → Test Connection inside the app
 
 ### "Game not detected"
 
 **Solution**:
 1. Make sure the game is actually running
 2. Check the game is in the supported list
-3. Try adding it manually to `src/game_detector.py`
+3. Try adding it via the GUI: **Settings -> Game Profiles -> Add Custom Profile**
 
-Add to the `KNOWN_GAMES` dictionary:
-```python
-"yourgame.exe": "Your Game Name",
-```
+Or verify `src/game_detector.py` has the game in `common_games`.
 
 ### GUI doesn't start on Linux
 
@@ -293,13 +270,12 @@ cd /path/to/gaming-ai-assistant
 python main.py
 ```
 
-### High API Costs
+### Performance / Model Too Slow
 
 **Solution**:
-1. Be mindful of question length
-2. Clear chat history regularly (uses less tokens)
-3. Use Anthropic Claude (generally cheaper than GPT-4)
-4. Set up billing alerts in your AI provider dashboard
+1. Switch to a lighter model (e.g., `mistral` instead of larger models)
+2. Close other heavy processes to free CPU/GPU for Ollama
+3. Reduce context length in settings if available
 
 ## Advanced Configuration
 

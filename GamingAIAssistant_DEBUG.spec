@@ -31,13 +31,13 @@ a = Analysis(
         'knowledge_pack', 'knowledge_store', 'knowledge_index', 'knowledge_ingestion',
         'knowledge_integration', 'knowledge_packs_tab',
         'session_logger', 'session_coaching', 'session_recap_dialog',
-        'anthropic', 'openai', 'google.generativeai',
         'psutil', 'requests', 'bs4', 'dotenv', 'cryptography', 'keyring', 'pynput',
         'ui.design_system', 'ui.tokens', 'ui.icons',
         'ui.components.buttons', 'ui.components.inputs', 'ui.components.cards',
         'ui.components.layouts', 'ui.components.navigation', 'ui.components.modals',
         'ui.components.dashboard_button', 'ui.components.avatar_display', 'ui.components.overlay',
-        'ui.components.dashboard'
+        'ui.components.dashboard',
+        'omnix_hud'
     ],
     hookspath=[],
     hooksconfig={},

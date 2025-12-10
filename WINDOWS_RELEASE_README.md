@@ -2,13 +2,20 @@
 
 **Your AI Gaming Companion** 🎮
 
-Automatically detects your game and provides real-time AI assistance using Claude AI.
+Automatically detects your game and provides real-time AI assistance using Ollama (local AI).
 
 ---
 
 ## 📥 Installation (For Users)
 
-### If you received a pre-built executable:
+### Prerequisites
+
+1. **Install Ollama** (Required for AI)
+   - Download from: https://ollama.com/download
+   - Install and run it
+   - Open Command Prompt and run: `ollama pull llama3`
+
+### Run the App
 
 1. **Extract the zip file**
    - Extract `GamingAIAssistant.zip` to any folder
@@ -18,12 +25,9 @@ Automatically detects your game and provides real-time AI assistance using Claud
    - The Setup Wizard will appear automatically on first run
 
 3. **Complete Setup Wizard**
-   - Select your AI provider:
-     - **Anthropic Claude** (recommended) - https://console.anthropic.com/
-     - **OpenAI GPT** - https://platform.openai.com/api-keys
-     - **Google Gemini** - https://aistudio.google.com/app/apikey
-   - Enter your API key
-   - Your key is securely stored (encrypted, not in .env)
+   - Confirm Ollama host (default `http://localhost:11434`)
+   - Choose your model (e.g., `llama3`)
+   - No API keys required!
 
 4. **Play your game**
    - Launch any supported game
@@ -83,52 +87,29 @@ Automatically detects your game and provides real-time AI assistance using Claud
    - "Explain this game mechanic"
    - "Best character builds?"
 
-5. **Get instant AI responses** from Claude!
+5. **Get instant AI responses** from your local AI!
 
 ---
 
 ## ⚙️ Features
 
 ✅ **Auto Game Detection** - Automatically knows what you're playing
-✅ **Real-Time AI Assistance** - Powered by Claude (Anthropic)
+✅ **Real-Time AI Assistance** - Powered by local Ollama AI
 ✅ **Game-Specific Knowledge** - Context-aware responses
 ✅ **Web Scraping** - Pulls info from wikis and forums
 ✅ **Dark Theme GUI** - Easy on the eyes
 ✅ **System Tray** - Runs in background
 ✅ **Hotkey Access** - Ctrl+Shift+G anytime
 ✅ **Conversation History** - Remembers context
+✅ **Privacy First** - All AI processing runs locally
 
 ---
 
 ## 🔧 Requirements
 
 - **Windows 10 or 11**
-- **Anthropic API Key** (free tier available)
-- **Internet connection** (for AI queries)
-
-### Getting an API Key:
-
-Choose your preferred AI provider:
-
-**Anthropic Claude (Recommended):**
-1. Visit: https://console.anthropic.com/
-2. Create a free account
-3. Navigate to API Keys section
-4. Click "Create Key"
-5. Copy your key and paste it into the Setup Wizard
-
-**OpenAI GPT:**
-1. Visit: https://platform.openai.com/api-keys
-2. Create account and add billing
-3. Create API key
-4. Paste into Setup Wizard
-
-**Google Gemini:**
-1. Visit: https://aistudio.google.com/app/apikey
-2. Click "Get API Key"
-3. Paste into Setup Wizard
-
-**Cost:** Most models have affordable pricing. Claude Haiku is ~$0.25 per 1M input tokens
+- **Ollama** installed and running
+- **4GB+ RAM** (8GB+ recommended for AI models)
 
 ---
 
@@ -143,8 +124,6 @@ GamingAIAssistant/
 └── [library files]           # Python dependencies
 ```
 
-**Note:** API keys are stored securely by the application, not in separate files.
-
 ---
 
 ## 🐛 Troubleshooting
@@ -154,9 +133,10 @@ GamingAIAssistant/
 - Run as Administrator
 - Check that Setup Wizard completed successfully
 
-### Setup Wizard doesn't appear
-- Check that you're running the first time
-- Go to Settings → Providers to enter your API key manually
+### "Cannot connect to Ollama"
+- Ensure Ollama app is running in the system tray
+- Run `ollama list` in command prompt to verify models are installed
+- Check settings in the app
 
 ### Game not detected
 - Check if game is in the supported list
@@ -164,10 +144,9 @@ GamingAIAssistant/
 - Try restarting the app
 
 ### AI not responding
-- Verify API key in Settings → Providers
-- Check internet connection
+- Verify Ollama is running
 - Try asking a different question
-- Ensure Anthropic account has credits
+- Check if your PC has enough free RAM
 
 ### Hotkey not working
 - Check if another app uses Ctrl+Shift+G
@@ -176,27 +155,11 @@ GamingAIAssistant/
 
 ---
 
-## 💰 API Usage & Costs
-
-### Claude Haiku Pricing:
-- **Input**: $0.25 per 1M tokens (~750,000 words)
-- **Output**: $1.25 per 1M tokens
-
-### Typical Usage:
-- **1 question**: ~200-500 tokens ($0.0001 - $0.0003)
-- **100 questions**: ~$0.01 - $0.03
-- **Very affordable** for personal use!
-
-### Free Tier:
-Anthropic offers $5 in free credits for new users.
-
----
-
 ## 🔒 Privacy & Security
 
-- **Your API key is stored locally** in the .env file
-- **No data is sent** to anyone except Anthropic
-- **Conversation history** is stored in memory only
+- **Local AI**: All processing happens on your machine
+- **No data is sent** to the cloud
+- **Conversation history** is stored locally
 - **No telemetry or tracking**
 - **Open source** - check the code on GitHub
 
@@ -228,7 +191,6 @@ To check for updates:
 1. Visit the GitHub repository
 2. Download the latest release
 3. Replace the old files with new ones
-4. Keep your `.env` file with your API key
 
 ---
 
@@ -240,7 +202,7 @@ MIT License - Free to use and modify
 
 ## 🙏 Credits
 
-- **AI Provider**: Anthropic (Claude)
+- **AI Provider**: Ollama (Local LLMs)
 - **GUI Framework**: PyQt6
 - **Game Detection**: psutil
 - **Web Scraping**: BeautifulSoup4
@@ -264,6 +226,6 @@ Press **Ctrl+Shift+G** anytime in-game for instant assistance.
 
 ---
 
-**Version**: 1.0.0
-**Built with**: Python, PyQt6, Claude AI
+**Version**: 2.0.0
+**Built with**: Python, PyQt6, Ollama
 **Status**: Production Ready ✅

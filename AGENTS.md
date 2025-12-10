@@ -1,35 +1,36 @@
-# Repository Guidelines
+# Agent Guidelines - Omnix Gaming Companion
 
-## Project Structure & Modules
-- `src/`: Core application (AI routing, credential storage, game detection, PyQt6 UI, design system). `src/ui/components/` hosts reusable widgets; `src/knowledge_*` manages TF-IDF search; `src/macro_*` handles automation.
-- `frontend/`: Web assets for the dashboard/overlay integrations.
-- `tests/`: Pytest suite plus utility scripts; note `pytest.ini` ignores some heavier test files unless called explicitly.
-- `scripts/` and root `*.bat` helpers: local builds, coverage, GUI smoke tests. Build outputs land in `build/` and `dist/`.
-- `docs/` and root markdown files (e.g., `CLAUDE.md`, `TESTING.md`): deeper architecture and QA notes.
+## Build & Test Commands
+**Setup:** `python -m venv .venv; .\.venv\Scripts\activate; pip install -r requirements.txt` (dev: `requirements-dev.txt`)  
+**Run app:** `python main.py`  
+**Single test:** `pytest tests/unit/test_game_detector.py -v` or `pytest -k game_detector`  
+**All tests:** `pytest` | **Coverage:** `pytest --cov=src --cov-report=html`  
+**Lint/format:** `pre-commit run --all-files` (Black 100cols, isort, flake8, bandit)  
+**Frontend:** `cd frontend && npm run dev` | **Windows build:** `python build_windows_exe.py`
 
-## Build, Test, and Development Commands
-- Create env: `python -m venv .venv; .\.venv\Scripts\activate`
-- Install runtime deps: `pip install -r requirements.txt`; dev extras: `pip install -r requirements-dev.txt`.
-- Run app from source: `python main.py` (reads `.env` and keyring config).
-- Tests: `pytest` (respects ignores in `pytest.ini`); full coverage: `pytest --cov=src --cov-report=html`.
-- Lint/format/security sweep: `pre-commit run --all-files` (Black 100 cols, isort, Flake8, Bandit, markdownlint).
-- Windows build: `python build_windows_exe.py` or `pyinstaller GamingAIAssistant.spec` (artifacts in `dist/`).
-
-## Coding Style & Naming
-- Python 3.8+ with 4-space indentation; prefer type hints where practical.
-- Formatting via Black (line length 100) and isort (profile=black). Flake8 (`--max-line-length=127`, ignore E203) governs linting; fix warnings before commit.
-- Tests follow `test_*.py` / `*_test.py`, classes `Test*`, functions `test_*`. Keep module/file names descriptive (e.g., `game_detector.py`, `knowledge_store.py`).
-
-## Testing Guidelines
-- Run `pytest` locally before PRs; add `-n auto` for speed if needed. For focused runs: `pytest tests/game` or `pytest -k game_detector`.
-- Generate coverage when touching core logic or security-sensitive areas and review `htmlcov/index.html`.
-- UI/games tests that are ignored by default (`test_gui_minimal.py`, `test_macro_runner_execution.py`, etc.) should be invoked directly when you change related code.
-
-## Commit & Pull Request Guidelines
-- Commit style is short, imperative summaries (e.g., "Fix application functionality", "Move AI thread to assistant"). Group related changes per commit.
-- Before pushing: `pre-commit run --all-files` and relevant `pytest` scope; attach coverage/screenshot evidence for UI or gameplay-detection changes.
-- PRs should include: brief problem/solution statement, impacted modules, test commands/output, and note any config/env prerequisites (`.env`, keyring). Link issues when available.
+## Code Style & Architecture
+**Python 3.8+:** 4-space indent, type hints preferred, Black (100 chars), isort (profile=black), flake8 (127 chars, ignore E203)  
+**Imports:** `from src.module import X` (never circular imports)  
+**Architecture:** Strict layered design - GUI (PyQt6) → Business Logic → Data/Integration → Persistence  
+**UI Components:** Use `src/ui/tokens.py` colors/spacing, reusable components in `src/ui/components/`  
+**Testing:** `test_*.py` / `*_test.py`, classes `Test*`, functions `test_*`, use markers `@pytest.mark.unit` etc.
 
 ## Security & Configuration
-- Secrets live in keyring/`.env`; never commit keys (hooks include `detect-private-key`). `.env.example` documents required vars; prefer Anthropic/OpenAI/Gemini keys set via Setup Wizard or manual edit.
-- Keep local data in `~/.gaming_ai_assistant/` (profiles, macros, themes). Avoid altering user directories in tests; use temp paths/fixtures from `conftest.py`.
+**Secrets:** Store in keyring/`.env` (never commit), use `CredentialStore.get_key()`  
+**Local data:** `~/.gaming_ai_assistant/`, never alter user dirs in tests  
+**API Keys:** Via secure keyring, test with `CredentialStore.validate_key()`  
+**Cross-platform:** Windows (pywin32), Linux/macOS (keyring), use `QT_QPA_PLATFORM=offscreen` for headless
+
+## Key Patterns & Files
+**AI Providers:** Implement `AIProvider` protocol in `providers.py`, use factory `create_provider()`  
+**Game Detection:** Passive polling via `GameWatcher` (5s), match against `game_profiles.json`  
+**Macros:** `MacroRunner.execute_macro()` in background, `pynput` for input simulation  
+**Knowledge:** TF-IDF semantic search in `knowledge_index.py`, augment prompts via `KnowledgeIntegration`  
+**Error Handling:** Log all failures, never silent fallbacks, use Qt signals for GUI updates
+
+## Essential Testing
+**Unit tests:** Mock everything external (providers, processes, files)  
+**Integration tests:** Real file I/O, fake API responses  
+**UI tests:** Set `QT_QPA_PLATFORM=offscreen` before importing PyQt6  
+**Headless CI:** Set `OMNIX_MASTER_PASSWORD` env var for credential testing  
+**Focus:** When changing UI/game code, explicitly run `test_gui_minimal.py`, `test_macro_runner_execution.py`

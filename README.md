@@ -323,7 +323,9 @@ For detailed architecture documentation, see [CLAUDE.md](CLAUDE.md).
 ## ⚙️ Configuration
 
 ### Secure API Key Storage
-API keys are stored securely using your system's credential manager:
+Local Ollama mode does **not** need API keys. If you connect to a secured or remote
+Ollama endpoint, any required credentials are stored securely using your system's
+credential manager:
 - **Windows**: Windows Credential Manager
 - **macOS**: Keychain
 - **Linux**: SecretService with encrypted file fallback
@@ -334,8 +336,10 @@ Keys are encrypted with AES-256 and never stored in plain text.
 Edit `.env` to customize the application:
 
 ```env
-# AI Provider (choose one: anthropic, openai, or gemini)
-AI_PROVIDER=anthropic
+# AI Provider (Ollama-first)
+AI_PROVIDER=ollama
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3
 
 # Application Settings
 OVERLAY_HOTKEY=ctrl+shift+g    # Hotkey to toggle window
@@ -474,11 +478,11 @@ See `requirements.txt` for complete dependency list.
 
 ## ⚠️ Troubleshooting
 
-### "No API key found" or Authentication Errors
-- Run the Setup Wizard (appears on first launch)
-- Verify API key format (should start with `sk-ant-`, `sk-`, or provider-specific prefix)
-- Check credential storage: Settings → AI Providers → Test Connection
-- Keys are stored in system keyring, not `.env` file
+### Ollama connection issues
+- Verify the Ollama daemon is running (`ollama serve` or the installed service)
+- Check `OLLAMA_HOST` matches your daemon address (default `http://localhost:11434`)
+- Ensure the model is pulled locally: `ollama pull llama3`
+- Use Settings → AI Providers → Test Connection to validate connectivity
 
 ### Game Not Detected
 - Verify the game is actually running
@@ -559,26 +563,24 @@ For issues, questions, or suggestions:
 
 ## 📝 Recent Updates
 
-### Version 1.3+ (2025-11-20)
-**New Features:**
-- ✅ **Ollama Support** - Local AI model support re-added with full integration
-  - Run AI models completely offline and for free
-  - No API key required, unlimited usage
-  - Support for llama3, mistral, codellama, and other Ollama models
+### Version 2.0 (Ollama-first release)
+- ✅ **Ollama-only defaults** – App now ships configured for local Ollama (no API keys)
+- ✅ **Simplified setup** – Setup Wizard focuses on Ollama host/model selection
+- ✅ **Lean dependencies** – Removed cloud provider SDKs from core install
 
-**CI/CD & Infrastructure:**
+### CI/CD & Infrastructure
 - ✅ **CI/CD Pipeline** - Self-hosted Proxmox infrastructure with automated testing
 - ✅ **Staging Deployment** - Automated deployment to staging environment
 - ✅ **Comprehensive Testing** - 20+ CI integration tests for pipeline validation
 - ✅ **Deployment Tools** - Verification scripts and automated backup system
 
-**Critical Bug Fixes:**
+### Critical Bug Fixes
 - ✅ **Knowledge Index Persistence** - Fixed TF-IDF model state not persisting to disk
   - Search results now remain accurate after application restarts
   - No more random/irrelevant knowledge pack search results
 - ✅ **Circular Import Resolution** - Fixed startup errors from inconsistent import patterns
 
-**Technical Improvements:**
+### Technical Improvements
 - ✅ **Enhanced Documentation** - Comprehensive CI/CD guides and quick references
 - ✅ **Improved Security** - Enhanced credential storage and validation
 - ✅ **Performance Optimizations** - Faster startup and reduced memory usage
@@ -629,7 +631,7 @@ For issues, questions, or suggestions:
 - ✅ **Parameter translation** - Maps common parameters (max_tokens → num_predict)
 - ✅ **Flexible hosting** - Supports both local and remote Ollama instances
 
-### Supported AI Models (via Ollama)
+### Example Ollama Models
 - ✅ **llama3** - Fast, general-purpose (recommended)
 - ✅ **mistral** - Fast and efficient alternative
 - ✅ **codellama** - Optimized for technical content

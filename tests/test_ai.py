@@ -6,34 +6,17 @@ import ai_router
 from ai_router import AIRouter
 import ai_assistant
 from ai_assistant import AIAssistant
-from providers import ProviderAuthError, ProviderRateLimitError
+from src.providers import ProviderError, ProviderConnectionError
 
 
 class StubConfig:
-    def __init__(self, keys, ai_provider="anthropic"):
+    def __init__(self, keys, ai_provider="ollama"):
         self.ai_provider = ai_provider
-        self._keys = dict(keys)
-
-    def get_api_key(self, provider_name):
-        return self._keys.get(provider_name)
+        self.ollama_host = "http://localhost:11434"
+        self.ollama_model = "llama3"
 
     def get_effective_provider(self):
-        if self._keys.get(self.ai_provider):
-            return self.ai_provider
-        for provider in ["anthropic", "openai", "gemini", "ollama"]:
-            if self._keys.get(provider):
-                return provider
-        return self.ai_provider
-
-    def set_api_key(self, provider, api_key):
-        self._keys[provider] = api_key
-
-    def clear_api_key(self, provider):
-        self._keys.pop(provider, None)
-
-    def has_provider_key(self, provider=None):
-        target = provider or self.ai_provider
-        return bool(self._keys.get(target))
+        return "ollama"
 
 
 def _fake_provider(name):
@@ -45,45 +28,6 @@ def _fake_provider(name):
         is_healthy=True, message="ok", error_type=None, details={}
     )
     return provider
-
-
-@pytest.mark.unit
-def test_airouter_falls_back_to_available_provider(monkeypatch):
-    cfg = StubConfig({"openai": "key-openai"}, ai_provider="anthropic")
-
-    def fake_create(provider_name, api_key=None):
-        return _fake_provider(provider_name)
-
-    monkeypatch.setattr(ai_router, "create_provider", fake_create)
-
-    router = AIRouter(config=cfg)
-    provider = router.get_default_provider()
-
-    assert provider.name == "openai"
-    assert router.chat([{"role": "user", "content": "hi"}])["content"] == "openai-ok"
-
-
-@pytest.mark.unit
-def test_airouter_propagates_rate_limit(monkeypatch):
-    cfg = StubConfig({"anthropic": "key-anthropic"}, ai_provider="anthropic")
-    router = AIRouter(config=cfg)
-
-    limited_provider = _fake_provider("anthropic")
-    limited_provider.chat.side_effect = ProviderRateLimitError("slow down")
-    router._providers = {"anthropic": limited_provider}
-
-    with pytest.raises(ProviderRateLimitError):
-        router.chat([{"role": "user", "content": "hi"}], provider="anthropic")
-
-
-@pytest.mark.unit
-def test_airouter_requires_configured_provider(monkeypatch):
-    cfg = StubConfig({})
-    router = AIRouter(config=cfg)
-    router._providers = {}
-
-    with pytest.raises(ProviderAuthError):
-        router.chat([{"role": "user", "content": "hi"}], provider="openai")
 
 
 class DummyKnowledgeIntegration:
@@ -111,7 +55,7 @@ class StubRouter:
 
 
 def _assistant(config_provider=None, router=None, knowledge_integration=None):
-    monkey_cfg = config_provider or type("Cfg", (), {"ai_provider": "anthropic"})()
+    monkey_cfg = config_provider or StubConfig({})
     monkey_router = router or StubRouter(response="pong")
     monkey_knowledge = knowledge_integration or DummyKnowledgeIntegration()
 
@@ -130,7 +74,7 @@ def test_aiassistant_trims_conversation_history(monkeypatch):
     monkeypatch.setattr(ai_assistant, "get_router", router_factory)
     monkeypatch.setattr(ai_assistant, "get_knowledge_integration", knowledge_factory)
 
-    assistant = AIAssistant(provider="anthropic", config=cfg)
+    assistant = AIAssistant(provider="ollama", config=cfg)
     assistant.current_game = {"name": "Test Game"}
 
     with assistant._history_lock:
@@ -154,7 +98,7 @@ def test_aiassistant_handles_empty_question(monkeypatch):
     monkeypatch.setattr(ai_assistant, "get_router", router_factory)
     monkeypatch.setattr(ai_assistant, "get_knowledge_integration", knowledge_factory)
 
-    assistant = AIAssistant(provider="anthropic", config=cfg)
+    assistant = AIAssistant(provider="ollama", config=cfg)
     result = assistant.ask_question("")
     assert result == "Please provide a question."
 
@@ -162,13 +106,13 @@ def test_aiassistant_handles_empty_question(monkeypatch):
 @pytest.mark.unit
 def test_aiassistant_formats_provider_errors(monkeypatch):
     cfg, _, knowledge_factory = _assistant()
-    failing_router = StubRouter(error=ProviderRateLimitError("slow"))
+    failing_router = StubRouter(error=ProviderError("Ollama error"))
 
     monkeypatch.setattr(ai_assistant, "get_router", lambda cfg=None: failing_router)
     monkeypatch.setattr(ai_assistant, "get_knowledge_integration", knowledge_factory)
 
-    assistant = AIAssistant(provider="anthropic", config=cfg)
+    assistant = AIAssistant(provider="ollama", config=cfg)
     assistant.current_game = {"name": "Test Game"}
 
     message = assistant.ask_question("Any tips?")
-    assert "Rate Limit" in message
+    assert "Ollama error" in message

@@ -1,61 +1,54 @@
 """
-Unit tests for Config module
+Test suite for Config module
 
-Tests configuration management, API key handling, and persistence.
+Tests configuration loading, saving, and defaults.
 """
-import pytest
 import os
+import json
+import pytest
 from pathlib import Path
+from unittest.mock import patch, MagicMock
+from src.config import Config
 
 
 @pytest.mark.unit
 class TestConfig:
-    """Test Config module functionality"""
+    """Test Config functionality"""
 
-    def test_config_initialization(self, clean_config_dir):
-        """Test creating a Config instance"""
-        from config import Config
-
-        config = Config(require_keys=False)
+    def test_config_initialization(self, temp_config_dir):
+        """Test config initialization"""
+        config = Config(config_dir=str(temp_config_dir))
         assert config is not None
-        assert hasattr(config, 'ai_provider')
+        assert config.config_dir == str(temp_config_dir)
 
-    def test_config_ai_provider_default(self, clean_config_dir):
-        """Test default AI provider setting"""
-        from config import Config
+    def test_config_ai_provider_default(self, temp_config_dir):
+        """Test default AI provider is set"""
+        config = Config(config_dir=str(temp_config_dir))
+        # Defaults to ollama
+        assert config.ai_provider == "ollama"
 
-        config = Config(require_keys=False)
-        provider = config.ai_provider
-        assert provider in ["anthropic", "openai", "gemini"]
+    def test_config_has_provider_key(self, temp_config_dir):
+        """Test has_provider_key check"""
+        config = Config(config_dir=str(temp_config_dir))
+        
+        # Ollama always has "key" (it doesn't need one)
+        assert config.has_provider_key("ollama") is True
 
-    def test_config_has_provider_key(self, clean_config_dir):
-        """Test checking if provider has key configured"""
-        from config import Config
+    def test_config_overlay_settings(self, temp_config_dir):
+        """Test overlay settings"""
+        config = Config(config_dir=str(temp_config_dir))
+        
+        # Check defaults
+        assert config.overlay_width == 900
+        assert config.overlay_height == 700
+        assert config.overlay_opacity == 0.95
 
-        config = Config(require_keys=False)
-        # May or may not have keys - just test the method works
-        result = config.has_provider_key()
-        assert isinstance(result, bool)
-
-    def test_config_overlay_settings(self, clean_config_dir):
-        """Test overlay window settings exist"""
-        from config import Config
-
-        config = Config(require_keys=False)
-        assert hasattr(config, 'overlay_x')
-        assert hasattr(config, 'overlay_y')
-        assert hasattr(config, 'overlay_width')
-        assert hasattr(config, 'overlay_height')
-
-    def test_config_get_effective_provider(self, clean_config_dir):
+    def test_config_get_effective_provider(self, temp_config_dir):
         """Test getting effective provider"""
-        from config import Config
+        config = Config(config_dir=str(temp_config_dir))
+        assert config.get_effective_provider() == "ollama"
 
-        config = Config(require_keys=False)
-        effective = config.get_effective_provider()
-        assert effective is None or effective in ["anthropic", "openai", "gemini"]
-
-    def test_config_persistence(self, clean_config_dir, temp_dir):
+    def test_config_persistence(self, temp_config_dir, temp_dir):
         """Test saving and loading configuration"""
         from config import Config
 
@@ -83,7 +76,7 @@ class TestConfigEdgeCases:
         config = Config(config_path=str(config_path), require_keys=False)
         assert config is not None
 
-    def test_config_get_with_default(self, clean_config_dir):
+    def test_config_get_with_default(self, temp_config_dir):
         """Test Config.get() with default value"""
         from config import Config
 
@@ -91,7 +84,7 @@ class TestConfigEdgeCases:
         value = config.get("nonexistent_key", "default_value")
         assert value == "default_value"
 
-    def test_config_update_multiple_values(self, clean_config_dir):
+    def test_config_update_multiple_values(self, temp_config_dir):
         """Test updating multiple values at once"""
         from config import Config
 
@@ -100,7 +93,7 @@ class TestConfigEdgeCases:
         assert config.get("test1") == "value1"
         assert config.get("test2") == "value2"
 
-    def test_config_reset_to_defaults(self, clean_config_dir):
+    def test_config_reset_to_defaults(self, temp_config_dir):
         """Test resetting configuration to defaults"""
         from config import Config
 

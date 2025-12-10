@@ -3,12 +3,12 @@ Gaming AI Assistant
 A real-time AI companion for gamers
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "Gaming AI Assistant Team"
 __description__ = "An intelligent gaming companion that detects games and provides AI-powered assistance"
 
-# Ensure the package directory itself is on sys.path so that legacy absolute
-# imports (e.g., ``import config``) continue to work even when importing the
+# Ensure the package directory itself is on sys.path so that absolute
+# imports (e.g., ``import config``) continue to work when importing the
 # package via ``src.*``. This mirrors the runtime behavior in main.py where the
 # ``src`` directory is explicitly added to sys.path.
 import sys as _sys
@@ -23,7 +23,7 @@ from .ai_assistant import AIAssistant
 from .config import Config
 
 __all__ = [
-    'GameDetector',
-    'AIAssistant',
-    'Config',
+    "GameDetector",
+    "AIAssistant",
+    "Config",
 ]

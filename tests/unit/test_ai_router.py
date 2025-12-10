@@ -70,12 +70,15 @@ class TestProviderSelection:
     def test_get_provider_by_name_invalid(self, mock_config_class):
         """Test getting provider with invalid name"""
         mock_config = Mock()
+        mock_config.ollama_host = "http://localhost:11434"
         mock_config_class.return_value = mock_config
 
         router = AIRouter(config=mock_config)
         provider = router.get_provider("invalid_provider_name")
 
-        assert provider is None
+        # In Ollama-only mode, we always return the default provider
+        assert provider is not None
+        assert provider.name == "ollama"
 
 
 class TestProviderInitialization:
@@ -89,7 +92,7 @@ class TestProviderInitialization:
         mock_config_class.return_value = mock_config
 
         router = AIRouter(config=mock_config)
-        router._initialize_providers()
+        router._initialize_provider()
 
         # Should not crash
         assert True
@@ -102,7 +105,7 @@ class TestProviderInitialization:
         mock_config_class.return_value = mock_config
 
         router = AIRouter(config=mock_config)
-        router._initialize_providers()
+        router._initialize_provider()
 
         # Should handle gracefully
         assert True

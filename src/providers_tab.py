@@ -8,19 +8,27 @@ import webbrowser
 from typing import List, Optional
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QComboBox, QGroupBox, QMessageBox
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QComboBox,
+    QGroupBox,
+    QMessageBox,
 )
 from PyQt6.QtCore import pyqtSignal, QThread
 
-from src.config import Config
-from src.provider_tester import ProviderTester
+from config import Config
+from provider_tester import ProviderTester
 
 logger = logging.getLogger(__name__)
 
 
 class TestConnectionThread(QThread):
     """Background thread for testing Ollama connection"""
+
     test_complete = pyqtSignal(bool, str)
 
     def __init__(self, base_url: str, timeout: float = 15.0):
@@ -31,7 +39,9 @@ class TestConnectionThread(QThread):
     def run(self):
         """Run connection test in background"""
         try:
-            success, message = ProviderTester.test_ollama(self.base_url, timeout=self.timeout)
+            success, message = ProviderTester.test_ollama(
+                self.base_url, timeout=self.timeout
+            )
             self.test_complete.emit(success, message)
         except Exception as e:
             logger.error(f"Connection test failed: {e}", exc_info=True)
@@ -40,6 +50,7 @@ class TestConnectionThread(QThread):
 
 class FetchModelsThread(QThread):
     """Background thread for fetching available Ollama models"""
+
     models_fetched = pyqtSignal(list)
     fetch_failed = pyqtSignal(str)
 
@@ -51,12 +62,19 @@ class FetchModelsThread(QThread):
         """Fetch models from Ollama"""
         try:
             import ollama
+
             client = ollama.Client(host=self.base_url)
             models_response = client.list()
-            models = [m.get("name", "") for m in models_response.get("models", []) if m.get("name")]
+            models = [
+                m.get("name", "")
+                for m in models_response.get("models", [])
+                if m.get("name")
+            ]
             self.models_fetched.emit(models)
         except ImportError:
-            self.fetch_failed.emit("Ollama library not installed. Run: pip install ollama")
+            self.fetch_failed.emit(
+                "Ollama library not installed. Run: pip install ollama"
+            )
         except Exception as e:
             logger.warning(f"Failed to fetch models: {e}")
             self.fetch_failed.emit(str(e))
@@ -108,7 +126,9 @@ class ProvidersTab(QWidget):
         host_label.setStyleSheet("font-size: 11pt; font-weight: bold;")
         ollama_layout.addWidget(host_label)
 
-        host_help = QLabel("Default: http://localhost:11434 (local). Can point to remote Ollama instances.")
+        host_help = QLabel(
+            "Default: http://localhost:11434 (local). Can point to remote Ollama instances."
+        )
         host_help.setStyleSheet("font-size: 9pt; color: #9ca3af;")
         ollama_layout.addWidget(host_help)
 
@@ -136,7 +156,9 @@ class ProvidersTab(QWidget):
         model_label.setStyleSheet("font-size: 11pt; font-weight: bold;")
         ollama_layout.addWidget(model_label)
 
-        model_help = QLabel("Select a model from your Ollama installation, or type a model name.")
+        model_help = QLabel(
+            "Select a model from your Ollama installation, or type a model name."
+        )
         model_help.setStyleSheet("font-size: 9pt; color: #9ca3af;")
         ollama_layout.addWidget(model_help)
 
@@ -279,7 +301,9 @@ class ProvidersTab(QWidget):
         links_row.addWidget(ollama_link)
 
         models_link = QPushButton("📚 Browse Models")
-        models_link.clicked.connect(lambda: webbrowser.open("https://ollama.com/library"))
+        models_link.clicked.connect(
+            lambda: webbrowser.open("https://ollama.com/library")
+        )
         models_link.setStyleSheet("""
             QPushButton {
                 background-color: #8b5cf6;
@@ -330,8 +354,8 @@ class ProvidersTab(QWidget):
     def get_config(self) -> dict:
         """Get current configuration from UI"""
         return {
-            'ollama_host': self.host_input.text().strip() or "http://localhost:11434",
-            'ollama_model': self.model_combo.currentText().strip() or "llama3"
+            "ollama_host": self.host_input.text().strip() or "http://localhost:11434",
+            "ollama_model": self.model_combo.currentText().strip() or "llama3",
         }
 
     def get_provider_config(self) -> tuple:
@@ -341,23 +365,25 @@ class ProvidersTab(QWidget):
     def apply_config(self):
         """Apply configuration changes"""
         config_values = self.get_config()
-        self.config.ollama_host = config_values['ollama_host']
-        self.config.ollama_model = config_values['ollama_model']
+        self.config.ollama_host = config_values["ollama_host"]
+        self.config.ollama_model = config_values["ollama_model"]
         self.config_changed.emit(config_values)
-        logger.info(f"Applied Ollama config: host={config_values['ollama_host']}, model={config_values['ollama_model']}")
+        logger.info(
+            f"Applied Ollama config: host={config_values['ollama_host']}, model={config_values['ollama_model']}"
+        )
 
     def save_provider_config(self) -> bool:
         """Save provider configuration"""
         try:
             config_values = self.get_config()
-            self.config.ollama_host = config_values['ollama_host']
-            self.config.ollama_model = config_values['ollama_model']
+            self.config.ollama_host = config_values["ollama_host"]
+            self.config.ollama_model = config_values["ollama_model"]
 
             # Save to .env file
             try:
                 Config.save_to_env(
-                    ollama_host=config_values['ollama_host'],
-                    ollama_model=config_values['ollama_model'],
+                    ollama_host=config_values["ollama_host"],
+                    ollama_model=config_values["ollama_model"],
                     overlay_hotkey=self.config.overlay_hotkey,
                     check_interval=self.config.check_interval,
                 )
@@ -371,7 +397,9 @@ class ProvidersTab(QWidget):
             return True
         except Exception as e:
             logger.error(f"Failed to save config: {e}", exc_info=True)
-            QMessageBox.critical(self, "Save Failed", f"Failed to save configuration:\n{str(e)}")
+            QMessageBox.critical(
+                self, "Save Failed", f"Failed to save configuration:\n{str(e)}"
+            )
             return False
 
     def test_connection(self):
@@ -398,12 +426,16 @@ class ProvidersTab(QWidget):
 
         if success:
             self.status_label.setText("✅ Connected!")
-            self.status_label.setStyleSheet("font-size: 10pt; color: #10b981; font-weight: bold;")
+            self.status_label.setStyleSheet(
+                "font-size: 10pt; color: #10b981; font-weight: bold;"
+            )
             # Also refresh models on successful connection
             self.refresh_models()
         else:
             self.status_label.setText("❌ Failed")
-            self.status_label.setStyleSheet("font-size: 10pt; color: #ef4444; font-weight: bold;")
+            self.status_label.setStyleSheet(
+                "font-size: 10pt; color: #ef4444; font-weight: bold;"
+            )
             QMessageBox.warning(self, "Connection Failed", message)
 
     def refresh_models(self):
