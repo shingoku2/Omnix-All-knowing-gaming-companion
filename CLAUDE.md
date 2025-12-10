@@ -425,26 +425,49 @@ worker.start()
 
 ## Recent Changes
 
-### HRM Integration (2025-12-10) ⭐
+### HRM Integration - Structured Reasoning (2025-12-10) ⭐
 
-**Why:** Enhanced reasoning capabilities for complex gaming scenarios like puzzles and strategy games
+**Implementation**: Structured reasoning templates (no neural inference)
 
-**Changes:**
-- Added Hierarchical Reasoning Model (HRM) integration for enhanced strategic analysis
-- Intelligent routing to HRM for complex reasoning questions in gaming contexts
-- New settings tab for HRM configuration and dependency management
-- Conditional loading with graceful degradation when HRM is unavailable
-- Added PyTorch and HRM dependencies as optional requirements with clear installation instructions
+**Why This Approach**:
+- HRM model trained on puzzles (Sudoku, ARC, Maze), not gaming Q&A
+- Structured templates provide immediate value without domain mismatch
+- No PyTorch model loading required (faster, lighter)
+- Foundation for future fine-tuning on gaming data
 
-**Setup:**
+**Features**:
+- Intelligent question type detection (puzzle, strategy, optimization, sequence)
+- Multi-word phrase recognition for complex reasoning queries
+- Game genre-aware routing (automatically triggers for reasoning-heavy games)
+- Structured reasoning frameworks guide LLM responses
+- Timeout protection (5s default, configurable)
+- Graceful fallback if analysis fails
+
+**How It Works**:
+1. User asks complex reasoning question
+2. HRM detects question type and game context
+3. Generates structured reasoning outline (puzzle solving, strategic planning, optimization analysis, etc.)
+4. Outline prepended to message sent to Ollama
+5. LLM follows reasoning structure in response
+
+**Configuration**:
 ```bash
-# Optional: Install PyTorch for HRM features
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-# Or CPU-only: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-
-# Enable HRM in Settings → HRM Settings tab
-# HRM automatically identifies complex reasoning questions and enhances responses
+# .env
+HRM_ENABLED=true
+HRM_MAX_INFERENCE_TIME=5.0  # Timeout in seconds
 ```
+
+**Example Reasoning Types**:
+- **Puzzle**: "How do I solve this maze?" → Constraint identification, state transitions, systematic search
+- **Strategy**: "Best late-game approach?" → Resource analysis, objective definition, action sequencing
+- **Optimization**: "Fastest leveling route?" → Criteria definition, trade-off analysis, solution comparison
+- **Sequential**: "What order should I do these in?" → Dependency identification, task ordering
+
+**Setup**: Optional PyTorch installation for future enhancements (current implementation doesn't require it)
+
+**Future Phases** (not in scope):
+- Phase 2: Load PyTorch model architecture (no weights)
+- Phase 3: Fine-tune on gaming Q&A dataset (requires data collection)
 
 ### Ollama-Only Migration (2025-12-06) ⭐
 

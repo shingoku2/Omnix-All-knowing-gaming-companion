@@ -49,6 +49,7 @@ DEFAULT_MACRO_SAFETY_UNDERSTOOD = False
 DEFAULT_MAX_MACRO_REPEAT = 10
 DEFAULT_MACRO_EXECUTION_TIMEOUT = 30
 DEFAULT_HRM_ENABLED = False
+DEFAULT_HRM_MAX_INFERENCE_TIME = 5.0  # seconds
 
 
 class Config:
@@ -144,6 +145,9 @@ class Config:
         # HRM Settings
         self.hrm_enabled = (
             os.getenv("HRM_ENABLED", str(DEFAULT_HRM_ENABLED)).lower() == "true"
+        )
+        self.hrm_max_inference_time = float(
+            os.getenv("HRM_MAX_INFERENCE_TIME", str(DEFAULT_HRM_MAX_INFERENCE_TIME))
         )
 
         # Extended Settings (stored in separate JSON files)
@@ -418,6 +422,7 @@ class Config:
         ollama_host: Optional[str] = None,
         ollama_model: Optional[str] = None,
         hrm_enabled: Optional[bool] = None,
+        hrm_max_inference_time: Optional[float] = None,
     ):
         """
         Save configuration to .env file.
@@ -436,6 +441,7 @@ class Config:
             ollama_host: Ollama host URL
             ollama_model: Default Ollama model
             hrm_enabled: Whether HRM features are enabled
+            hrm_max_inference_time: Maximum time for HRM analysis (seconds)
         """
         # Determine .env file location
         if getattr(sys, "frozen", False):
@@ -478,6 +484,8 @@ class Config:
 
         if hrm_enabled is not None:
             existing_content["HRM_ENABLED"] = str(hrm_enabled).lower()
+        if hrm_max_inference_time is not None:
+            existing_content["HRM_MAX_INFERENCE_TIME"] = str(hrm_max_inference_time)
 
         # Write to .env file
         with open(env_path, "w", encoding="utf-8") as f:

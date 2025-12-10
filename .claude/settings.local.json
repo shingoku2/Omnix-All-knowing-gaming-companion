@@ -4,7 +4,9 @@
       "Bash(python -m py_compile:*)",
       "Bash(python test_minimal.py:*)",
       "Bash(python -c:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python test_hrm_quick.py:*)"
     ],
     "deny": [],
     "ask": []
