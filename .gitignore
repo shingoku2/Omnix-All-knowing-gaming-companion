@@ -1,4 +1,3 @@
-```
 # Logs and temp files
 *.log
 *.tmp
@@ -42,10 +41,22 @@ Thumbs.db
 coverage/
 htmlcov/
 .coverage
+.coverage.*
+coverage.xml
+coverage.json
 
 # Testing
 .mypy_cache/
 .pytest_cache/
+.tox/
+
+# Tooling
+.pre-commit-cache/
+
+# Credentials and keys
+credentials.enc
+*.pem
+*.key
 
 # Gradle
 .gradle/
@@ -73,4 +84,3 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-```
