@@ -17,7 +17,447 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class GameDetector:
+class import pytest
+import threading
+import time
+import os
+
+import psutil
+
+from src.game_detector import GameDetector
+
+# Dummy logger for patching
+class DummyLogger:
+    def __init__(self):
+        self.messages = []
+    def info(self, *args, **kwargs): self.messages.append(('info', args, kwargs))
+    def error(self, *args, **kwargs): self.messages.append(('error', args, kwargs))
+    def warning(self, *args, **kwargs): self.messages.append(('warning', args, kwargs))
+    def debug(self, *args, **kwargs): self.messages.append(('debug', args, kwargs))
+
+# Dummy GameInfo type for patching
+GameInfo = dict
+
+@pytest.fixture(autouse=True)
+def patch_logger(monkeypatch):
+    dummy_logger = DummyLogger()
+    monkeypatch.setattr("src.game_detector.logger", dummy_logger)
+    return dummy_logger
+
+@pytest.fixture(autouse=True)
+def patch_gameinfo(monkeypatch):
+    monkeypatch.setattr("src.game_detector.GameInfo", GameInfo)
+
+@pytest.fixture
+def detector():
+    det = GameDetector()
+    # Stop background thread for test isolation
+    det.stop_background_scan()
+    return det
+
+@pytest.mark.parametrize(
+    "input_name,expected",
+    [
+        ("League of Legends", "league of legends"),
+        ("VALORANT", "valorant"),
+        ("", ""),
+        (None, ""),
+        ("MiNeCrAfT", "minecraft"),
+    ],
+    ids=[
+        "normalization-lol",
+        "normalization-valorant",
+        "empty-string",
+        "none-input",
+        "mixed-case",
+    ],
+)
+def test_normalize_game_key(input_name, expected):
+    # Act
+    result = GameDetector._normalize_game_key(input_name)
+    # Assert
+    assert result == expected
+
+@pytest.mark.parametrize(
+    "input_name,expected",
+    [
+        ("LeagueClientUx.exe", "leagueclientux.exe"),
+        ("", ""),
+        ("VALORANT.exe", "valorant.exe"),
+        ("MiNeCrAfT.exe", "minecraft.exe"),
+    ],
+    ids=[
+        "exe-normalization",
+        "empty-string",
+        "valorant-exe",
+        "mixed-case-exe",
+    ],
+)
+def test_normalize_process_name(input_name, expected):
+    # Act
+    result = GameDetector._normalize_process_name(input_name)
+    # Assert
+    assert result == expected
+
+def test_rebuild_process_index(detector):
+    # Arrange
+    detector.common_games = {
+        "TestGame": ["TestProc.exe", "testproc.exe", ""],
+        "AnotherGame": ["AnotherProc.exe"],
+    }
+    # Act
+    detector._rebuild_process_index()
+    # Assert
+    assert detector._process_index["testproc.exe"] == "TestGame"
+    assert detector._process_index["anotherproc.exe"] == "AnotherGame"
+    assert "" not in detector._process_index
+
+@pytest.mark.parametrize(
+    "processes,expected",
+    [
+        ([{"name": "LeagueClientUx.exe"}], True),
+        ([{"name": "not_a_game.exe"}], False),
+        ([{"name": ""}], False),
+        ([], False),
+    ],
+    ids=[
+        "game-process-running",
+        "non-game-process",
+        "empty-process-name",
+        "no-processes",
+    ],
+)
+def test_is_process_running(monkeypatch, detector, processes, expected):
+    # Arrange
+    class DummyProc:
+        def __init__(self, info): self.info = info
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs: [DummyProc(p) for p in processes])
+    # Act
+    result = detector._is_process_running("LeagueClientUx.exe")
+    # Assert
+    assert result is expected
+
+def test_is_process_running_exception(monkeypatch, detector):
+    # Arrange
+    def raise_exc(attrs): raise Exception("fail")
+    monkeypatch.setattr(psutil, "process_iter", raise_exc)
+    # Act
+    result = detector._is_process_running("LeagueClientUx.exe")
+    # Assert
+    assert result is False
+
+def test_get_current_time_format(detector):
+    # Act
+    result = detector._get_current_time()
+    # Assert
+    assert isinstance(result, str)
+    assert len(result) >= 19  # "YYYY-MM-DD HH:MM:SS"
+
+def test_get_running_games_happy(monkeypatch, detector):
+    # Arrange
+    dummy_game = {"name": "League of Legends", "exe": "C:\\Games\\LeagueClientUx.exe", "process_name": "LeagueClientUx.exe", "pid": 123, "path": "C:\\Games"}
+    monkeypatch.setattr(detector, "_optimized_scan_running_games", lambda: [dummy_game])
+    # Act
+    result = detector.get_running_games()
+    # Assert
+    assert result == [dummy_game]
+
+def test_get_running_games_exception(monkeypatch, detector):
+    # Arrange
+    monkeypatch.setattr(detector, "_optimized_scan_running_games", lambda: (_ for _ in ()).throw(Exception("fail")))
+    # Act
+    result = detector.get_running_games()
+    # Assert
+    assert result == []
+
+def test_scan_running_games(monkeypatch, detector):
+    # Arrange
+    class DummyProc:
+        def __init__(self, info): self.info = info
+        def as_dict(self, attrs): return self.info
+        @property
+        def pid(self): return self.info.get("pid", 1)
+        def name(self): return self.info.get("name", "")
+    procs = [
+        DummyProc({"pid": 1, "name": "LeagueClientUx.exe", "exe": "C:\\Games\\LeagueClientUx.exe"}),
+        DummyProc({"pid": 2, "name": "VALORANT.exe", "exe": "C:\\Games\\VALORANT.exe"}),
+        DummyProc({"pid": 3, "name": "not_a_game.exe", "exe": "C:\\Games\\not_a_game.exe"}),
+    ]
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs: procs)
+    detector._rebuild_process_index()
+    # Act
+    result = detector._scan_running_games()
+    # Assert
+    names = [g["name"] for g in result]
+    assert "League of Legends" in names
+    assert "Valorant" in names
+    assert "Counter-Strike 2" not in names
+
+def test_build_game_info(monkeypatch, detector):
+    # Arrange
+    class DummyProc:
+        def as_dict(self, attrs): return {"pid": 42, "name": "LeagueClientUx.exe", "exe": "C:\\Games\\LeagueClientUx.exe"}
+        @property
+        def pid(self): return 42
+        def name(self): return "LeagueClientUx.exe"
+    proc = DummyProc()
+    # Act
+    result = detector._build_game_info(proc, "League of Legends")
+    # Assert
+    assert result["name"] == "League of Legends"
+    assert result["exe"] == "C:\\Games\\LeagueClientUx.exe"
+    assert result["process_name"] == "LeagueClientUx.exe"
+    assert result["pid"] == 42
+    assert result["path"] == "C:\\Games"
+
+def test_build_game_info_access_denied(monkeypatch, detector):
+    # Arrange
+    class DummyProc:
+        def as_dict(self, attrs): raise psutil.AccessDenied()
+        @property
+        def pid(self): return 99
+        def name(self): return "VALORANT.exe"
+    proc = DummyProc()
+    # Act
+    result = detector._build_game_info(proc, "Valorant")
+    # Assert
+    assert result["name"] == "Valorant"
+    assert result["exe"] is None or result["exe"] == ""
+    assert result["process_name"] == "VALORANT.exe"
+    assert result["pid"] == 99
+
+def test_start_background_scan_starts_thread(monkeypatch, detector):
+    # Arrange
+    detector._background_thread = None
+    monkeypatch.setattr(detector, "_update_process_cache", lambda: None)
+    # Act
+    detector._start_background_scan()
+    # Assert
+    assert detector._background_thread is not None
+    assert detector._background_thread.is_alive()
+    # Cleanup
+    detector.stop_background_scan()
+
+def test_start_background_scan_already_started(detector):
+    # Arrange
+    detector._background_thread = threading.Thread(target=lambda: None)
+    # Act
+    detector._start_background_scan()
+    # Assert
+    assert detector._background_thread is not None
+
+def test_update_process_cache(monkeypatch, detector):
+    # Arrange
+    detector._last_process_scan = time.time() - 2
+    class DummyProc:
+        def __init__(self, info): self.info = info
+    procs = [DummyProc({"name": "LeagueClientUx.exe"}), DummyProc({"name": "VALORANT.exe"})]
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs: procs)
+    # Act
+    detector._update_process_cache()
+    # Assert
+    assert "leagueclientux.exe" in detector._running_processes_cache
+    assert "valorant.exe" in detector._running_processes_cache
+
+def test_update_process_cache_too_soon(monkeypatch, detector):
+    # Arrange
+    detector._last_process_scan = time.time()
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs: [])
+    # Act
+    detector._update_process_cache()
+    # Assert
+    assert isinstance(detector._running_processes_cache, set)
+
+def test_update_process_cache_exception(monkeypatch, detector):
+    # Arrange
+    def raise_exc(attrs): raise Exception("fail")
+    monkeypatch.setattr(psutil, "process_iter", raise_exc)
+    detector._last_process_scan = time.time() - 2
+    # Act
+    detector._update_process_cache()
+    # Assert
+    assert isinstance(detector._running_processes_cache, set)
+
+def test_get_cached_result(monkeypatch, detector):
+    # Arrange
+    detector._scan_cache = {"default": (time.time(), [{"name": "League of Legends"}])}
+    detector._last_cache_time = time.time()
+    monkeypatch.setattr(detector, "_get_cache_key", lambda: "default")
+    # Act
+    result = detector._get_cached_result()
+    # Assert
+    assert result == [{"name": "League of Legends"}]
+
+def test_get_cached_result_expired(monkeypatch, detector):
+    # Arrange
+    detector._scan_cache = {"default": (time.time() - 10, [{"name": "League of Legends"}])}
+    detector._last_cache_time = time.time() - 10
+    monkeypatch.setattr(detector, "_get_cache_key", lambda: "default")
+    # Act
+    result = detector._get_cached_result()
+    # Assert
+    assert result is None
+
+def test_cache_result(monkeypatch, detector):
+    # Arrange
+    detector._scan_cache = {}
+    monkeypatch.setattr(detector, "_get_cache_key", lambda: "default")
+    # Act
+    detector._cache_result([{"name": "League of Legends"}])
+    # Assert
+    assert "default" in detector._scan_cache
+
+def test_cache_result_max_size(monkeypatch, detector):
+    # Arrange
+    detector._MAX_CACHE_SIZE = 2
+    detector._scan_cache = {
+        "a": (1, []),
+        "b": (2, []),
+    }
+    monkeypatch.setattr(detector, "_get_cache_key", lambda: "c")
+    # Act
+    detector._cache_result([{"name": "League of Legends"}])
+    # Assert
+    assert len(detector._scan_cache) == 2
+    assert "c" in detector._scan_cache
+
+def test_get_cache_key_happy(detector):
+    # Act
+    key = detector._get_cache_key()
+    # Assert
+    assert isinstance(key, str)
+
+def test_get_cache_key_exception(monkeypatch, detector):
+    # Arrange
+    monkeypatch.setattr(detector, "common_games", None)
+    # Act
+    key = detector._get_cache_key()
+    # Assert
+    assert key == "default"
+
+def test_optimized_scan_running_games(monkeypatch, detector):
+    # Arrange
+    detector._running_processes_cache = {"leagueclientux.exe"}
+    detector._process_index = {"leagueclientux.exe": "League of Legends"}
+    class DummyProc:
+        def __init__(self, info): self.info = info
+        def as_dict(self, attrs): return self.info
+        @property
+        def pid(self): return self.info.get("pid", 1)
+        def name(self): return self.info.get("name", "")
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs: [DummyProc({"pid": 1, "name": "LeagueClientUx.exe", "exe": "C:\\Games\\LeagueClientUx.exe"})])
+    # Act
+    result = detector._optimized_scan_running_games()
+    # Assert
+    assert result[0]["name"] == "League of Legends"
+
+def test_optimized_scan_running_games_cache(monkeypatch, detector):
+    # Arrange
+    detector._scan_cache = {"default": (time.time(), [{"name": "League of Legends"}])}
+    detector._last_cache_time = time.time()
+    monkeypatch.setattr(detector, "_get_cache_key", lambda: "default")
+    # Act
+    result = detector._optimized_scan_running_games()
+    # Assert
+    assert result == [{"name": "League of Legends"}]
+
+def test_optimized_scan_running_games_exception(monkeypatch, detector):
+    # Arrange
+    detector._running_processes_cache = {"leagueclientux.exe"}
+    detector._process_index = {"leagueclientux.exe": "League of Legends"}
+    def raise_exc(attrs): raise Exception("fail")
+    monkeypatch.setattr(psutil, "process_iter", raise_exc)
+    # Act
+    result = detector._optimized_scan_running_games()
+    # Assert
+    assert isinstance(result, list)
+
+def test_detect_running_game_happy(monkeypatch, detector):
+    # Arrange
+    dummy_game = {"name": "League of Legends", "pid": 123}
+    monkeypatch.setattr(detector, "_optimized_scan_running_games", lambda: [dummy_game])
+    # Act
+    result = detector.detect_running_game()
+    # Assert
+    assert result == dummy_game
+
+def test_detect_running_game_none(monkeypatch, detector):
+    # Arrange
+    monkeypatch.setattr(detector, "_optimized_scan_running_games", lambda: [])
+    # Act
+    result = detector.detect_running_game()
+    # Assert
+    assert result is None
+
+def test_detect_running_game_exception(monkeypatch, detector):
+    # Arrange
+    monkeypatch.setattr(detector, "_optimized_scan_running_games", lambda: (_ for _ in ()).throw(Exception("fail")))
+    # Act
+    result = detector.detect_running_game()
+    # Assert
+    assert result is None
+
+def test_stop_background_scan(detector):
+    # Arrange
+    detector._background_thread = threading.Thread(target=lambda: time.sleep(0.1))
+    detector._background_thread.start()
+    # Act
+    detector.stop_background_scan()
+    # Assert
+    assert not detector._background_thread.is_alive() or detector._stop_background_scan
+
+def test_del_calls_stop_background_scan(monkeypatch):
+    # Arrange
+    class DummyDetector(GameDetector):
+        def __init__(self):
+            super().__init__()
+            self._called = False
+        def stop_background_scan(self):
+            self._called = True
+    det = DummyDetector()
+    # Act
+    det.__del__()
+    # Assert
+    assert det._called
+
+@pytest.mark.parametrize(
+    "game_name,process_names,existing,expected,expected_warning",
+    [
+        ("CustomGame", ["CustomProc.exe"], [], True, False),
+        ("League of Legends", ["LeagueClientUx.exe"], ["League of Legends"], False, True),
+        ("NewGame", ["LeagueClientUx.exe"], [], False, False),
+        ("AnotherGame", ["CustomProc.exe", "CustomProc.exe"], [], True, False),
+        ("AnotherGame", ["LeagueClientUx.exe", "CustomProc.exe"], [], True, False),
+        ("NoUnique", ["LeagueClientUx.exe"], [], False, True),
+        ("EmptyProc", [], [], True, False),
+    ],
+    ids=[
+        "add-custom-game-happy",
+        "add-existing-game",
+        "add-game-with-duplicate-process",
+        "add-game-with-duplicate-in-list",
+        "add-game-with-one-duplicate",
+        "add-game-no-unique-process",
+        "add-game-empty-process-list",
+    ],
+)
+def test_add_custom_game(monkeypatch, detector, game_name, process_names, existing, expected, expected_warning):
+    # Arrange
+    detector.common_games = {name: ["LeagueClientUx.exe"] for name in existing}
+    detector._rebuild_process_index()
+    # Act
+    result = detector.add_custom_game(game_name, process_names)
+    # Assert
+    assert result is expected
+
+def test_add_custom_game_exception(monkeypatch, detector):
+    # Arrange
+    monkeypatch.setattr(detector, "_normalize_game_key", lambda x: (_ for _ in ()).throw(Exception("fail")))
+    # Act
+    result = detector.add_custom_game("TestGame", ["TestProc.exe"])
+    # Assert
+    assert result is False
+GameDetector:
     """Detects running games on Windows with performance optimizations"""
 
     # Cache settings
@@ -337,6 +777,8 @@ class GameDetector:
     def __del__(self):
         """Cleanup when object is destroyed"""
         self.stop_background_scan()
+
+    def add_custom_game(self, game_name: str, process_names: Optional[List[str]] = None) -> bool:
         """
         Add a custom game to the detection list
 
