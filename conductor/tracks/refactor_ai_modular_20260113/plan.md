@@ -18,7 +18,7 @@
     - [x] Sub-task: Refactor `GamingAIAssistant` to accept an `LLMProvider` and use its methods.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Refactor Ollama Integration' (Protocol in workflow.md)
 
-## Phase 3: Implement OpenAI-Compatible Provider
+## Phase 3: Implement OpenAI-Compatible Provider [checkpoint: ea455c6]
 - [x] Task: Implement `OpenAIProvider`. (cc0bc8e)
     - [x] Sub-task: Write unit tests for `OpenAIProvider` (mocking the HTTP calls).
     - [x] Sub-task: Implement `OpenAIProvider` to support generic `/v1/chat/completions`.
