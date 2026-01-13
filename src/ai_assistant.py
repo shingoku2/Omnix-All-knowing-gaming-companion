@@ -17,7 +17,7 @@ from ai_router import get_router, AIRouter
 from providers import (
     ProviderError,
     LLMProvider,
-    create_provider
+    get_provider
 )
 from knowledge_integration import (
     get_knowledge_integration,
@@ -93,10 +93,7 @@ class AIAssistant:
             self.provider = provider or self.config.ai_provider or "ollama"
             # Initialize default provider instance
             try:
-                self.provider_instance = create_provider(
-                    self.provider, 
-                    base_url=self.config.ollama_base_url
-                )
+                self.provider_instance = get_provider(self.config.get_ai_config())
             except Exception as e:
                 logger.warning(f"Failed to initialize default provider: {e}")
                 # Fallback or placeholder? MockProvider could be useful here

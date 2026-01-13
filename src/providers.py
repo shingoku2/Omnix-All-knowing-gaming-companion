@@ -427,3 +427,35 @@ def create_provider(
         init_kwargs["base_url"] = base_url
 
     return provider_class(**init_kwargs, **kwargs)
+
+
+def get_provider(config: Dict[str, Any]) -> LLMProvider:
+    """
+    Factory function to get the correct LLM provider based on configuration.
+
+    Args:
+        config: Configuration dictionary (e.g., from Config object or env)
+
+    Returns:
+        An instance of an LLMProvider
+
+    Raises:
+        ValueError: If provider type is unknown
+    """
+    provider_type = config.get("AI_PROVIDER", "ollama").lower()
+
+    if provider_type == "ollama":
+        return OllamaProvider(
+            base_url=config.get("OLLAMA_BASE_URL"),
+            default_model=config.get("OLLAMA_MODEL")
+        )
+    elif provider_type == "openai_compatible":
+        return OpenAIProvider(
+            api_key=config.get("AI_API_KEY"),
+            base_url=config.get("AI_BASE_URL"),
+            default_model=config.get("AI_MODEL")
+        )
+    elif provider_type == "mock":
+        return MockProvider()
+    else:
+        raise ValueError(f"Unknown provider: {provider_type}")

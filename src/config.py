@@ -100,7 +100,7 @@ class Config:
         # Credential storage (kept for potential secured Ollama endpoints)
         self.credential_store = CredentialStore()
 
-        # AI Configuration - Ollama only
+        # AI Configuration - Ollama and OpenAI-compatible
         self.ai_provider = os.getenv("AI_PROVIDER", DEFAULT_AI_PROVIDER)
         self.ollama_host = (
             os.getenv("OLLAMA_HOST")
@@ -108,6 +108,11 @@ class Config:
             or DEFAULT_OLLAMA_HOST
         )
         self.ollama_model = os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL)
+
+        # OpenAI-Compatible Configuration
+        self.ai_api_key = os.getenv("AI_API_KEY")
+        self.ai_base_url = os.getenv("AI_BASE_URL")
+        self.ai_model = os.getenv("AI_MODEL")
 
         # Application Settings
         self.overlay_hotkey = os.getenv("OVERLAY_HOTKEY", DEFAULT_OVERLAY_HOTKEY)
@@ -325,6 +330,17 @@ class Config:
         """Get the Ollama host URL."""
         return self.ollama_host
 
+    def get_ai_config(self) -> Dict:
+        """Get AI configuration as a dictionary for the provider factory."""
+        return {
+            "AI_PROVIDER": self.ai_provider,
+            "OLLAMA_BASE_URL": self.ollama_host,
+            "OLLAMA_MODEL": self.ollama_model,
+            "AI_API_KEY": self.ai_api_key,
+            "AI_BASE_URL": self.ai_base_url,
+            "AI_MODEL": self.ai_model
+        }
+
     def set(self, key: str, value):
         """Set a configuration attribute dynamically."""
         setattr(self, key, value)
@@ -346,8 +362,12 @@ class Config:
 
         try:
             config_data = {
+                "ai_provider": self.ai_provider,
                 "ollama_host": self.ollama_host,
                 "ollama_model": self.ollama_model,
+                "ai_api_key": self.ai_api_key,
+                "ai_base_url": self.ai_base_url,
+                "ai_model": self.ai_model,
                 "overlay_hotkey": self.overlay_hotkey,
                 "check_interval": self.check_interval,
                 "overlay_x": self.overlay_x,
