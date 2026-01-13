@@ -10,12 +10,14 @@ while delegating actual API calls to the provider layer.
 import logging
 import os
 import threading
-from typing import Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 
 from config import Config
 from ai_router import get_router, AIRouter
 from providers import (
     ProviderError,
+    LLMProvider,
+    create_provider
 )
 from knowledge_integration import (
     get_knowledge_integration,
@@ -68,7 +70,7 @@ class AIAssistant:
 
     def __init__(
         self,
-        provider: Optional[str] = None,
+        provider: Optional[Any] = None,
         config: Optional[Config] = None,
         session_tokens: Optional[Dict[str, str]] = None,
     ):
@@ -76,14 +78,30 @@ class AIAssistant:
         Initialize AI Assistant
 
         Args:
-            provider: Ignored (always uses Ollama)
+            provider: LLMProvider instance or provider name string
             config: Config instance (if None, creates a new one)
             session_tokens: Ignored (kept for compatibility)
         """
         self.config = config or Config()
         self.router = get_router(self.config)
-        # Use configured provider, defaulting to 'ollama' if not specified
-        self.provider = provider or self.config.ai_provider or "ollama"
+        
+        # Handle dependency injection of provider instance
+        if isinstance(provider, LLMProvider):
+            self.provider_instance = provider
+            self.provider = getattr(provider, 'name', 'custom')
+        else:
+            self.provider = provider or self.config.ai_provider or "ollama"
+            # Initialize default provider instance
+            try:
+                self.provider_instance = create_provider(
+                    self.provider, 
+                    base_url=self.config.ollama_base_url
+                )
+            except Exception as e:
+                logger.warning(f"Failed to initialize default provider: {e}")
+                # Fallback or placeholder? MockProvider could be useful here
+                self.provider_instance = None
+
         self.session_tokens = session_tokens or {}
         self.conversation_history = []
         self.current_game = None
@@ -352,21 +370,23 @@ Please start a game or tell me which game you'd like help with, and I'll provide
                 # Trim history if needed
                 self._trim_conversation_history()
 
-            # Get response using the AI router
-            # (This is the slow network part, keep it OUTSIDE the lock to allow other reads)
+            # Get response using the provider instance
             try:
-                response = self.router.chat(
-                    self.conversation_history,
-                    provider=self.provider,
-                    max_tokens=1000,
-                    temperature=0.7,
+                system_prompt = ""
+                with self._history_lock:
+                    if self.conversation_history and self.conversation_history[0]["role"] == "system":
+                        system_prompt = self.conversation_history[0]["content"]
+
+                if not self.provider_instance:
+                    return "❌ AI Provider not initialized."
+
+                response_content = self.provider_instance.generate_response(
+                    system_prompt=system_prompt,
+                    user_prompt=user_message
                 )
 
-                # Extract content from response
-                if isinstance(response, dict):
-                    content = response.get("content", "")
-                else:
-                    content = str(response)
+                # Extract content from response (it's already a string from generate_response)
+                content = str(response_content)
 
                 # Add response to history only if it's not an error
                 if not content.startswith(("⚠️", "❌")):

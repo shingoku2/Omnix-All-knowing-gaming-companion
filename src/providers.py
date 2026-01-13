@@ -122,7 +122,7 @@ class AIProvider(Protocol):
         ...
 
 
-class OllamaProvider:
+class OllamaProvider(LLMProvider):
     """
     Ollama provider implementation (local or remote).
 
@@ -165,6 +165,32 @@ class OllamaProvider:
     def is_configured(self) -> bool:
         """Ollama is configured if a client is available (no key required)."""
         return self.client is not None
+
+    def generate_response(self, system_prompt: str, user_prompt: str, context: str = "") -> str:
+        """
+        Generate a response from the LLM.
+        
+        Args:
+            system_prompt: The system instructions
+            user_prompt: The user's query
+            context: Additional context to prepend to the user prompt
+            
+        Returns:
+            The generated response string
+        """
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{context}\n\n{user_prompt}" if context else user_prompt}
+        ]
+        response = self.chat(messages)
+        return response.get("content", "")
+
+    def health_check(self) -> bool:
+        """Verify connection to the provider."""
+        try:
+            return self.test_connection().is_healthy
+        except Exception:
+            return False
 
     def test_connection(self) -> ProviderHealth:
         """Test connectivity to the Ollama daemon."""
