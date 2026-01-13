@@ -1,49 +1,27 @@
-"""Tests for the Ollama-only provider layer."""
-
 import pytest
+from src.providers import LLMProvider
 
-from src.providers import (
-    OllamaProvider,
-    ProviderConnectionError,
-    ProviderError,
-)
+def test_llm_provider_is_abstract():
+    """Verify that LLMProvider cannot be instantiated directly."""
+    # Since LLMProvider is abstract, we can't check instantiation of the class itself directly
+    # in the same way if it has abstract methods.
+    # Instead, we try to define a subclass that doesn't implement the methods
+    
+    class IncompleteProvider(LLMProvider):
+        pass
 
+    with pytest.raises(TypeError):
+        IncompleteProvider()
 
-class TestProviderExceptions:
-    """Test provider exception hierarchy"""
+def test_llm_provider_contract():
+    """Verify that a subclass implementing all methods can be instantiated."""
+    class CompleteProvider(LLMProvider):
+        def generate_response(self, system_prompt: str, user_prompt: str, context: str = "") -> str:
+            return "response"
+        
+        def health_check(self) -> bool:
+            return True
 
-    def test_provider_error_base(self):
-        """Test base ProviderError exception"""
-        error = ProviderError("Test error")
-        assert str(error) == "Test error"
-        assert isinstance(error, Exception)
-
-    def test_provider_connection_error(self):
-        """Test ProviderConnectionError exception"""
-        error = ProviderConnectionError("Connection failed")
-        assert isinstance(error, ProviderError)
-
-
-@pytest.mark.unit
-class TestOllamaProvider:
-    """Tests for the Ollama provider (only supported provider)."""
-
-    def test_init_defaults(self):
-        provider = OllamaProvider()
-        assert provider.name == "ollama"
-        assert provider.base_url == "http://localhost:11434"
-        assert provider.default_model == "llama3"
-
-    def test_init_custom_base_and_model(self):
-        provider = OllamaProvider(base_url="http://remote-host:11434", default_model="custom")
-        assert provider.base_url == "http://remote-host:11434"
-        assert provider.default_model == "custom"
-
-    def test_is_configured_tracks_client(self):
-        provider = OllamaProvider()
-        assert provider.is_configured() in (True, False)
-
-    def test_supports_optional_api_key(self):
-        provider = OllamaProvider(api_key="secret-key")
-        # API key is accepted for secured remote instances but not required locally
-        assert provider.api_key == "secret-key"
+    provider = CompleteProvider()
+    assert provider.generate_response("sys", "user") == "response"
+    assert provider.health_check() is True

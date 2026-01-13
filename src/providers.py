@@ -7,6 +7,7 @@ No API keys required - just point to your Ollama instance.
 
 import logging
 import sys
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Protocol
 
@@ -59,6 +60,33 @@ class ProviderError(Exception):
 class ProviderConnectionError(ProviderError):
     """Raised when unable to connect to provider"""
     pass
+
+
+class LLMProvider(ABC):
+    """Abstract base class for all LLM providers."""
+    
+    @abstractmethod
+    def generate_response(self, system_prompt: str, user_prompt: str, context: str = "") -> str:
+        """Generate a response from the LLM."""
+        pass
+    
+    @abstractmethod
+    def health_check(self) -> bool:
+        """Verify connection to the provider."""
+        pass
+
+
+class MockProvider(LLMProvider):
+    """Mock provider for testing purposes."""
+
+    def __init__(self, response_text: str = "Mock response"):
+        self.response_text = response_text
+
+    def generate_response(self, system_prompt: str, user_prompt: str, context: str = "") -> str:
+        return self.response_text
+
+    def health_check(self) -> bool:
+        return True
 
 
 class AIProvider(Protocol):
