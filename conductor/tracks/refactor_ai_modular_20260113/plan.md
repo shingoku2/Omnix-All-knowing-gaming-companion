@@ -19,10 +19,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Refactor Ollama Integration' (Protocol in workflow.md)
 
 ## Phase 3: Implement OpenAI-Compatible Provider
-- [ ] Task: Implement `OpenAIProvider`.
-    - [ ] Sub-task: Write unit tests for `OpenAIProvider` (mocking the HTTP calls).
-    - [ ] Sub-task: Implement `OpenAIProvider` to support generic `/v1/chat/completions`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Implement OpenAI-Compatible Provider' (Protocol in workflow.md)
+- [x] Task: Implement `OpenAIProvider`. (cc0bc8e)
+    - [x] Sub-task: Write unit tests for `OpenAIProvider` (mocking the HTTP calls).
+    - [x] Sub-task: Implement `OpenAIProvider` to support generic `/v1/chat/completions`.
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Implement OpenAI-Compatible Provider' (Protocol in workflow.md)
 
 ## Phase 4: Configuration & Factory Logic
 - [ ] Task: Implement Provider Factory.
