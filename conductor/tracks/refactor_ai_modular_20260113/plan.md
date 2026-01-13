@@ -1,6 +1,6 @@
 # Plan: Modular AI Provider Support
 
-## Phase 1: Infrastructure & Interface Definition
+## Phase 1: Infrastructure & Interface Definition [checkpoint: 3147367]
 - [x] Task: Create `src/interfaces.py` (or update `src/providers.py`) to define the `LLMProvider` abstract base class. (243518f)
     - [x] Sub-task: Write tests for the interface contract.
     - [x] Sub-task: Implement the `LLMProvider` ABC.
