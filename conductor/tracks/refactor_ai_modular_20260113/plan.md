@@ -1,13 +1,13 @@
 # Plan: Modular AI Provider Support
 
 ## Phase 1: Infrastructure & Interface Definition
-- [ ] Task: Create `src/interfaces.py` (or update `src/providers.py`) to define the `LLMProvider` abstract base class.
-    - [ ] Sub-task: Write tests for the interface contract.
-    - [ ] Sub-task: Implement the `LLMProvider` ABC.
-- [ ] Task: Implement a `MockProvider` for testing.
-    - [ ] Sub-task: Write tests for `MockProvider`.
-    - [ ] Sub-task: Implement `MockProvider`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Infrastructure & Interface Definition' (Protocol in workflow.md)
+- [x] Task: Create `src/interfaces.py` (or update `src/providers.py`) to define the `LLMProvider` abstract base class. (243518f)
+    - [x] Sub-task: Write tests for the interface contract.
+    - [x] Sub-task: Implement the `LLMProvider` ABC.
+- [x] Task: Implement a `MockProvider` for testing. (243518f)
+    - [x] Sub-task: Write tests for `MockProvider`.
+    - [x] Sub-task: Implement `MockProvider`.
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Infrastructure & Interface Definition' (Protocol in workflow.md)
 
 ## Phase 2: Refactor Ollama Integration
 - [ ] Task: Extract Ollama logic into `OllamaProvider`.
