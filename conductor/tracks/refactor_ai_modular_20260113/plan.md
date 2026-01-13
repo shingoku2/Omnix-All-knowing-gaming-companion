@@ -9,7 +9,7 @@
     - [x] Sub-task: Implement `MockProvider`.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Infrastructure & Interface Definition' (Protocol in workflow.md)
 
-## Phase 2: Refactor Ollama Integration
+## Phase 2: Refactor Ollama Integration [checkpoint: f88c66a]
 - [x] Task: Extract Ollama logic into `OllamaProvider`. (609f8a6)
     - [x] Sub-task: Write unit tests for `OllamaProvider` (mocking the API).
     - [x] Sub-task: Implement `OllamaProvider` in `src/providers.py`.
