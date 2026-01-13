@@ -25,9 +25,9 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Implement OpenAI-Compatible Provider' (Protocol in workflow.md)
 
 ## Phase 4: Configuration & Factory Logic
-- [ ] Task: Implement Provider Factory.
-    - [ ] Sub-task: Write tests for `get_provider(config)`.
-    - [ ] Sub-task: Implement the factory function to return the correct provider based on env vars.
-- [ ] Task: Update App Entry Point.
-    - [ ] Sub-task: Modify `main.py` or the configuration manager to instantiate the correct provider.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Configuration & Factory Logic' (Protocol in workflow.md)
+- [x] Task: Implement Provider Factory. (b330bbb)
+    - [x] Sub-task: Write tests for `get_provider(config)`.
+    - [x] Sub-task: Implement the factory function to return the correct provider based on env vars.
+- [x] Task: Update App Entry Point. (b330bbb)
+    - [x] Sub-task: Modify `main.py` or the configuration manager to instantiate the correct provider.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Configuration & Factory Logic' (Protocol in workflow.md)
