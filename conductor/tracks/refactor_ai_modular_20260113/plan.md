@@ -10,13 +10,13 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Infrastructure & Interface Definition' (Protocol in workflow.md)
 
 ## Phase 2: Refactor Ollama Integration
-- [ ] Task: Extract Ollama logic into `OllamaProvider`.
-    - [ ] Sub-task: Write unit tests for `OllamaProvider` (mocking the API).
-    - [ ] Sub-task: Implement `OllamaProvider` in `src/providers.py`.
-- [ ] Task: Update `GamingAIAssistant` to use dependency injection.
-    - [ ] Sub-task: Update `GamingAIAssistant` tests to use `MockProvider`.
-    - [ ] Sub-task: Refactor `GamingAIAssistant` to accept an `LLMProvider` and use its methods.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Refactor Ollama Integration' (Protocol in workflow.md)
+- [x] Task: Extract Ollama logic into `OllamaProvider`. (609f8a6)
+    - [x] Sub-task: Write unit tests for `OllamaProvider` (mocking the API).
+    - [x] Sub-task: Implement `OllamaProvider` in `src/providers.py`.
+- [x] Task: Update `GamingAIAssistant` to use dependency injection. (609f8a6)
+    - [x] Sub-task: Update `GamingAIAssistant` tests to use `MockProvider`.
+    - [x] Sub-task: Refactor `GamingAIAssistant` to accept an `LLMProvider` and use its methods.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Refactor Ollama Integration' (Protocol in workflow.md)
 
 ## Phase 3: Implement OpenAI-Compatible Provider
 - [ ] Task: Implement `OpenAIProvider`.
