@@ -6,6 +6,7 @@ No API keys required - just point to your Ollama instance.
 """
 
 import logging
+import requests
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -315,6 +316,70 @@ class OllamaProvider(LLMProvider):
                     f"Pull it with: ollama pull {model_name}"
                 )
             raise ProviderError(f"Ollama error: {exc}")
+
+
+class OpenAIProvider(LLMProvider):
+    """
+    OpenAI-compatible provider implementation (LM Studio, AnythingLLM, etc.).
+    """
+
+    name = "openai_compatible"
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        default_model: Optional[str] = None
+    ):
+        """
+        Initialize OpenAI-compatible provider.
+
+        Args:
+            api_key: Optional API key
+            base_url: API host URL (default: http://localhost:1234/v1)
+            default_model: Default model to use
+        """
+        self.api_key = api_key or "not-needed"
+        self.base_url = base_url or "http://localhost:1234/v1"
+        self.default_model = default_model or "local-model"
+
+    def generate_response(self, system_prompt: str, user_prompt: str, context: str = "") -> str:
+        """
+        Generate a response using OpenAI-compatible chat completions.
+        """
+        url = f"{self.base_url.rstrip('/')}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": self.default_model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"{context}\n\n{user_prompt}" if context else user_prompt}
+            ]
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=60)
+            response.raise_for_status()
+            data = response.json()
+            return data['choices'][0]['message']['content']
+        except Exception as e:
+            logger.error(f"OpenAI-compatible provider error: {e}")
+            raise ProviderError(f"API request failed: {e}")
+
+    def health_check(self) -> bool:
+        """
+        Verify connection to the provider by listing models.
+        """
+        url = f"{self.base_url.rstrip('/')}/models"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            return response.status_code == 200
+        except Exception:
+            return False
 
 
 def get_provider_class(provider_name: str) -> type:
