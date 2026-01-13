@@ -144,17 +144,21 @@ class KnowledgeIntegration:
             answer: AI's answer
         """
         try:
+            # PRIVACY: Truncate logs to avoid storing sensitive full-text user inputs
+            # Only store first 50 chars for context/debugging
+            safe_question = (question[:50] + "...") if len(question) > 50 else question
+            safe_answer = (answer[:50] + "...") if len(answer) > 50 else answer
+
             # Log question
             self.session_logger.log_event(
-                game_profile_id=game_profile_id, event_type="question", content=question
+                game_profile_id=game_profile_id, event_type="question", content=safe_question
             )
 
-            # Log answer (truncate to save space)
-            answer_summary = answer[:200] + "..." if len(answer) > 200 else answer
+            # Log answer
             self.session_logger.log_event(
                 game_profile_id=game_profile_id,
                 event_type="answer",
-                content=answer_summary,
+                content=safe_answer,
             )
 
         except Exception as e:

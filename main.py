@@ -15,9 +15,6 @@ sys.path.insert(0, str(src_path))
 from src.utils import setup_logging, cleanup_logging
 import atexit
 
-from src.utils import setup_logging, cleanup_logging
-import atexit
-
 log_file_path = setup_logging()
 logger = logging.getLogger(__name__)
 

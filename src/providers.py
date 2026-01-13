@@ -146,8 +146,9 @@ class OllamaProvider:
                 message="Ollama client not initialized - ensure the 'ollama' package is installed",
                 error_type="connection",
             )
-        
-        assert self.client is not None
+
+        if self.client is None:
+            raise ProviderConnectionError("Client not initialized")
 
         try:
             models = self.client.list().get("models", [])
@@ -176,8 +177,9 @@ class OllamaProvider:
         """List available models from Ollama."""
         if not self.is_configured():
             return []
-            
-        assert self.client is not None
+
+        if self.client is None:
+            raise ProviderConnectionError("Client not initialized")
 
         try:
             models = self.client.list().get("models", [])
@@ -205,8 +207,9 @@ class OllamaProvider:
         """
         if not self.is_configured():
             raise ProviderConnectionError("Ollama client not initialized or unreachable")
-            
-        assert self.client is not None
+
+        if self.client is None:
+            raise ProviderConnectionError("Client not initialized")
 
         model_name = model or self.default_model
 

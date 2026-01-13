@@ -431,39 +431,6 @@ class CredentialStore:
         }
         self._atomic_write_json(fallback_path, data)
         self._set_permissions(fallback_path, 0o600)
-        password = self._get_master_password()
-        if not password:
-            raise KeyringUnavailableError(
-                "System keyring is unavailable and no master password was provided. "
-                "Cannot securely store credentials. Please fix your system keyring "
-                "or provide a master password via environment variable OMNIX_MASTER_PASSWORD."
-            )
-
-        # Generate a random salt
-        salt = os.urandom(_SALT_LENGTH)
-
-        # Derive a key from the password using PBKDF2
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=_PBKDF2_ITERATIONS,
-        )
-        password_key = base64.urlsafe_b64encode(kdf.derive(password.encode("utf-8")))
-
-        # Encrypt the Fernet key with the password-derived key
-        cipher = Fernet(password_key)
-        encrypted_key = cipher.encrypt(key_bytes)
-
-        # Store salt + encrypted key
-        fallback_path = self.config_dir / _FALLBACK_KEY_FILE
-        data = {
-            "salt": base64.b64encode(salt).decode("utf-8"),
-            "encrypted_key": base64.b64encode(encrypted_key).decode("utf-8"),
-            "iterations": _PBKDF2_ITERATIONS,
-        }
-        self._atomic_write_json(fallback_path, data)
-        self._set_permissions(fallback_path, 0o600)
         logger.info("Stored encryption key using password-based encryption (PBKDF2)")
         logger.warning(
             "WARNING: Keyring is unavailable. Credentials are protected by your master password. "
@@ -599,8 +566,26 @@ class CredentialStore:
         try:
             os.chmod(path, mode)
         except PermissionError:
-            logger.debug("Insufficient permissions to set mode %o on %s", mode, path)
+            logger.warning(
+                "SECURITY WARNING: Insufficient permissions to set mode %o on %s. "
+                "This file may be accessible to unauthorized users! "
+                "Please ensure proper permissions are set manually.",
+                mode,
+                path,
+            )
         except NotImplementedError:
-            logger.debug("chmod not implemented on this platform for %s", path)
+            logger.warning(
+                "SECURITY WARNING: chmod not implemented on platform for %s. "
+                "File permissions cannot be enforced. "
+                "Ensure this path is on a filesystem that supports Unix permissions.",
+                path,
+            )
         except OSError as exc:
-            logger.debug("Failed to set permissions on %s: %s", path, exc)
+            logger.warning(
+                "SECURITY WARNING: Failed to set permissions on %s (mode %o): %s. "
+                "This file may remain world-readable or world-writable! "
+                "Please investigate and correct the file permissions manually.",
+                path,
+                mode,
+                exc,
+            )

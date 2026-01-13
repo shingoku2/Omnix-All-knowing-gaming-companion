@@ -82,7 +82,8 @@ class AIAssistant:
         """
         self.config = config or Config()
         self.router = get_router(self.config)
-        self.provider = "ollama"  # Always Ollama
+        # Use configured provider, defaulting to 'ollama' if not specified
+        self.provider = provider or self.config.ai_provider or "ollama"
         self.session_tokens = session_tokens or {}
         self.conversation_history = []
         self.current_game = None

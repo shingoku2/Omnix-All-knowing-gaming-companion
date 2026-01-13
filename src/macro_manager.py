@@ -394,13 +394,13 @@ class MacroManager:
 
     def execute_macro(self, macro_id: str) -> bool:
         """
-        Execute a macro
+        Execute a macro using the threaded MacroRunner
 
         Args:
             macro_id: ID of macro to execute
 
         Returns:
-            True if successful, False if not found or disabled
+            True if execution started, False if not found or disabled
         """
         if macro_id not in self.macros:
             logger.warning(f"Macro not found: {macro_id}")
@@ -412,7 +412,61 @@ class MacroManager:
             logger.warning(f"Macro is disabled: {macro.name}")
             return False
 
-        logger.info(f"Executing macro: {macro.name}")
+        # Ensure steps are populated (Lazy migration from legacy actions)
+        if not macro.steps and macro.actions:
+            logger.info(f"Migrating legacy actions to steps for macro: {macro.name}")
+            self._migrate_actions_to_steps(macro)
+
+        try:
+            # Local import to avoid circular dependency
+            from macro_runner import MacroRunner
+
+            # Initialize runner (singleton-like or new instance)
+            if not hasattr(self, '_runner') or self._runner is None:
+                self._runner = MacroRunner(enabled=True, macro_manager=self)
+            
+            # Execute in background thread
+            success = self._runner.execute_macro(macro)
+            if success:
+                logger.info(f"Started execution of macro: {macro.name}")
+            else:
+                logger.error(f"Failed to start macro: {macro.name}")
+            
+            return success
+
+        except ImportError:
+            logger.error("MacroRunner not available. Falling back to legacy blocking execution.")
+            # Fallback to legacy execution (blocking)
+            return self._execute_legacy_blocking(macro)
+        except Exception as e:
+            logger.error(f"Error starting macro execution: {e}", exc_info=True)
+            return False
+
+    def _migrate_actions_to_steps(self, macro: Macro):
+        """Helper to convert legacy actions to steps"""
+        for action in macro.actions:
+            # Simple mapping - this is a basic heuristic
+            step_type = MacroStepType.CUSTOM_COMMAND.value
+            
+            # Map known legacy types to new step types
+            if action.action_type == MacroActionType.WAIT.value:
+                step_type = MacroStepType.DELAY.value
+            # Add other mappings as needed...
+            
+            # Create step (best effort)
+            step = MacroStep(
+                type=step_type,
+                meta={'legacy_action': action.action_type, 'params': action.parameters}
+            )
+            
+            # Handle delay_after by adding a separate delay step
+            macro.steps.append(step)
+            if action.delay_after > 0:
+                macro.steps.append(MacroStep(type=MacroStepType.DELAY.value, duration_ms=action.delay_after))
+
+    def _execute_legacy_blocking(self, macro: Macro) -> bool:
+        """Legacy blocking execution (fallback only)"""
+        logger.info(f"Executing macro (legacy blocking): {macro.name}")
 
         try:
             for i, action in enumerate(macro.actions):
