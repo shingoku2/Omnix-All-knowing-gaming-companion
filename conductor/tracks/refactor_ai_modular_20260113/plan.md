@@ -24,7 +24,7 @@
     - [x] Sub-task: Implement `OpenAIProvider` to support generic `/v1/chat/completions`.
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Implement OpenAI-Compatible Provider' (Protocol in workflow.md)
 
-## Phase 4: Configuration & Factory Logic
+## Phase 4: Configuration & Factory Logic [checkpoint: a368c20]
 - [x] Task: Implement Provider Factory. (b330bbb)
     - [x] Sub-task: Write tests for `get_provider(config)`.
     - [x] Sub-task: Implement the factory function to return the correct provider based on env vars.
