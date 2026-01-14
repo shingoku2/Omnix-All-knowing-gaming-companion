@@ -10,7 +10,7 @@
     - [ ] Sub-task: Analyze `frontend/` dependency usage for outdated packages.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Automated Analysis & Discovery' (Protocol in workflow.md)
 
-## Phase 2: Manual Code Review & Bug Hunting
+## Phase 2: Manual Code Review & Bug Hunting [checkpoint: e3b1d8a]
 - [x] Task: Review Core Logic Modules.
     - [x] Sub-task: Audit `src/game_detector.py` for potential race conditions or polling inefficiencies.
     - [x] Sub-task: Audit `src/ai_assistant.py` for error handling gaps in provider switching.
