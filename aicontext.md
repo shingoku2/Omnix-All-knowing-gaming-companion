@@ -28,7 +28,26 @@
 
 ### Core Systems
 1. **Game Detection** - `game_detector.py`, `game_watcher.py` - Process monitoring with performance optimization
-2. **AI Integration** - `ai_router.py`, `providers.py` - Ollama-only provider with fallback logic
+### 1. AI System (5,000 LOC)
+Handles multi-provider LLM integration with provider abstraction
+
+**Files:**
+- `src/ai_assistant.py` - High-level Q&A interface
+- `src/ai_router.py` - Provider routing logic (Legacy/Wrapper)
+- `src/providers.py` - `LLMProvider` interface, `OllamaProvider`, `OpenAIProvider`, `get_provider` factory
+- `src/api_keys/` - Key management
+
+**Key Functions:**
+```python
+ai_assistant.ask_question(question: str) -> str  # Main interface
+ai_assistant.provider_instance.generate_response(system_prompt, user_prompt) -> str
+get_provider(config) -> LLMProvider  # Factory
+```
+
+**Critical Files for Code Changes:**
+- Add new provider: Implement `LLMProvider` in `src/providers.py` and update `get_provider`
+- Change AI logic: Modify `ai_assistant.py` methods
+- Provider issues: Check `.env` credentials + provider rate limits
 3. **Knowledge System** - `knowledge_index.py` - TF-IDF semantic search with persistence
 4. **Macro System** - `macro_manager.py`, `macro_runner.py` - Automation with safety limits
 5. **Session Management** - `session_logger.py` - Event tracking with AI coaching
@@ -115,6 +134,13 @@ scripts/                 # Automation scripts
 ---
 
 ## Recent Changes
+
+### 2026-01-13: Modular AI & Cleanup (MAJOR)
+- ✅ **Modular LLM Support** - Refactored AI system to support multiple providers via `LLMProvider` interface
+- ✅ **OpenAI-Compatible Support** - Added generic `OpenAIProvider` for LM Studio, AnythingLLM, etc.
+- ✅ **Codebase Standardization** - Standardized all internal imports to `from src.module import X` pattern
+- ✅ **Configuration Update** - Extended Config to handle API keys and base URLs for generic providers
+- ✅ **Testing** - Added unit tests for provider factory, config, and modular AI assistant
 
 ### 2025-12-10: Comprehensive Code Audit & Security Enhancement (MAJOR)
 - ✅ **Import Standardization** - Fixed circular dependency risks with consistent import patterns

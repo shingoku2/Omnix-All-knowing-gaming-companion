@@ -23,3 +23,4 @@
 ## Deployment & Build
 - **Windows Packaging:** `PyInstaller` (managed via custom `BUILD.bat` and python scripts).
 - **Testing:** `pytest` for unit and integration testing.
+- **Linting & Analysis:** `flake8` for style adherence and `mypy` for static type checking.

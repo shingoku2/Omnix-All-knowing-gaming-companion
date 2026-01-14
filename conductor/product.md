@@ -28,3 +28,7 @@ Omnix addresses the friction and privacy risks in modern gaming:
 - **Seamless Integration:** Achieving zero-latency detection and profile switching that feels like a native part of the game.
 - **Intelligence Accuracy:** Providing high-relevance gaming advice and information that users can trust.
 - **Performance Efficiency:** Maintaining a negligible footprint on system resources to ensure the user's frame rate remains unaffected.
+
+## Future Roadmap
+- **Automated Session Recap:** Post-game analysis of gameplay patterns and AI interactions.
+- **UI Logging Dashboard:** Real-time visibility into system logs and AI processing state.

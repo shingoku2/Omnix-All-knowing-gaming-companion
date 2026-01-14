@@ -97,6 +97,14 @@ G:\GitHub\Edward-s-Stuff\
 
 ## Recent Updates
 
+### Modular AI Architecture & Cleanup (2026-01-13)
+*   **Modular LLM Support:** Refactored AI system to support multiple providers via `LLMProvider` interface.
+    *   Implemented `OllamaProvider` (default) and `OpenAIProvider`.
+    *   Added support for OpenAI-compatible APIs (LM Studio, AnythingLLM).
+*   **Codebase Standardization:** Standardized all internal imports to `from src.module import X` pattern to prevent circular dependencies.
+*   **Configuration Update:** Extended `Config` to handle API keys and base URLs for generic OpenAI-compatible providers.
+*   **Testing:** Added comprehensive unit tests for provider factory, config, and modular AI assistant.
+
 ### HRM Integration (2025-12-10)
 *   Added Hierarchical Reasoning Model (HRM) integration for enhanced reasoning capabilities
 *   Intelligent routing to HRM for complex reasoning questions in gaming contexts

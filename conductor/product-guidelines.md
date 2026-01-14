@@ -10,7 +10,7 @@
 - **Immersive Non-Distraction:** While the design is bold, the overlay must never block critical game information. Use transparency and minimize transitions to stay out of the user's way.
 
 ## Development Principles
-- **Extreme Modularity:** Core services (detection, automation, AI) must remain decoupled from game-specific logic. Adding support for a new game should ideally require only a new configuration or knowledge pack, not core code changes.
+- **Extreme Modularity:** Core services (detection, automation, AI) must remain decoupled from game-specific logic and from each other. Circular dependencies are strictly prohibited. Adding support for a new game should ideally require only a new configuration or knowledge pack, not core code changes.
 - **Privacy by Design:** Local-first is the law. All AI operations, gameplay logs, and session data default to local storage. Any remote connection must be explicitly configured and approved by the user.
 - **Fail-Safe Robustness:** The application must remain responsive regardless of AI inference speed or background task load. If a subsystem fails (e.g., a specific knowledge base is unreachable), the rest of the companion must degrade gracefully.
 
