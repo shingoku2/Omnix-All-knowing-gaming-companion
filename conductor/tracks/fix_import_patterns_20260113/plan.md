@@ -1,6 +1,6 @@
 # Plan: Fix Import Patterns
 
-## Phase 1: Identification & Setup
+## Phase 1: Identification & Setup [checkpoint: 2991d70]
 - [x] Task: Create `test_imports.py` to verify module importability.
     - [x] Sub-task: Implement the script logic to crawl `src/` and attempt dynamic imports.
     - [x] Sub-task: Run the script and document current failures.
