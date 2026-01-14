@@ -11,13 +11,13 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Automated Analysis & Discovery' (Protocol in workflow.md)
 
 ## Phase 2: Manual Code Review & Bug Hunting
-- [ ] Task: Review Core Logic Modules.
-    - [ ] Sub-task: Audit `src/game_detector.py` for potential race conditions or polling inefficiencies.
-    - [ ] Sub-task: Audit `src/ai_assistant.py` for error handling gaps in provider switching.
-    - [ ] Sub-task: Audit `src/macro_manager.py` for safety checks and edge cases.
-- [ ] Task: Review UI/Overlay Architecture.
-    - [ ] Sub-task: Check `src/gui.py` and `src/overlay.py` for threading issues (blocking main thread).
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Manual Code Review & Bug Hunting' (Protocol in workflow.md)
+- [x] Task: Review Core Logic Modules.
+    - [x] Sub-task: Audit `src/game_detector.py` for potential race conditions or polling inefficiencies.
+    - [x] Sub-task: Audit `src/ai_assistant.py` for error handling gaps in provider switching.
+    - [x] Sub-task: Audit `src/macro_manager.py` for safety checks and edge cases.
+- [x] Task: Review UI/Overlay Architecture.
+    - [x] Sub-task: Check `src/gui.py` and `src/overlay.py` for threading issues (blocking main thread).
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Manual Code Review & Bug Hunting' (Protocol in workflow.md)
 
 ## Phase 3: Performance & Architecture Assessment
 - [ ] Task: Analyze resource usage patterns.
