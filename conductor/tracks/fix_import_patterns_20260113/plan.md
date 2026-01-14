@@ -8,7 +8,7 @@
     - [x] Sub-task: Run `grep -r "^from [a-z_]* import" src/ --include="*.py"` to find bad imports.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Identification & Setup' (Protocol in workflow.md)
 
-## Phase 2: Core Module Refactoring
+## Phase 2: Core Module Refactoring [checkpoint: 88ef7b6]
 - [x] Task: Standardize imports in `src/game_profile.py`.
 - [x] Task: Standardize imports in `src/macro_manager.py`.
 - [x] Task: Standardize imports in `src/knowledge_integration.py`.
