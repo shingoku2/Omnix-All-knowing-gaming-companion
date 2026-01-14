@@ -15,7 +15,7 @@
 - [x] Task: Verify Phase 2 changes using `test_imports.py`.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Core Module Refactoring' (Protocol in workflow.md)
 
-## Phase 3: Global Cleanup & Final Validation
+## Phase 3: Global Cleanup & Final Validation [checkpoint: 3c4d2aa]
 - [x] Task: Standardize remaining imports in all files under `src/`.
 - [x] Task: Update test files in `tests/` to use standardized import paths if necessary.
 - [x] Task: Run full test suite (`pytest tests/`) and `test_imports.py`.
