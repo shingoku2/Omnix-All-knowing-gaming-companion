@@ -1,6 +1,6 @@
 @echo off
 REM Omnix Gaming Companion - Consolidated Build Script
-REM Version 2.0.0 (December 2025)
+REM Version 2.1.0 (January 2026)
 REM Usage: BUILD.bat [debug|simple]
 
 set MODE=release
@@ -9,7 +9,7 @@ if /i "%1"=="simple" set MODE=simple
 
 echo ======================================================================
 echo OMNIX GAMING COMPANION - BUILDER (%MODE%)
-echo Version 2.0.0 (December 2025)
+echo Version 2.1.0 (January 2026)
 echo ======================================================================
 echo.
 
@@ -121,7 +121,7 @@ if /i "%MODE%"=="release" (
     (
         echo =====================================================
         echo OMNIX GAMING COMPANION - QUICK START
-        echo Version 2.0.0 (December 2025)
+        echo Version 2.1.0 (January 2026)
         echo =====================================================
         echo.
         echo STEP 1: First Run

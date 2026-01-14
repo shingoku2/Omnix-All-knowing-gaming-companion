@@ -15,7 +15,7 @@
 - **Icons:** `lucide-react` for consistent, lightweight UI elements.
 
 ## AI & Intelligence
-- **Inference Engine:** [Ollama](https://ollama.com/) for local LLM orchestration (Llama 3, Mistral, etc.).
+- **Inference Engines:** Modular support for [Ollama](https://ollama.com/) and OpenAI-compatible APIs (LM Studio, AnythingLLM, etc.) for local LLM orchestration.
 - **Data Ingestion:** `beautifulsoup4`, `lxml`, and `requests` for web scraping and wiki processing.
 - **Document Analysis:** `PyPDF2` and `pdfplumber` for ingestion of PDFs and game manuals.
 - **Search System:** Semantic search using TF-IDF for context-aware knowledge retrieval.
