@@ -7,10 +7,10 @@ except Exception as exc:  # pragma: no cover - environment guard
     pytest.skip(f"PyQt6 unavailable: {exc}", allow_module_level=True)
 
 import gui
-from gui import ChatWidget, OverlayWindow
-from ui.components.buttons import OmnixButton
-from ui.components.navigation import OmnixSidebar
-from ui.design_system import OmnixDesignSystem
+from src.gui import ChatWidget, OverlayWindow
+from src.ui.components.buttons import OmnixButton
+from src.ui.components.navigation import OmnixSidebar
+from src.ui.design_system import OmnixDesignSystem
 
 
 @pytest.mark.unit

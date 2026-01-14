@@ -12,18 +12,18 @@ import os
 import threading
 from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 
-from config import Config
-from ai_router import get_router, AIRouter
-from providers import (
+from src.config import Config
+from src.ai_router import get_router, AIRouter
+from src.providers import (
     ProviderError,
     LLMProvider,
     get_provider
 )
-from knowledge_integration import (
+from src.knowledge_integration import (
     get_knowledge_integration,
     KnowledgeIntegration,
 )
-from hrm_integration import (
+from src.hrm_integration import (
     get_hrm_interface,
     requires_complex_reasoning,
     get_hrm_analysis,
@@ -37,7 +37,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 # Avoid circular imports
 if TYPE_CHECKING:
-    from game_profile import GameProfile
+    from src.game_profile import GameProfile
 
 
 class AIWorkerThread(QThread):

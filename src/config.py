@@ -14,12 +14,12 @@ from typing import Dict, Optional
 
 from dotenv import load_dotenv
 
-from credential_store import (
+from src.credential_store import (
     CredentialDecryptionError,
     CredentialStore,
     CredentialStoreError,
 )
-from security import ensure_private_dir, ensure_private_file
+from src.security import ensure_private_dir, ensure_private_file
 
 logger = logging.getLogger(__name__)
 
@@ -412,6 +412,7 @@ class Config:
 
     def reset_to_defaults(self):
         """Reset configuration to default values"""
+        self.ai_provider = DEFAULT_AI_PROVIDER
         self.ollama_host = DEFAULT_OLLAMA_HOST
         self.ollama_model = DEFAULT_OLLAMA_MODEL
         self.overlay_hotkey = DEFAULT_OVERLAY_HOTKEY

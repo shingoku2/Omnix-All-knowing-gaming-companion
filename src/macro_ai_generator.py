@@ -7,7 +7,7 @@ import logging
 import json
 from typing import Optional, List, Tuple
 
-from macro_manager import Macro, MacroStep, MacroStepType
+from src.macro_manager import Macro, MacroStep, MacroStepType
 
 logger = logging.getLogger(__name__)
 

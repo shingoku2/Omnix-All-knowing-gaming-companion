@@ -11,9 +11,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
 
-from session_coaching import get_session_coach, SessionCoach
-from session_logger import get_session_logger
-from config import Config
+from src.session_coaching import get_session_coach, SessionCoach
+from src.session_logger import get_session_logger
+from src.config import Config
 
 logger = logging.getLogger(__name__)
 

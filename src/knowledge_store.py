@@ -5,8 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
-from knowledge_pack import KnowledgePack, KnowledgeSource
-from base_store import BaseStore
+from src.knowledge_pack import KnowledgePack, KnowledgeSource
+from src.base_store import BaseStore
 
 logger = logging.getLogger(__name__)
 

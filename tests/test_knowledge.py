@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from knowledge_ingestion import FileIngestor, IngestionError
-from knowledge_index import KnowledgeIndex, SimpleTFIDFEmbedding
-from knowledge_pack import KnowledgePack, KnowledgeSource
+from src.knowledge_ingestion import FileIngestor, IngestionError
+from src.knowledge_index import KnowledgeIndex, SimpleTFIDFEmbedding
+from src.knowledge_pack import KnowledgePack, KnowledgeSource
 
 
 @pytest.mark.unit

@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QFont
 
-from game_profile import GameProfile, get_profile_store
+from src.game_profile import GameProfile, get_profile_store
 
 logger = logging.getLogger(__name__)
 

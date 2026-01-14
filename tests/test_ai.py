@@ -2,10 +2,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import ai_router
-from ai_router import AIRouter
-import ai_assistant
-from ai_assistant import AIAssistant
+import src.ai_assistant as ai_assistant
+from src.ai_router import AIRouter
+from src.ai_assistant import AIAssistant
 from src.providers import ProviderError, ProviderConnectionError
 
 
@@ -14,9 +13,23 @@ class StubConfig:
         self.ai_provider = ai_provider
         self.ollama_host = "http://localhost:11434"
         self.ollama_model = "llama3"
+        self.hrm_enabled = False
+        self.ai_api_key = None
+        self.ai_base_url = None
+        self.ai_model = None
 
     def get_effective_provider(self):
         return "ollama"
+
+    def get_ai_config(self):
+        return {
+            "AI_PROVIDER": self.ai_provider,
+            "OLLAMA_BASE_URL": self.ollama_host,
+            "OLLAMA_MODEL": self.ollama_model,
+            "AI_API_KEY": None,
+            "AI_BASE_URL": None,
+            "AI_MODEL": None
+        }
 
 
 def _fake_provider(name):
@@ -71,7 +84,10 @@ def _assistant(config_provider=None, router=None, knowledge_integration=None):
 @pytest.mark.unit
 def test_aiassistant_trims_conversation_history(monkeypatch):
     cfg, router_factory, knowledge_factory = _assistant()
-    monkeypatch.setattr(ai_assistant, "get_router", router_factory)
+    
+    mock_provider = MagicMock()
+    mock_provider.generate_response.return_value = "response"
+    monkeypatch.setattr(ai_assistant, "get_provider", lambda config: mock_provider)
     monkeypatch.setattr(ai_assistant, "get_knowledge_integration", knowledge_factory)
 
     assistant = AIAssistant(provider="ollama", config=cfg)
@@ -95,7 +111,9 @@ def test_aiassistant_trims_conversation_history(monkeypatch):
 @pytest.mark.unit
 def test_aiassistant_handles_empty_question(monkeypatch):
     cfg, router_factory, knowledge_factory = _assistant()
-    monkeypatch.setattr(ai_assistant, "get_router", router_factory)
+    
+    mock_provider = MagicMock()
+    monkeypatch.setattr(ai_assistant, "get_provider", lambda config: mock_provider)
     monkeypatch.setattr(ai_assistant, "get_knowledge_integration", knowledge_factory)
 
     assistant = AIAssistant(provider="ollama", config=cfg)
@@ -106,9 +124,13 @@ def test_aiassistant_handles_empty_question(monkeypatch):
 @pytest.mark.unit
 def test_aiassistant_formats_provider_errors(monkeypatch):
     cfg, _, knowledge_factory = _assistant()
-    failing_router = StubRouter(error=ProviderError("Ollama error"))
-
-    monkeypatch.setattr(ai_assistant, "get_router", lambda cfg=None: failing_router)
+    
+    # Mock provider instance that raises error
+    mock_provider = MagicMock()
+    mock_provider.generate_response.side_effect = ProviderError("Ollama error")
+    
+    # Patch get_provider to return our mock
+    monkeypatch.setattr(ai_assistant, "get_provider", lambda config: mock_provider)
     monkeypatch.setattr(ai_assistant, "get_knowledge_integration", knowledge_factory)
 
     assistant = AIAssistant(provider="ollama", config=cfg)

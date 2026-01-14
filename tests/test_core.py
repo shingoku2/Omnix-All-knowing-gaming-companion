@@ -5,10 +5,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import config
-from config import Config
-from credential_store import CredentialStore
-from game_detector import GameDetector
+import src.config as config
+from src.config import Config
+from src.credential_store import CredentialStore
+from src.game_detector import GameDetector
 
 
 class DummyCredentialStore:
@@ -46,13 +46,12 @@ def test_config_loads_env_and_defaults(tmp_path, monkeypatch):
     monkeypatch.setenv("OMNIX_MASTER_PASSWORD", "test-pass")
     monkeypatch.setattr(config, "CredentialStore", lambda *args, **kwargs: DummyCredentialStore())
 
-    # monkeypatch.setattr("os.path.exists", lambda x: False) # Removed to allow env file loading
     cfg = Config(env_file=str(env_file)) # Pass env_file explicitly
-    # Expect ollama because it is hardcoded in Config.__init__
-    assert cfg.ai_provider == "ollama"
+    
+    # Updated expectation: Config now respects AI_PROVIDER from env
+    assert cfg.ai_provider == "openai"
     assert cfg.overlay_hotkey == "ctrl+alt+z"
     assert cfg.check_interval == 7
-    # assert cfg.openai_api_key == "sk-env-123" # openai_api_key might not exist on Config anymore
 
 
 @pytest.mark.unit
@@ -91,7 +90,8 @@ def test_credential_store_encrypts_and_decrypts(tmp_path, monkeypatch, mock_keyr
 def test_credential_store_keyring_fallback_uses_master_password(tmp_path, monkeypatch):
     monkeypatch.setenv("OMNIX_MASTER_PASSWORD", "fallback-pass")
 
-    with patch("credential_store.keyring.get_keyring", side_effect=Exception("no keyring")):
+    # Patch where CredentialStore imports keyring
+    with patch("src.credential_store.keyring.get_keyring", side_effect=Exception("no keyring")):
         store = CredentialStore(base_dir=tmp_path, allow_password_prompt=False)
 
     store.save_credentials({"API": "value"})
@@ -101,7 +101,7 @@ def test_credential_store_keyring_fallback_uses_master_password(tmp_path, monkey
 
 @pytest.mark.unit
 def test_game_detector_identifies_running_game(monkeypatch):
-    import game_detector as gd
+    import src.game_detector as gd
 
     fake_proc = MagicMock()
     fake_proc.info = {"name": "eldenring.exe", "pid": 42, "exe": "/games/eldenring.exe"}

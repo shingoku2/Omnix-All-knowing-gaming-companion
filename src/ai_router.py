@@ -8,8 +8,8 @@ Handles provider instantiation, error handling, and model management.
 import logging
 from typing import Any, Dict, List, Optional
 
-from config import Config
-from providers import (
+from src.config import Config
+from src.providers import (
     OllamaProvider,
     create_provider,
     ProviderError,

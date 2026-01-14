@@ -20,8 +20,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal, QThread
 
-from config import Config
-from provider_tester import ProviderTester
+from src.config import Config
+from src.provider_tester import ProviderTester
 
 logger = logging.getLogger(__name__)
 

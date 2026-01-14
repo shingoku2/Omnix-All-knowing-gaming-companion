@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QFont
 
-from provider_tester import ProviderTester
+from src.provider_tester import ProviderTester
 
 logger = logging.getLogger(__name__)
 

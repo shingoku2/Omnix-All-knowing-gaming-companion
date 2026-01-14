@@ -9,8 +9,8 @@ import time
 from typing import Optional, Callable, Dict
 from PyQt6.QtCore import QObject, pyqtSignal
 
-from game_detector import GameDetector
-from game_profile import GameProfile, get_profile_store
+from src.game_detector import GameDetector
+from src.game_profile import GameProfile, get_profile_store
 
 logger = logging.getLogger(__name__)
 

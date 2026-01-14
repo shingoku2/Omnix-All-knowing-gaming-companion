@@ -15,8 +15,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 
-from keybind_manager import Keybind, KeybindManager, KeybindAction, MacroKeybind, DEFAULT_KEYBINDS
-from macro_manager import Macro, MacroManager, MacroStep, MacroStepType, DEFAULT_MACROS
+from src.keybind_manager import Keybind, KeybindManager, KeybindAction, MacroKeybind, DEFAULT_KEYBINDS
+from src.macro_manager import Macro, MacroManager, MacroStep, MacroStepType, DEFAULT_MACROS
 
 logger = logging.getLogger(__name__)
 

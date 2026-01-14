@@ -11,14 +11,14 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal, Qt
 
-from settings_tabs import KeybindingsTab, MacrosTab, HRMSettingsTab
-from appearance_tabs import AppAppearanceTab, OverlayAppearanceTab
-from providers_tab import ProvidersTab
-from game_profiles_tab import GameProfilesTab
-from knowledge_packs_tab import KnowledgePacksTab
-from keybind_manager import KeybindManager
-from macro_manager import MacroManager
-from ui.theme_manager import get_theme_manager, OmnixThemeManager
+from src.settings_tabs import KeybindingsTab, MacrosTab, HRMSettingsTab
+from src.appearance_tabs import AppAppearanceTab, OverlayAppearanceTab
+from src.providers_tab import ProvidersTab
+from src.game_profiles_tab import GameProfilesTab
+from src.knowledge_packs_tab import KnowledgePacksTab
+from src.keybind_manager import KeybindManager
+from src.macro_manager import MacroManager
+from src.ui.theme_manager import get_theme_manager, OmnixThemeManager
 
 logger = logging.getLogger(__name__)
 

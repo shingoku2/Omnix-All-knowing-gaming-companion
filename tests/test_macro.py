@@ -3,8 +3,8 @@ import time
 import pytest
 
 import macro_runner
-from macro_runner import MacroRunner, MacroExecutionState
-from macro_manager import Macro, MacroStep, MacroStepType
+from src.macro_runner import MacroRunner, MacroExecutionState
+from src.macro_manager import Macro, MacroStep, MacroStepType
 
 
 @pytest.mark.unit

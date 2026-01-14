@@ -21,8 +21,9 @@ class TestConfig:
         assert config is not None
         assert config.config_dir == str(temp_config_dir)
 
-    def test_config_ai_provider_default(self, temp_config_dir):
+    def test_config_ai_provider_default(self, temp_config_dir, monkeypatch):
         """Test default AI provider is set"""
+        monkeypatch.delenv("AI_PROVIDER", raising=False)
         config = Config(config_dir=str(temp_config_dir))
         # Defaults to ollama
         assert config.ai_provider == "ollama"
@@ -95,9 +96,9 @@ class TestConfigEdgeCases:
 
     def test_config_reset_to_defaults(self, temp_config_dir):
         """Test resetting configuration to defaults"""
-        from config import Config
+        from src.config import Config
 
         config = Config(require_keys=False)
         config.set("ai_provider", "test_provider")
         config.reset_to_defaults()
-        assert config.get("ai_provider") == "anthropic"
+        assert config.get("ai_provider") == "ollama"

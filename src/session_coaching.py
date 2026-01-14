@@ -7,9 +7,9 @@ import logging
 from typing import Optional, Dict, List
 from datetime import datetime
 
-from session_logger import SessionLogger, SessionEvent, get_session_logger
-from ai_router import get_router, AIRouter
-from config import Config
+from src.session_logger import SessionLogger, SessionEvent, get_session_logger
+from src.ai_router import get_router, AIRouter
+from src.config import Config
 
 logger = logging.getLogger(__name__)
 

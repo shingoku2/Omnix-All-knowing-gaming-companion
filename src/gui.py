@@ -30,16 +30,16 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 
-from config import Config
-from credential_store import CredentialStore
-from ui.design_system import OmnixDesignSystem, design_system
-from keybind_manager import KeybindManager
-from macro_manager import MacroManager
-from ui.theme_manager import OmnixThemeManager
-from settings_dialog import TabbedSettingsDialog
+from src.config import Config
+from src.credential_store import CredentialStore
+from src.ui.design_system import OmnixDesignSystem, design_system
+from src.keybind_manager import KeybindManager
+from src.macro_manager import MacroManager
+from src.ui.theme_manager import OmnixThemeManager
+from src.settings_dialog import TabbedSettingsDialog
 
 # New HUD primitives
-from omnix_hud import (
+from src.omnix_hud import (
     HudPanel,
     NeonButton,
     ChatPanel,

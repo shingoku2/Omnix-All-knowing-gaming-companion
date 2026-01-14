@@ -14,7 +14,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 
 # Import new design system
-from ui.theme_manager import OmnixThemeManager
+from src.ui.theme_manager import OmnixThemeManager
 
 logger = logging.getLogger(__name__)
 
