@@ -19,14 +19,14 @@
     - [x] Sub-task: Check `src/gui.py` and `src/overlay.py` for threading issues (blocking main thread).
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Manual Code Review & Bug Hunting' (Protocol in workflow.md)
 
-## Phase 3: Performance & Architecture Assessment
-- [ ] Task: Analyze resource usage patterns.
-    - [ ] Sub-task: Identify potentially expensive operations (e.g., frequent IO, large loops).
-    - [ ] Sub-task: Review memory management in long-running sessions.
-- [ ] Task: Review Architecture against `tech-stack.md`.
-    - [ ] Sub-task: Check for deviations from the intended modular architecture.
-    - [ ] Sub-task: Identify circular dependencies or tight coupling.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Performance & Architecture Assessment' (Protocol in workflow.md)
+## Phase 3: Performance & Architecture Assessment [checkpoint: 3c4d2aa]
+- [x] Task: Analyze resource usage patterns.
+    - [x] Sub-task: Identify potentially expensive operations (e.g., frequent IO, large loops).
+    - [x] Sub-task: Review memory management in long-running sessions.
+- [x] Task: Review Architecture against `tech-stack.md`.
+    - [x] Sub-task: Check for deviations from the intended modular architecture.
+    - [x] Sub-task: Identify circular dependencies or tight coupling.
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Performance & Architecture Assessment' (Protocol in workflow.md)
 
 ## Phase 4: Roadmap & Deliverables Synthesis
 - [ ] Task: Compile findings into actionable items.
