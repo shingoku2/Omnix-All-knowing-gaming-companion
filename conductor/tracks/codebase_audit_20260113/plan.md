@@ -28,11 +28,11 @@
     - [x] Sub-task: Identify circular dependencies or tight coupling.
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Performance & Architecture Assessment' (Protocol in workflow.md)
 
-## Phase 4: Roadmap & Deliverables Synthesis
-- [ ] Task: Compile findings into actionable items.
-    - [ ] Sub-task: Create a list of "Bug Fix" tasks.
-    - [ ] Sub-task: Create a list of "Refactoring" tasks.
-- [ ] Task: Propose Next Feature.
-    - [ ] Sub-task: Analyze `product.md` and current capabilities.
-    - [ ] Sub-task: Propose 1-2 candidates for the next major feature implementation.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Roadmap & Deliverables Synthesis' (Protocol in workflow.md)
+## Phase 4: Roadmap & Deliverables Synthesis [checkpoint: pending]
+- [x] Task: Compile findings into actionable items.
+    - [x] Sub-task: Create a list of "Bug Fix" tasks.
+    - [x] Sub-task: Create a list of "Refactoring" tasks.
+- [x] Task: Propose Next Feature.
+    - [x] Sub-task: Analyze `product.md` and current capabilities.
+    - [x] Sub-task: Propose 1-2 candidates for the next major feature implementation.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Roadmap & Deliverables Synthesis' (Protocol in workflow.md)
