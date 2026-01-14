@@ -1,6 +1,6 @@
 # Plan: Comprehensive Codebase Audit & Roadmap
 
-## Phase 1: Automated Analysis & Discovery
+## Phase 1: Automated Analysis & Discovery [checkpoint: 690aafe]
 - [ ] Task: Run static analysis tools on the Python backend.
     - [ ] Sub-task: Execute `flake8 src/` and capturing output.
     - [ ] Sub-task: Execute `mypy src/` (type checking) and capture output.
