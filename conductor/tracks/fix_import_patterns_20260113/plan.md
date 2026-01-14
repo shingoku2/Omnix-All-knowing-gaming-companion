@@ -1,12 +1,12 @@
 # Plan: Fix Import Patterns
 
 ## Phase 1: Identification & Setup
-- [ ] Task: Create `test_imports.py` to verify module importability.
-    - [ ] Sub-task: Implement the script logic to crawl `src/` and attempt dynamic imports.
-    - [ ] Sub-task: Run the script and document current failures.
-- [ ] Task: Identify inconsistent import patterns using shell commands.
-    - [ ] Sub-task: Run `grep -r "^from [a-z_]* import" src/ --include="*.py"` to find bad imports.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Identification & Setup' (Protocol in workflow.md)
+- [x] Task: Create `test_imports.py` to verify module importability.
+    - [x] Sub-task: Implement the script logic to crawl `src/` and attempt dynamic imports.
+    - [x] Sub-task: Run the script and document current failures.
+- [x] Task: Identify inconsistent import patterns using shell commands.
+    - [x] Sub-task: Run `grep -r "^from [a-z_]* import" src/ --include="*.py"` to find bad imports.
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Identification & Setup' (Protocol in workflow.md)
 
 ## Phase 2: Core Module Refactoring
 - [ ] Task: Standardize imports in `src/game_profile.py`.
