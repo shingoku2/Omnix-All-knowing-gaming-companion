@@ -419,7 +419,7 @@ class MacroManager:
 
         try:
             # Local import to avoid circular dependency
-            from macro_runner import MacroRunner
+            from src.macro_runner import MacroRunner
 
             # Initialize runner (singleton-like or new instance)
             if not hasattr(self, '_runner') or self._runner is None:

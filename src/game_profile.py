@@ -5,7 +5,7 @@ from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from base_store import BaseStore
+from src.base_store import BaseStore
 
 logger = logging.getLogger(__name__)
 

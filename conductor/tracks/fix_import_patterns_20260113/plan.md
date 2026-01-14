@@ -9,11 +9,11 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Identification & Setup' (Protocol in workflow.md)
 
 ## Phase 2: Core Module Refactoring
-- [ ] Task: Standardize imports in `src/game_profile.py`.
-- [ ] Task: Standardize imports in `src/macro_manager.py`.
-- [ ] Task: Standardize imports in `src/knowledge_integration.py`.
-- [ ] Task: Verify Phase 2 changes using `test_imports.py`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Module Refactoring' (Protocol in workflow.md)
+- [x] Task: Standardize imports in `src/game_profile.py`.
+- [x] Task: Standardize imports in `src/macro_manager.py`.
+- [x] Task: Standardize imports in `src/knowledge_integration.py`.
+- [x] Task: Verify Phase 2 changes using `test_imports.py`.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Core Module Refactoring' (Protocol in workflow.md)
 
 ## Phase 3: Global Cleanup & Final Validation
 - [ ] Task: Standardize remaining imports in all files under `src/`.
