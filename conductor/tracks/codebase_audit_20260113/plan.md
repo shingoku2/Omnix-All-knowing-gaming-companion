@@ -19,7 +19,7 @@
     - [x] Sub-task: Check `src/gui.py` and `src/overlay.py` for threading issues (blocking main thread).
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Manual Code Review & Bug Hunting' (Protocol in workflow.md)
 
-## Phase 3: Performance & Architecture Assessment [checkpoint: 3c4d2aa]
+## Phase 3: Performance & Architecture Assessment [checkpoint: 01765c1]
 - [x] Task: Analyze resource usage patterns.
     - [x] Sub-task: Identify potentially expensive operations (e.g., frequent IO, large loops).
     - [x] Sub-task: Review memory management in long-running sessions.
