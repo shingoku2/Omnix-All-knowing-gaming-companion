@@ -12,7 +12,7 @@
 - [x] Task: Central HUD & Footer - Implement the overlay-specific HUD elements. [2ab440e]
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: React Component Recreation' (Protocol in workflow.md)
 
-## Phase 3: Navigation & Transitions
+## Phase 3: Navigation & Transitions [checkpoint: edaa344]
 - [x] Task: Animation System - Implement Framer Motion (or equivalent) for menu transitions. [49000e4]
 - [x] Task: Sub-menu Routing - Ensure Settings, Macros, and Knowledge Base load correctly within the new frames. [bf71b6c]
 - [x] Task: Re-style Sub-menus - Apply the new design tokens to all existing internal menu components. [e22c09a]
