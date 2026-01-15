@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MainContainer } from './components/MainContainer';
 import { RightSideMenu, MenuItem } from './components/RightSideMenu';
 import { ChatModule, Message } from './components/ChatModule';
