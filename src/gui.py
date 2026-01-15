@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import json
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -78,6 +79,48 @@ class JSBridge(QObject):
     def toggleOverlay(self):
         """Called from React to toggle the overlay window."""
         self.main_window._toggle_overlay()
+
+    @pyqtSlot(result=str)
+    def getConfig(self):
+        """Called from React to get current config."""
+        cfg = self.main_window.config
+        config_data = {
+            "ai": {
+                "provider": cfg.ai_provider,
+                "model": cfg.ollama_model,
+            },
+            "ui": {
+                "opacity": cfg.overlay_opacity,
+                "theme": cfg.theme,
+            }
+        }
+        return json.dumps(config_data)
+
+    @pyqtSlot(str, result=bool)
+    def saveSettings(self, settings_json: str):
+        """Called from React to save settings."""
+        try:
+            data = json.loads(settings_json)
+            updates = {}
+            
+            # Map UI settings
+            if "ui" in data:
+                if "opacity" in data["ui"]:
+                    updates["overlay_opacity"] = float(data["ui"]["opacity"])
+                
+            # Map AI settings
+            if "ai" in data:
+                if "model" in data["ai"]:
+                    updates["ollama_model"] = data["ai"]["model"]
+            
+            if updates:
+                self.main_window.config.update(updates)
+                self.main_window.config.save()
+                self.settingsChanged.emit(updates)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save settings: {e}")
+            return False
 
 
 def _load_qss() -> str:
