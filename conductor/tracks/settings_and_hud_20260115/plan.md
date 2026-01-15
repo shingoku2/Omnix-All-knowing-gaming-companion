@@ -2,7 +2,7 @@
 
 ## Phase 1: Backend Infrastructure (Python)
 - [x] Task: Extend `JSBridge` with new slots for fetching current config and saving updated settings. 51377a6
-- [ ] Task: Implement `MacroManager` bridge methods for recording/editing macros from JS.
+- [x] Task: Implement `MacroManager` bridge methods for recording/editing macros from JS. 9d5089c
 - [ ] Task: Enhance `GameDetector` to emit detailed process information (Name, PID, Executable Path).
 - [ ] Task: Implement a periodic "System Stats" emitter in `MainWindow` to send CPU/RAM usage to React.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Backend Infrastructure (Python)' (Protocol in workflow.md)
