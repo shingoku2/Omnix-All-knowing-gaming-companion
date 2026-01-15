@@ -70,6 +70,21 @@ class GameDetector:
             return ""
         return str(process_name).casefold()
 
+    def _get_file_version_info(self, path: str) -> str:
+        """Get file version information from executable (Windows only)."""
+        if not path or not os.path.exists(path):
+            return ""
+            
+        try:
+            # Try using pywin32
+            import win32api
+            info = win32api.GetFileVersionInfo(path, "\\")
+            ms = info['FileVersionMS']
+            ls = info['FileVersionLS']
+            return f"{win32api.HIWORD(ms)}.{win32api.LOWORD(ms)}.{win32api.HIWORD(ls)}.{win32api.LOWORD(ls)}"
+        except (ImportError, Exception):
+            return ""
+
     def _rebuild_process_index(self) -> None:
         """Build a fast lookup of tracked processes to prevent duplicates."""
         process_index = {}
@@ -178,12 +193,17 @@ class GameDetector:
         process_name = proc_info.get("name") or ""
         pid = int(proc_info.get("pid") or process.pid)
 
+        version = ""
+        if exe_path:
+            version = self._get_file_version_info(exe_path)
+
         return {
             "name": game_name,
             "exe": exe_path,
             "process_name": process_name,
             "pid": pid,
             "path": os.path.dirname(exe_path) if exe_path else "",
+            "version": version
         }
 
     def _start_background_scan(self) -> None:

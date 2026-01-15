@@ -14,6 +14,7 @@ class GameInfo(TypedDict):
     process_name: str
     pid: int
     path: str
+    version: Optional[str]
 
 
 class ApiKeyStatus(TypedDict):
