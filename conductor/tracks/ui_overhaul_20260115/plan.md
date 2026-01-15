@@ -18,7 +18,7 @@
 - [x] Task: Re-style Sub-menus - Apply the new design tokens to all existing internal menu components. [e22c09a]
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Navigation & Transitions' (Protocol in workflow.md)
 
-## Phase 4: PyQt6 Shell & Integration
+## Phase 4: PyQt6 Shell & Integration [checkpoint: 41dba36]
 - [x] Task: PyQt6 Window Styling - Update the main window shell to host the new React-based UI seamlessly. [7835c9a]
 - [x] Task: Overlay Container Update - Sync the PyQt6 overlay window with the new HUD dimensions. [a197926]
 - [x] Task: Integration Testing - Verify that Python-to-JS communication still works for all modules. [ec747bf]
