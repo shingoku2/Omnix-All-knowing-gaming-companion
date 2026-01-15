@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cpu, HardDrive, Info, Layers, Settings } from 'lucide-react';
+import { Cpu, HardDrive, Info, Layers } from 'lucide-react';
 import { bridge } from '../utils/bridge';
 
 interface FooterProps {

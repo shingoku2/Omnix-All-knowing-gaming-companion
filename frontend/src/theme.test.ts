@@ -6,6 +6,7 @@ const config = resolveConfig(tailwindConfig);
 
 describe('Tailwind Design Tokens', () => {
   it('should have the "cyberpunk" color palette defined', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const colors = config.theme?.colors as any;
     
     expect(colors.omnix).toBeDefined();
@@ -27,6 +28,7 @@ describe('Tailwind Design Tokens', () => {
   });
 
   it('should have custom box shadows for neon glows', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const boxShadow = config.theme?.boxShadow as any;
     expect(boxShadow['neon-cyan']).toBeDefined();
     expect(boxShadow['neon-magenta']).toBeDefined();

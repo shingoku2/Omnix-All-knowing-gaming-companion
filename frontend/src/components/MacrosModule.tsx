@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, Zap, Clock, Save } from 'lucide-react';
+import { Zap, Save } from 'lucide-react';
 
 export const MacrosModule: React.FC = () => {
   const macros = [
