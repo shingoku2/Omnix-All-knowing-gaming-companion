@@ -1,6 +1,6 @@
 # Plan: UI Overhaul - "Omnix Evolution"
 
-## Phase 1: Foundation & Design Tokens
+## Phase 1: Foundation & Design Tokens [checkpoint: 9afeecc]
 - [x] Task: Define Design Tokens - Extract colors, gradients, and glow effects from `assets/UI_Elements/*.png` into Tailwind config. [6b31b70]
 - [x] Task: Global CSS Setup - Create base utility classes for the "Cyberpunk" aesthetic (e.g., `.omni-frame`, `.omni-glow`). [30f48c9]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Design Tokens' (Protocol in workflow.md)
