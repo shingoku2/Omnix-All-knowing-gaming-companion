@@ -3,6 +3,8 @@ import { MainContainer } from './components/MainContainer';
 import { RightSideMenu, MenuItem } from './components/RightSideMenu';
 import { ChatModule, Message } from './components/ChatModule';
 import { SettingsModule } from './components/SettingsModule';
+import { MacrosModule } from './components/MacrosModule';
+import { KnowledgeModule } from './components/KnowledgeModule';
 import { CentralHUD } from './components/CentralHUD';
 import { Footer } from './components/Footer';
 import { AnimatedSection } from './components/AnimatedSection';
@@ -16,7 +18,7 @@ const App: React.FC = () => {
   const menuItems: MenuItem[] = [
     { id: 'chat', label: 'AI Chat', icon: 'MessageSquare' },
     { id: 'settings', label: 'Settings', icon: 'Settings' },
-    { id: 'macros', label: 'Macros', icon: 'Command' },
+    { id: 'macros', label: 'Macros', icon: 'Zap' },
     { id: 'knowledge', label: 'Knowledge', icon: 'Library' },
   ];
 
@@ -53,7 +55,13 @@ const App: React.FC = () => {
               {activeTab === 'settings' && (
                 <SettingsModule />
               )}
-              {activeTab !== 'chat' && activeTab !== 'settings' && (
+              {activeTab === 'macros' && (
+                <MacrosModule />
+              )}
+              {activeTab === 'knowledge' && (
+                <KnowledgeModule />
+              )}
+              {activeTab !== 'chat' && activeTab !== 'settings' && activeTab !== 'macros' && activeTab !== 'knowledge' && (
                 <div className="flex items-center justify-center h-full text-omnix-primary/40 font-hud tracking-[0.5em] uppercase">
                   Module Under Development
                 </div>
