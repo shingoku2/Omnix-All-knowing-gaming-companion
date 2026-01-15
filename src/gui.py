@@ -66,13 +66,18 @@ class JSBridge(QObject):
     @pyqtSlot(str)
     def sendMessage(self, content: str):
         """Called from React when user sends a message."""
-        self.main_window.chat_widget._send_message(content)
+        self.main_window.send_message_to_ai(content)
 
     @pyqtSlot(str, str)
     def updateSetting(self, key: str, value: str):
         """Called from React to update a config setting."""
         logger.info(f"Setting updated from JS: {key} = {value}")
         # Add logic to update config here
+
+    @pyqtSlot()
+    def toggleOverlay(self):
+        """Called from React to toggle the overlay window."""
+        self.main_window._toggle_overlay()
 
 
 def _load_qss() -> str:
@@ -158,83 +163,6 @@ class AIWorkerThread(QThread):
             self.error.emit(str(exc))
 
 
-class ChatWidget(QWidget):
-    """
-    HUD-styled chat surface with threaded AI responses.
-    Wraps the primitive ChatPanel (bubbles) with an input field and send logic.
-    """
-
-    def __init__(
-        self, assistant, title: str = "Chat", parent: Optional[QWidget] = None
-    ):
-        super().__init__(parent)
-        self.assistant = assistant
-        self.ai_worker: Optional[AIWorkerThread] = None
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(10)
-
-        # 1. Chat History Panel
-        self.chat_panel = ChatPanel()
-        layout.addWidget(self.chat_panel, 1)
-
-        # 2. Input Area
-        input_row = QHBoxLayout()
-        input_row.setSpacing(8)
-
-        self.input_field = QLineEdit()
-        self.input_field.setObjectName("chat-input")
-        self.input_field.setPlaceholderText("Ask Omnix...")
-        self.input_field.returnPressed.connect(self._on_submit)
-        input_row.addWidget(self.input_field, 1)
-
-        self.send_button = NeonButton("SEND", primary=True)
-        self.send_button.setFixedSize(80, 32)
-        self.send_button.clicked.connect(self._on_submit)
-        input_row.addWidget(self.send_button)
-
-        layout.addLayout(input_row)
-
-        self._seed_intro()
-
-    def _seed_intro(self) -> None:
-        self.add_message("SYSTEM", "Omnix Online.", role="system")
-        self.add_message("AI", "Systems nominal. How can I assist?", role="ai")
-
-    def add_message(self, sender: str, message: str, role: str = "ai") -> None:
-        is_user = role.lower() == "user"
-        self.chat_panel.add_message(sender, message, is_user)
-
-    def _on_submit(self) -> None:
-        if self.ai_worker is not None:
-            return
-        text = self.input_field.text().strip()
-        if not text:
-            return
-        self._send_message(text)
-
-    def _send_message(self, text: str) -> None:
-        self.add_message("YOU", text, role="user")
-        self.input_field.clear()
-        self.send_button.setEnabled(False)
-
-        self.ai_worker = AIWorkerThread(self.assistant, text)
-        self.ai_worker.finished.connect(self._handle_response)
-        self.ai_worker.error.connect(self._handle_error)
-        self.ai_worker.start()
-
-    def _handle_response(self, response: str) -> None:
-        self.add_message("OMNIX", response, role="ai")
-        self.send_button.setEnabled(True)
-        self.ai_worker = None
-
-    def _handle_error(self, message: str) -> None:
-        self.add_message("ERROR", f"System Failure: {message}", role="system")
-        self.send_button.setEnabled(True)
-        self.ai_worker = None
-
-
 class OverlayWindow(QWidget):
     """Frameless always-on-top overlay with React-based HUD."""
 
@@ -273,7 +201,7 @@ class OverlayWindow(QWidget):
             self.web_view.load(QUrl(url))
         else:
             from PyQt6.QtCore import QUrl
-            self.web_view.load(QUrl("http://localhost:5173?mode=overlay"))
+            self.web_view.load(QUrl("http://localhost:3001?mode=overlay"))
 
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
@@ -349,6 +277,7 @@ class MainWindow(QMainWindow):
         self.design_system = design_system or OmnixDesignSystem()
         self.game_detector = game_detector
         self.current_game = None
+        self.ai_worker: Optional[AIWorkerThread] = None
 
         self.setWindowTitle("OMNIX // HUD")
         self.resize(1280, 800)
@@ -380,11 +309,31 @@ class MainWindow(QMainWindow):
         else:
             # Fallback for development (vite dev server)
             from PyQt6.QtCore import QUrl
-            self.web_view.load(QUrl("http://localhost:5173"))
+            self.web_view.load(QUrl("http://localhost:3001"))
 
         # Start services
         if self.game_detector:
             self._start_game_detection()
+
+    def send_message_to_ai(self, text: str) -> None:
+        """Handle message sending initiated from React."""
+        if self.ai_worker is not None:
+            return  # Already processing
+
+        self.ai_worker = AIWorkerThread(self.ai_assistant, text)
+        self.ai_worker.finished.connect(self._handle_response)
+        self.ai_worker.error.connect(self._handle_error)
+        self.ai_worker.start()
+
+    def _handle_response(self, response: str) -> None:
+        """Send AI response back to React."""
+        self.bridge.messageReceived.emit(response)
+        self.ai_worker = None
+
+    def _handle_error(self, message: str) -> None:
+        """Send error message back to React."""
+        self.bridge.messageReceived.emit(f"Error: {message}")
+        self.ai_worker = None
 
     def _build_header(self) -> QHBoxLayout:
         # Recreating header to match logic flow

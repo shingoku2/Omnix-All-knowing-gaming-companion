@@ -1,5 +1,6 @@
 import React from 'react';
-import { Cpu, HardDrive, Info } from 'lucide-react';
+import { Cpu, HardDrive, Info, Layers, Settings } from 'lucide-react';
+import { bridge } from '../utils/bridge';
 
 interface FooterProps {
   cpu: string;
@@ -22,14 +23,20 @@ export const Footer: React.FC<FooterProps> = ({ cpu, ram, version }) => {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Action Buttons */}
+        <button 
+          onClick={() => bridge.toggleOverlay()}
+          className="flex items-center gap-2 px-3 py-1 bg-omnix-primary/10 border border-omnix-primary/30 rounded hover:bg-omnix-primary/20 transition-colors group"
+        >
+          <Layers size={12} className="text-omnix-primary group-hover:text-white" />
+          <span className="text-[10px] font-hud tracking-widest text-omnix-primary group-hover:text-white">TOGGLE OVERLAY</span>
+        </button>
+
+        <div className="h-4 w-px bg-omnix-primary/20" />
+
         <div className="flex items-center gap-1.5 text-[10px] font-hud tracking-widest text-omnix-primary/60">
           <Info size={12} />
           <span>OMNIX {version}</span>
-        </div>
-        <div className="flex gap-1">
-          <div className="w-1 h-3 bg-omnix-primary/20" />
-          <div className="w-1 h-3 bg-omnix-primary/40" />
-          <div className="w-1 h-3 bg-omnix-primary/60" />
         </div>
       </div>
     </div>

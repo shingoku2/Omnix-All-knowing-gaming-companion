@@ -9,6 +9,8 @@ import { CentralHUD } from './components/CentralHUD';
 import { Footer } from './components/Footer';
 import { AnimatedSection } from './components/AnimatedSection';
 
+import { bridge } from './utils/bridge';
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('chat');
   const [messages, setMessages] = useState<Message[]>([
@@ -18,6 +20,16 @@ const App: React.FC = () => {
   // Handle URL parameters for different display modes
   const queryParams = new URLSearchParams(window.location.search);
   const isOverlayMode = queryParams.get('mode') === 'overlay';
+
+  useEffect(() => {
+    bridge.setMessageListener((content) => {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content
+      }]);
+    });
+  }, []);
 
   const menuItems: MenuItem[] = [
     { id: 'chat', label: 'AI Chat', icon: 'MessageSquare' },
@@ -30,7 +42,11 @@ const App: React.FC = () => {
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content };
     setMessages(prev => [...prev, userMsg]);
     
-    // Simulate AI response
+    // Send to Python backend
+    bridge.sendMessage(content);
+    
+    // Simulate AI response (temporary, until backend pushes back)
+    /*
     setTimeout(() => {
       const botMsg: Message = { 
         id: (Date.now() + 1).toString(), 
@@ -39,6 +55,7 @@ const App: React.FC = () => {
       };
       setMessages(prev => [...prev, botMsg]);
     }, 1000);
+    */
   };
 
   // Rendering logic for Overlay Mode
