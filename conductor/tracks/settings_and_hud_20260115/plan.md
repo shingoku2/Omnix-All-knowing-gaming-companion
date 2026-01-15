@@ -1,6 +1,6 @@
 # Plan: Settings Implementation & Dynamic HUD
 
-## Phase 1: Backend Infrastructure (Python)
+## Phase 1: Backend Infrastructure (Python) [checkpoint: 8015144]
 - [x] Task: Extend `JSBridge` with new slots for fetching current config and saving updated settings. 51377a6
 - [x] Task: Implement `MacroManager` bridge methods for recording/editing macros from JS. 9d5089c
 - [x] Task: Enhance `GameDetector` to emit detailed process information (Name, PID, Executable Path). af4cabb
