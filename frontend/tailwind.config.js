@@ -8,12 +8,19 @@ export default {
     extend: {
       colors: {
         omnix: {
-          dark: '#050b14',
-          panel: 'rgba(10, 20, 40, 0.7)',
-          blue: '#00f3ff', // Cyan neon
-          blueDim: 'rgba(0, 243, 255, 0.1)',
-          red: '#ff2a2a', // Alert red
-          text: '#e0f7ff',
+          bg: {
+            dark: '#030610',
+            panel: 'rgba(8, 14, 28, 0.90)',
+          },
+          primary: '#00f0ff',
+          primaryDim: 'rgba(0, 240, 255, 0.15)',
+          secondary: '#ff0099',
+          secondaryDim: 'rgba(255, 0, 153, 0.15)',
+          accent: '#fcee0a',
+          text: {
+            primary: '#e0f7ff',
+            secondary: '#94a3b8',
+          }
         },
       },
       fontFamily: {
@@ -21,8 +28,8 @@ export default {
         body: ['Rajdhani', 'sans-serif'],
       },
       boxShadow: {
-        'neon-blue': '0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.3)',
-        'neon-red': '0 0 10px rgba(255, 42, 42, 0.5)',
+        'neon-cyan': '0 0 10px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 240, 255, 0.3)',
+        'neon-magenta': '0 0 10px rgba(255, 0, 153, 0.5), 0 0 20px rgba(255, 0, 153, 0.3)',
       },
       animation: {
         'spin-slow': 'spin 8s linear infinite',
