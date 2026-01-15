@@ -14,6 +14,7 @@ import sys
 import json
 from pathlib import Path
 from typing import Dict, Optional
+import psutil
 
 from PyQt6.QtCore import QEvent, Qt, QThread, QTimer, pyqtSignal, QSize, QObject, pyqtSlot
 from PyQt6.QtGui import QColor, QFont, QAction
@@ -59,6 +60,7 @@ class JSBridge(QObject):
 
     messageReceived = pyqtSignal(str)
     settingsChanged = pyqtSignal(dict)
+    systemStatsUpdated = pyqtSignal(str)
 
     def __init__(self, main_window: MainWindow):
         super().__init__()
@@ -399,6 +401,24 @@ class MainWindow(QMainWindow):
         # Start services
         if self.game_detector:
             self._start_game_detection()
+            
+        self._start_system_stats()
+
+    def _start_system_stats(self) -> None:
+        """Start periodic system stats collection."""
+        self.stats_timer = QTimer()
+        self.stats_timer.timeout.connect(self._update_system_stats)
+        self.stats_timer.start(1000)
+
+    def _update_system_stats(self) -> None:
+        """Collect and emit system stats."""
+        try:
+            cpu = psutil.cpu_percent()
+            ram = psutil.virtual_memory().percent
+            data = {"cpu": cpu, "ram": ram}
+            self.bridge.systemStatsUpdated.emit(json.dumps(data))
+        except Exception as e:
+            logger.error(f"Error updating system stats: {e}")
 
     def send_message_to_ai(self, text: str) -> None:
         """Handle message sending initiated from React."""
@@ -535,6 +555,8 @@ class MainWindow(QMainWindow):
             self.overlay_window.close()
         if hasattr(self, "game_check_timer"):
             self.game_check_timer.stop()
+        if hasattr(self, "stats_timer"):
+            self.stats_timer.stop()
 
 
 def run_gui(
