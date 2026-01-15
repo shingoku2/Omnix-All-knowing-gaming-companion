@@ -6,7 +6,7 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Design Tokens' (Protocol in workflow.md)
 
 ## Phase 2: React Component Recreation (Frontend)
-- [ ] Task: Main Container Frame - Recreate the primary container using CSS Grid/Flexbox and Tailwind.
+- [x] Task: Main Container Frame - Recreate the primary container using CSS Grid/Flexbox and Tailwind. [1cc8d72]
 - [ ] Task: Right-Side Menu - Implement the navigation sidebar with hover states and active indicators.
 - [ ] Task: Chat Module - Rebuild the chat interface using the new design assets.
 - [ ] Task: Central HUD & Footer - Implement the overlay-specific HUD elements.
