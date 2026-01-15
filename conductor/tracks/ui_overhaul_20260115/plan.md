@@ -24,7 +24,7 @@
 - [x] Task: Integration Testing - Verify that Python-to-JS communication still works for all modules. [ec747bf]
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: PyQt6 Shell & Integration' (Protocol in workflow.md)
 
-## Phase 5: Final Polish & Verification
+## Phase 5: Final Polish & Verification [checkpoint: 461384d]
 - [x] Task: Performance Audit - Profile CPU/GPU usage during gameplay with the new UI. [script-verified]
 - [x] Task: Visual QA - Cross-reference every screen against the original PNG assets. [verified]
 - [x] Task: Bug Scrub - Fix any layout or interaction regressions. [e7d79ca]
