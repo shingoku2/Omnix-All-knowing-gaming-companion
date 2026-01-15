@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Optional
 
-from PyQt6.QtCore import QEvent, Qt, QThread, QTimer, pyqtSignal, QSize
+from PyQt6.QtCore import QEvent, Qt, QThread, QTimer, pyqtSignal, QSize, QObject, pyqtSlot
 from PyQt6.QtGui import QColor, QFont, QAction
 from PyQt6.QtWidgets import (
     QApplication,
@@ -29,6 +29,8 @@ from PyQt6.QtWidgets import (
     QSpacerItem,
     QSizePolicy,
 )
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWebChannel import QWebChannel
 
 from src.config import Config
 from src.credential_store import CredentialStore
@@ -49,6 +51,28 @@ from src.omnix_hud import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class JSBridge(QObject):
+    """Bridge for communication between JS/React and Python."""
+
+    messageReceived = pyqtSignal(str)
+    settingsChanged = pyqtSignal(dict)
+
+    def __init__(self, main_window: MainWindow):
+        super().__init__()
+        self.main_window = main_window
+
+    @pyqtSlot(str)
+    def sendMessage(self, content: str):
+        """Called from React when user sends a message."""
+        self.main_window.chat_widget._send_message(content)
+
+    @pyqtSlot(str, str)
+    def updateSetting(self, key: str, value: str):
+        """Called from React to update a config setting."""
+        logger.info(f"Setting updated from JS: {key} = {value}")
+        # Add logic to update config here
 
 
 def _load_qss() -> str:
@@ -483,109 +507,24 @@ class MainWindow(QMainWindow):
 
         self.overlay_window = OverlayWindow(ai_assistant, config, self.design_system)
 
-        # Central Container
-        central = QWidget()
-        self.setCentralWidget(central)
+        # Setup Web View
+        self.web_view = QWebEngineView()
+        self.setCentralWidget(self.web_view)
 
-        # Main Layout (Vertical: Header -> Content -> Footer)
-        main_layout = QVBoxLayout(central)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(16)
+        # Setup Web Channel for JS-Python communication
+        self.bridge = JSBridge(self)
+        self.channel = QWebChannel()
+        self.channel.registerObject("bridge", self.bridge)
+        self.web_view.page().setWebChannel(self.channel)
 
-        # 1. Header
-        main_layout.addLayout(self._build_header())
-
-        # 2. Content (3 Columns)
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(20)
-
-        # -- Left: Chat --
-        self.left_panel = HudPanel()
-        left_layout = QVBoxLayout(self.left_panel)
-        left_layout.setContentsMargins(16, 16, 16, 16)
-        left_layout.setSpacing(12)
-
-        left_title = QLabel("COMMUNICATIONS")
-        left_title.setStyleSheet(
-            "font-size: 11px; letter-spacing: 2px; color: #94a3b8; font-weight: bold;"
-        )
-        left_layout.addWidget(left_title)
-
-        self.chat_widget = ChatWidget(self.ai_assistant)
-        left_layout.addWidget(self.chat_widget)
-
-        content_layout.addWidget(self.left_panel, 2)
-
-        # -- Center: Game Status --
-        self.center_panel = QWidget()  # Transparent container
-        center_layout = QVBoxLayout(self.center_panel)
-        center_layout.setSpacing(24)
-        center_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.game_status = GameStatusWidget()
-        center_layout.addWidget(self.game_status)
-
-        self.stat_block = StatBlock()
-        center_layout.addWidget(self.stat_block)
-
-        # Quick Actions (Buttons below stats)
-        actions_layout = QHBoxLayout()
-        actions_layout.setSpacing(12)
-        for label in ["SCAN", "OPTIMIZE", "LOG"]:
-            btn = NeonButton(label, primary=False)
-            actions_layout.addWidget(btn)
-        center_layout.addLayout(actions_layout)
-
-        center_layout.addStretch()
-
-        content_layout.addWidget(self.center_panel, 2)
-
-        # -- Right: Settings & Tools --
-        self.right_panel = HudPanel()
-        right_layout = QVBoxLayout(self.right_panel)
-        right_layout.setContentsMargins(16, 16, 16, 16)
-        right_layout.setSpacing(16)
-
-        right_title = QLabel("SYSTEMS")
-        right_title.setStyleSheet(
-            "font-size: 11px; letter-spacing: 2px; color: #94a3b8; font-weight: bold;"
-        )
-        right_layout.addWidget(right_title)
-
-        # Menu Buttons
-        settings_items = [
-            ("AI PROVIDERS", 0),
-            ("GAME PROFILES", 1),
-            ("KNOWLEDGE PACKS", 2),
-            ("MACRO SYSTEM", 4),
-        ]
-
-        for name, idx in settings_items:
-            btn = NeonButton(name, primary=False)
-            btn.clicked.connect(lambda _, x=idx: self._open_settings_at_tab(x))
-            right_layout.addWidget(btn)
-
-        right_layout.addStretch()
-
-        # Provider Toggle (Visual only since we are Ollama only)
-        provider_frame = QFrame()
-        provider_frame.setObjectName("settings-row")
-        provider_frame.setProperty("active", "true")
-        prov_layout = QVBoxLayout(provider_frame)
-        prov_label = QLabel("ACTIVE PROVIDER")
-        prov_label.setStyleSheet("font-size: 9px; color: #22d3ee; font-weight: bold;")
-        prov_val = QLabel("OLLAMA (LOCAL)")
-        prov_val.setStyleSheet("font-size: 14px; font-weight: bold;")
-        prov_layout.addWidget(prov_label)
-        prov_layout.addWidget(prov_val)
-        right_layout.addWidget(provider_frame)
-
-        content_layout.addWidget(self.right_panel, 1)
-
-        main_layout.addLayout(content_layout)
-
-        # 3. Footer
-        main_layout.addLayout(self._build_footer())
+        # Load Frontend
+        frontend_path = Path(__file__).parent.parent / "frontend" / "dist" / "index.html"
+        if frontend_path.exists():
+            self.web_view.load(frontend_path.absolute().as_uri())
+        else:
+            # Fallback for development (vite dev server)
+            from PyQt6.QtCore import QUrl
+            self.web_view.load(QUrl("http://localhost:5173"))
 
         # Start services
         if self.game_detector:
