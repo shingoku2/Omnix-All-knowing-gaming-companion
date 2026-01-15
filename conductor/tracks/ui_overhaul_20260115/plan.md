@@ -2,7 +2,7 @@
 
 ## Phase 1: Foundation & Design Tokens
 - [x] Task: Define Design Tokens - Extract colors, gradients, and glow effects from `assets/UI_Elements/*.png` into Tailwind config. [6b31b70]
-- [ ] Task: Global CSS Setup - Create base utility classes for the "Cyberpunk" aesthetic (e.g., `.omni-frame`, `.omni-glow`).
+- [x] Task: Global CSS Setup - Create base utility classes for the "Cyberpunk" aesthetic (e.g., `.omni-frame`, `.omni-glow`). [30f48c9]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Design Tokens' (Protocol in workflow.md)
 
 ## Phase 2: React Component Recreation (Frontend)
