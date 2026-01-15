@@ -15,6 +15,10 @@ const App: React.FC = () => {
     { id: '1', role: 'assistant', content: 'Neural link established. How can I assist you in your current session?' }
   ]);
 
+  // Handle URL parameters for different display modes
+  const queryParams = new URLSearchParams(window.location.search);
+  const isOverlayMode = queryParams.get('mode') === 'overlay';
+
   const menuItems: MenuItem[] = [
     { id: 'chat', label: 'AI Chat', icon: 'MessageSquare' },
     { id: 'settings', label: 'Settings', icon: 'Settings' },
@@ -37,6 +41,19 @@ const App: React.FC = () => {
     }, 1000);
   };
 
+  // Rendering logic for Overlay Mode
+  if (isOverlayMode) {
+    return (
+      <div className="p-4 flex flex-col items-center gap-4">
+        <CentralHUD gameName="Cyberpunk 2077" isDetected={true} />
+        <div className="w-[400px] h-[300px]">
+          <ChatModule messages={messages} onSendMessage={handleSendMessage} />
+        </div>
+      </div>
+    );
+  }
+
+  // Default Dashboard Rendering
   return (
     <div className="min-h-screen bg-omnix-bg-dark flex flex-col items-center justify-center p-4">
       {/* HUD at the top */}

@@ -236,14 +236,13 @@ class ChatWidget(QWidget):
 
 
 class OverlayWindow(QWidget):
-    """Frameless always-on-top overlay with translucent chat."""
+    """Frameless always-on-top overlay with React-based HUD."""
 
     def __init__(self, assistant, config: Config, ds: OmnixDesignSystem):
         super().__init__()
         self.assistant = assistant
         self.config = config
         self.design_system = ds
-        self.minimized = getattr(config, "overlay_minimized", False)
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -255,174 +254,31 @@ class OverlayWindow(QWidget):
         self.setGeometry(
             int(getattr(config, "overlay_x", 100)),
             int(getattr(config, "overlay_y", 100)),
-            int(getattr(config, "overlay_width", 420)),
-            int(getattr(config, "overlay_height", 360)),
+            int(getattr(config, "overlay_width", 1200)),
+            int(getattr(config, "overlay_height", 800)),
         )
 
-        # Enable mouse tracking for drag and resize
-        self.setMouseTracking(True)
-        self._drag_position = None
-        self._resize_mode: Optional[str] = None
-        self._resize_margin = 10
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-        # Main layout
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+        self.web_view = QWebEngineView()
+        self.web_view.page().setBackgroundColor(Qt.GlobalColor.transparent)
+        layout.addWidget(self.web_view)
 
-        # Background panel
-        self.background_panel = QFrame()
-        self.background_panel.setObjectName("OverlayBackground")
-        self.background_panel.setMouseTracking(True)
-
-        # Apply semi-transparent background styling
-        opacity = getattr(config, "overlay_opacity", 0.8)
-        bg_alpha = format(int(opacity * 255), "02x")
-        # We'll allow the QSS to handle borders, but set bg alpha here
-        self.background_panel.setStyleSheet(f"""
-            QFrame#OverlayBackground {{
-                background-color: #050816{bg_alpha};
-                border: 1px solid #22d3ee;
-                border-radius: 12px;
-            }}
-        """)
-
-        panel_layout = QVBoxLayout(self.background_panel)
-        panel_layout.setContentsMargins(8, 8, 8, 8)
-        panel_layout.setSpacing(8)
-
-        # Title bar
-        self.title_bar = QFrame()
-        self.title_bar.setFixedHeight(30)
-        self.title_bar.setStyleSheet("background: transparent;")
-        title_bar_layout = QHBoxLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(4, 0, 4, 0)
-
-        title_label = QLabel("OMNIX OVERLAY")
-        title_label.setStyleSheet(
-            "font-weight: bold; color: #22d3ee; letter-spacing: 1px;"
-        )
-        title_bar_layout.addWidget(title_label)
-        title_bar_layout.addStretch()
-
-        min_btn = QPushButton("−")
-        min_btn.setFixedSize(20, 20)
-        min_btn.setStyleSheet(
-            "background: transparent; color: #22d3ee; font-weight: bold; border: none;"
-        )
-        min_btn.clicked.connect(self.toggle_minimize)
-        title_bar_layout.addWidget(min_btn)
-
-        panel_layout.addWidget(self.title_bar)
-
-        # Chat
-        self.chat = ChatWidget(assistant, title="Overlay")
-        panel_layout.addWidget(self.chat)
-
-        main_layout.addWidget(self.background_panel)
-
-        # Apply styles
-        self.setStyleSheet(OMNIX_GLOBAL_QSS)
-
-        self.background_panel.installEventFilter(self)
-        self.title_bar.installEventFilter(self)
+        # Load Frontend with overlay mode
+        frontend_path = Path(__file__).parent.parent / "frontend" / "dist" / "index.html"
+        if frontend_path.exists():
+            url = frontend_path.absolute().as_uri() + "?mode=overlay"
+            from PyQt6.QtCore import QUrl
+            self.web_view.load(QUrl(url))
+        else:
+            from PyQt6.QtCore import QUrl
+            self.web_view.load(QUrl("http://localhost:5173?mode=overlay"))
 
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
         self._save_timer.timeout.connect(self._save_position_and_size)
         self._save_delay_ms = 500
-
-        if self.minimized:
-            self.toggle_minimize()
-
-    def eventFilter(self, watched, event):
-        if watched in (self.background_panel, self.title_bar):
-            if event.type() == QEvent.Type.MouseButtonPress:
-                self.mousePressEvent(event)
-            elif event.type() == QEvent.Type.MouseMove:
-                self.mouseMoveEvent(event)
-            elif event.type() == QEvent.Type.MouseButtonRelease:
-                self.mouseReleaseEvent(event)
-        return super().eventFilter(watched, event)
-
-    def mousePressEvent(self, event) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            pos = event.position().toPoint()
-            rect = self.rect()
-            margin = self._resize_margin
-            on_left = pos.x() < margin
-            on_right = pos.x() > rect.width() - margin
-            on_top = pos.y() < margin
-            on_bottom = pos.y() > rect.height() - margin
-
-            if on_bottom and on_right:
-                self._resize_mode = "bottom_right"
-            elif on_bottom and on_left:
-                self._resize_mode = "bottom_left"
-            elif on_top and on_right:
-                self._resize_mode = "top_right"
-            elif on_top and on_left:
-                self._resize_mode = "top_left"
-            elif on_bottom:
-                self._resize_mode = "bottom"
-            elif on_top:
-                self._resize_mode = "top"
-            elif on_left:
-                self._resize_mode = "left"
-            elif on_right:
-                self._resize_mode = "right"
-            else:
-                self._resize_mode = None
-                self._drag_position = (
-                    event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-                )
-
-    def mouseMoveEvent(self, event) -> None:
-        pos = event.position().toPoint()
-        rect = self.rect()
-        margin = self._resize_margin
-
-        on_left = pos.x() < margin
-        on_right = pos.x() > rect.width() - margin
-        on_top = pos.y() < margin
-        on_bottom = pos.y() > rect.height() - margin
-
-        if (on_bottom and on_right) or (on_top and on_left):
-            self.setCursor(Qt.CursorShape.SizeFDiagCursor)
-        elif (on_bottom and on_left) or (on_top and on_right):
-            self.setCursor(Qt.CursorShape.SizeBDiagCursor)
-        elif on_left or on_right:
-            self.setCursor(Qt.CursorShape.SizeHorCursor)
-        elif on_top or on_bottom:
-            self.setCursor(Qt.CursorShape.SizeVerCursor)
-        else:
-            self.setCursor(Qt.CursorShape.ArrowCursor)
-
-        if event.buttons() == Qt.MouseButton.LeftButton:
-            if self._resize_mode:
-                global_pos = event.globalPosition().toPoint()
-                geo = self.geometry()
-                if "right" in self._resize_mode:
-                    geo.setRight(global_pos.x())
-                if "left" in self._resize_mode:
-                    geo.setLeft(global_pos.x())
-                if "bottom" in self._resize_mode:
-                    geo.setBottom(global_pos.y())
-                if "top" in self._resize_mode:
-                    geo.setTop(global_pos.y())
-
-                if geo.width() < 300:
-                    geo.setWidth(300)
-                if geo.height() < 200:
-                    geo.setHeight(200)
-                self.setGeometry(geo)
-            elif self._drag_position is not None:
-                self.move(event.globalPosition().toPoint() - self._drag_position)
-
-    def mouseReleaseEvent(self, event) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._drag_position = None
-            self._resize_mode = None
 
     def closeEvent(self, event: QEvent) -> None:
         super().closeEvent(event)
