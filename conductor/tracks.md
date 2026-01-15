@@ -1,3 +1,8 @@
 # Project Tracks
 
 This file tracks all major tracks for the project. Each track has its own detailed plan in its respective folder.
+
+---
+
+## [~] Track: UI Overhaul - "Omnix Evolution"
+*Link: [./conductor/tracks/ui_overhaul_20260115/](./conductor/tracks/ui_overhaul_20260115/)*
