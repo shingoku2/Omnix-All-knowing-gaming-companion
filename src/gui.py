@@ -122,6 +122,48 @@ class JSBridge(QObject):
             logger.error(f"Failed to save settings: {e}")
             return False
 
+    @pyqtSlot(result=str)
+    def getMacros(self):
+        """Called from React to get all macros."""
+        macros = self.main_window.macro_manager.get_all_macros()
+        return json.dumps([m.to_dict() for m in macros])
+
+    @pyqtSlot(str, result=bool)
+    def saveMacro(self, macro_json: str):
+        """Called from React to save (update or create) a macro."""
+        try:
+            data = json.loads(macro_json)
+            from src.macro_manager import Macro
+            
+            # Reconstruct macro from JSON
+            macro = Macro.from_dict(data)
+            
+            # Update manager
+            self.main_window.macro_manager.macros[macro.id] = macro
+            
+            # Persist to disk
+            all_macros = self.main_window.macro_manager.save_to_dict()
+            self.main_window.config.save_macros(all_macros)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save macro: {e}")
+            return False
+
+    @pyqtSlot()
+    def startMacroRecording(self):
+        """Start recording a macro."""
+        # Use a default name, user can rename later
+        self.main_window.macro_manager.start_recording("New Recording")
+
+    @pyqtSlot()
+    def stopMacroRecording(self):
+        """Stop recording."""
+        macro = self.main_window.macro_manager.stop_recording()
+        if macro:
+            all_macros = self.main_window.macro_manager.save_to_dict()
+            self.main_window.config.save_macros(all_macros)
+            # Signal could be emitted here to refresh UI
+
 
 def _load_qss() -> str:
     """Load the legacy Omnix QSS stylesheet.
