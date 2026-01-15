@@ -18,7 +18,7 @@ class Bridge {
     if (window.qt && window.qt.webChannelTransport) {
       new QWebChannel(window.qt.webChannelTransport, (channel: any) => {
         this.bridge = channel.objects.bridge;
-        console.log('Bridge initialized');
+        // console.debug('Bridge initialized');
         
         // Connect signals
         this.bridge.messageReceived.connect((content: string) => {
@@ -40,7 +40,7 @@ class Bridge {
     if (this.bridge) {
       this.bridge.sendMessage(content);
     } else {
-      console.log('[Mock] sendMessage:', content);
+      console.debug('[Mock] sendMessage:', content);
     }
   }
 
@@ -48,7 +48,7 @@ class Bridge {
     if (this.bridge) {
       this.bridge.toggleOverlay();
     } else {
-      console.log('[Mock] toggleOverlay');
+      console.debug('[Mock] toggleOverlay');
     }
   }
 }

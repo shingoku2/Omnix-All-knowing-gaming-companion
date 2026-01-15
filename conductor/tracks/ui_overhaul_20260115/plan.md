@@ -25,7 +25,7 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: PyQt6 Shell & Integration' (Protocol in workflow.md)
 
 ## Phase 5: Final Polish & Verification
-- [ ] Task: Performance Audit - Profile CPU/GPU usage during gameplay with the new UI.
+- [x] Task: Performance Audit - Profile CPU/GPU usage during gameplay with the new UI. [script-verified]
 - [ ] Task: Visual QA - Cross-reference every screen against the original PNG assets.
 - [ ] Task: Bug Scrub - Fix any layout or interaction regressions.
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Final Polish & Verification' (Protocol in workflow.md)
