@@ -26,6 +26,6 @@
 
 ## Phase 5: Final Polish & Verification
 - [x] Task: Performance Audit - Profile CPU/GPU usage during gameplay with the new UI. [script-verified]
-- [ ] Task: Visual QA - Cross-reference every screen against the original PNG assets.
-- [ ] Task: Bug Scrub - Fix any layout or interaction regressions.
+- [x] Task: Visual QA - Cross-reference every screen against the original PNG assets. [verified]
+- [x] Task: Bug Scrub - Fix any layout or interaction regressions. [e7d79ca]
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Final Polish & Verification' (Protocol in workflow.md)
