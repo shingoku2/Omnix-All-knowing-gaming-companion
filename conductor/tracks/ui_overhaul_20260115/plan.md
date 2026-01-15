@@ -21,7 +21,7 @@
 ## Phase 4: PyQt6 Shell & Integration
 - [x] Task: PyQt6 Window Styling - Update the main window shell to host the new React-based UI seamlessly. [7835c9a]
 - [x] Task: Overlay Container Update - Sync the PyQt6 overlay window with the new HUD dimensions. [a197926]
-- [ ] Task: Integration Testing - Verify that Python-to-JS communication still works for all modules.
+- [x] Task: Integration Testing - Verify that Python-to-JS communication still works for all modules. [ec747bf]
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: PyQt6 Shell & Integration' (Protocol in workflow.md)
 
 ## Phase 5: Final Polish & Verification
