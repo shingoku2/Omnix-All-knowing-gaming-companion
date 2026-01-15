@@ -9,10 +9,12 @@
 - **Security:** `cryptography` and `keyring` for local credential and sensitive data protection.
 
 ## Frontend (Overlay & Dashboard)
-- **Framework:** React (Vite-powered for high-speed development and production builds).
+- **Framework:** React (Vite-powered) hosted within PyQt6 `QWebEngineView`.
 - **Language:** TypeScript for type-safe UI logic.
 - **Styling:** Tailwind CSS with custom design tokens for the cyberpunk/sci-fi aesthetic.
 - **Icons:** `lucide-react` for consistent, lightweight UI elements.
+- **Animation:** `framer-motion` for complex UI transitions.
+- **Integration:** `QWebChannel` for bidirectional Python-React communication.
 
 ## AI & Intelligence
 - **Inference Engines:** Modular support for [Ollama](https://ollama.com/) and OpenAI-compatible APIs (LM Studio, AnythingLLM, etc.) for local LLM orchestration.

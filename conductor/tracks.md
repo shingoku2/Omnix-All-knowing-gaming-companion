@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: UI Overhaul - "Omnix Evolution"
-*Link: [./conductor/tracks/ui_overhaul_20260115/](./conductor/tracks/ui_overhaul_20260115/)*
+## [~] Track: Settings Implementation & Dynamic HUD
+*Link: [./conductor/tracks/settings_and_hud_20260115/](./conductor/tracks/settings_and_hud_20260115/)*
