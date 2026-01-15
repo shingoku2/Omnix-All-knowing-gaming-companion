@@ -4,7 +4,7 @@
 - [x] Task: Extend `JSBridge` with new slots for fetching current config and saving updated settings. 51377a6
 - [x] Task: Implement `MacroManager` bridge methods for recording/editing macros from JS. 9d5089c
 - [x] Task: Enhance `GameDetector` to emit detailed process information (Name, PID, Executable Path). af4cabb
-- [ ] Task: Implement a periodic "System Stats" emitter in `MainWindow` to send CPU/RAM usage to React.
+- [x] Task: Implement a periodic "System Stats" emitter in `MainWindow` to send CPU/RAM usage to React. 599b76e
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Backend Infrastructure (Python)' (Protocol in workflow.md)
 
 ## Phase 2: React Settings Module (Frontend)
