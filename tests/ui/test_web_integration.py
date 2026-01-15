@@ -31,3 +31,19 @@ def test_mainwindow_has_webengineview(app, config, credential_store):
     assert web_view is not None, "MainWindow should contain a QWebEngineView"
     
     window.close()
+
+from src.gui import MainWindow, JSBridge
+from unittest.mock import MagicMock
+
+def test_js_bridge_message_received(mocker):
+    """Test that messages from JS are correctly routed to the AI assistant."""
+    # Mock the main window and its chat_widget
+    mock_window = MagicMock(spec=MainWindow)
+    mock_window.chat_widget = MagicMock()
+    
+    bridge = JSBridge(mock_window)
+    
+    # Call the bridge method as if from JS
+    bridge.sendMessage("Hello from React")
+    
+    mock_window.chat_widget._send_message.assert_called_once_with("Hello from React")
