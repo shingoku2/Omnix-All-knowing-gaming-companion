@@ -3,6 +3,7 @@ Session Coaching Module
 Provides AI-powered session recaps and coaching based on session logs
 """
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -309,7 +310,8 @@ Keep it brief and actionable."""
 
         try:
             # Use the router's chat method which handles provider selection
-            response = self.router.chat(
+            response = await asyncio.to_thread(
+                self.router.chat,
                 messages=[{"role": "user", "content": prompt}], provider=self.config.ai_provider
             )
             return response["content"]
@@ -336,7 +338,8 @@ Focus on:
 Be specific and actionable."""
 
         try:
-            response = self.router.chat(
+            response = await asyncio.to_thread(
+                self.router.chat,
                 messages=[{"role": "user", "content": prompt}], provider=self.config.ai_provider
             )
             return response["content"]
@@ -348,7 +351,8 @@ Be specific and actionable."""
         prompt = f"Provide general coaching tips for {game_profile_id}."
 
         try:
-            response = self.router.chat(
+            response = await asyncio.to_thread(
+                self.router.chat,
                 messages=[{"role": "user", "content": prompt}], provider=self.config.ai_provider
             )
             return response["content"]
