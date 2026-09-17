@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from omnix.error_recovery import ErrorRecovery, error_boundary
+
 
 class TestErrorRecoveryWithFallback:
     def test_with_fallback_success(self):
@@ -35,6 +37,7 @@ class TestErrorRecoveryWithFallback:
         assert exc_info.value is primary_exception
         primary_mock.assert_called_once()
         fallback_mock.assert_called_once()
+
 
 class TestErrorRecoveryGracefulDegrade:
     def test_graceful_degrade_success(self):
@@ -79,6 +82,7 @@ class TestErrorRecoveryGracefulDegrade:
         primary_mock.assert_called_once()
         fallback_mock.assert_called_once()
 
+
 class TestErrorRecoverySafeApiCall:
     def test_safe_api_call_success_first_try(self):
         api_mock = MagicMock(return_value="api_success")
@@ -88,7 +92,7 @@ class TestErrorRecoverySafeApiCall:
         assert result == "api_success"
         api_mock.assert_called_once()
 
-    @patch('time.sleep')
+    @patch("time.sleep")
     def test_safe_api_call_success_after_retries(self, mock_sleep):
         api_mock = MagicMock(side_effect=[Exception("fail"), Exception("fail"), "api_success"])
 
@@ -99,7 +103,7 @@ class TestErrorRecoverySafeApiCall:
         assert mock_sleep.call_count == 2
         mock_sleep.assert_called_with(0.1)
 
-    @patch('time.sleep')
+    @patch("time.sleep")
     def test_safe_api_call_failure_returns_default(self, mock_sleep):
         api_mock = MagicMock(side_effect=Exception("fail"))
 
@@ -109,6 +113,7 @@ class TestErrorRecoverySafeApiCall:
         assert api_mock.call_count == 3
         assert mock_sleep.call_count == 2
 
+
 class TestErrorBoundary:
     def test_error_boundary_success(self):
         @error_boundary("test_feature", fallback_return="fallback")
@@ -117,7 +122,7 @@ class TestErrorBoundary:
 
         assert success_func() == "success"
 
-    @patch('omnix.error_recovery.logger')
+    @patch("omnix.error_recovery.logger")
     def test_error_boundary_error_with_logging(self, mock_logger):
         @error_boundary("test_feature", fallback_return="fallback", log_errors=True)
         def error_func():
@@ -127,7 +132,7 @@ class TestErrorBoundary:
         mock_logger.error.assert_called_once()
         mock_logger.debug.assert_called_once()
 
-    @patch('omnix.error_recovery.logger')
+    @patch("omnix.error_recovery.logger")
     def test_error_boundary_error_without_logging(self, mock_logger):
         @error_boundary("test_feature", fallback_return="fallback", log_errors=False)
         def error_func():
