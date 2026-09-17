@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import concurrent.futures
+import contextlib
 import getpass
 import hashlib
 import json
@@ -259,29 +260,27 @@ class CredentialStore:
 
         envelope = {"version": 1, "encrypted": True, "payload": payload}
         self._atomic_write_json(self.credential_path, envelope)
-        self._set_permissions(self.credential_path, 0o600)
 
     def _atomic_write_json(self, path: Path, data: dict) -> None:
-        dirpath = path.parent
-        dirpath.mkdir(parents=True, exist_ok=True)
-        temp_file = None
-        try:
-            with tempfile.NamedTemporaryFile(
-                "w", delete=False, dir=dirpath, encoding="utf-8"
-            ) as temp:
-                temp_file = Path(temp.name)
-                self._set_permissions(temp_file, 0o600)
-                json.dump(data, temp, ensure_ascii=False, indent=2)
-                temp.flush()
-                os.fsync(temp.fileno())
-            os.replace(temp_file, path)
-            self._set_permissions(path, 0o600)
-        finally:
-            if temp_file and temp_file.exists():
-                try:
-                    temp_file.unlink()
-                except OSError:
-                    pass
+        with self._secure_umask(0o077):
+            dirpath = path.parent
+            dirpath.mkdir(parents=True, exist_ok=True)
+            temp_file = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    "w", delete=False, dir=dirpath, encoding="utf-8"
+                ) as temp:
+                    temp_file = Path(temp.name)
+                    json.dump(data, temp, ensure_ascii=False, indent=2)
+                    temp.flush()
+                    os.fsync(temp.fileno())
+                os.replace(temp_file, path)
+            finally:
+                if temp_file and temp_file.exists():
+                    try:
+                        temp_file.unlink()
+                    except OSError:
+                        pass
 
     def _quarantine_file(self, suffix: str) -> None:
         try:
@@ -298,17 +297,30 @@ class CredentialStore:
         return {k: v for k, v in data.items() if v is not None}
 
     def _ensure_directories(self) -> None:
-        # Create main config directory
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-        self._set_permissions(self.config_dir, 0o700)
+        with self._secure_umask(0o077):
+            # Create main config directory
+            self.config_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create secure temp directory for fallback keys, scoped to this instance
+            # Create secure temp directory for fallback keys, scoped to this instance
+            try:
+                _SECURE_TEMP_DIR.mkdir(parents=True, exist_ok=True)
+                self._fallback_dir.mkdir(parents=True, exist_ok=True)
+            except Exception as exc:
+                logger.warning("Failed to create secure temp directory: %s", exc)
+
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _secure_umask(mask: int = 0o077):
+        """Context manager to temporarily set umask for secure file/directory creation."""
+        if os.name == "nt":
+            yield
+            return
+        old_umask = os.umask(mask)
         try:
-            self._fallback_dir.mkdir(parents=True, exist_ok=True)
-            self._set_permissions(_SECURE_TEMP_DIR, _SECURE_TEMP_DIR_MODE)
-            self._set_permissions(self._fallback_dir, _SECURE_TEMP_DIR_MODE)
-        except Exception as exc:
-            logger.warning("Failed to create secure temp directory: %s", exc)
+            yield
+        finally:
+            os.umask(old_umask)
 
     def _get_cipher(self) -> Fernet:
         if self._cipher is None:
@@ -419,7 +431,6 @@ class CredentialStore:
             "iterations": _PBKDF2_ITERATIONS,
         }
         self._atomic_write_json(fallback_path, data)
-        self._set_permissions(fallback_path, 0o600)
         logger.info("Stored encryption key using password-based encryption (PBKDF2)")
         logger.warning(
             "WARNING: Keyring is unavailable. Credentials are protected by your master password. "
@@ -532,35 +543,3 @@ class CredentialStore:
 
         return None
 
-    @staticmethod
-    def _set_permissions(path: Path, mode: int) -> None:
-        # On Windows, os.chmod is limited by User Account Control and does not
-        # provide meaningful security guarantees. Skip silently.
-        if os.name == "nt":
-            return
-        try:
-            os.chmod(path, mode)
-        except PermissionError:
-            logger.warning(
-                "SECURITY WARNING: Insufficient permissions to set mode %o on %s. "
-                "This file may be accessible to unauthorized users! "
-                "Please ensure proper permissions are set manually.",
-                mode,
-                path,
-            )
-        except NotImplementedError:
-            logger.warning(
-                "SECURITY WARNING: chmod not implemented on platform for %s. "
-                "File permissions cannot be enforced. "
-                "Ensure this path is on a filesystem that supports Unix permissions.",
-                path,
-            )
-        except OSError as exc:
-            logger.warning(
-                "SECURITY WARNING: Failed to set permissions on %s (mode %o): %s. "
-                "This file may remain world-readable or world-writable! "
-                "Please investigate and correct the file permissions manually.",
-                path,
-                mode,
-                exc,
-            )
