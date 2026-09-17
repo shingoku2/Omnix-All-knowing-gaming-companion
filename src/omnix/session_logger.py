@@ -3,14 +3,14 @@ Session Logger Module
 Tracks user interactions and AI responses per game profile for coaching and recap
 """
 
+import asyncio
+import concurrent.futures
 import json
 import logging
 import os
-import asyncio
 import tempfile
 import threading
-import concurrent.futures
-from collections import deque, OrderedDict
+from collections import OrderedDict, deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -91,7 +91,9 @@ class SessionLogger:
         self._historical_sessions_cache: OrderedDict[str, List[SessionEvent]] = OrderedDict()
 
         # Shared thread pool executor for concurrent synchronous loading
-        self._thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=5, thread_name_prefix="SessionLogger")
+        self._thread_pool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=5, thread_name_prefix="SessionLogger"
+        )
 
         # Current session IDs: {game_profile_id: session_id}
         self.current_sessions: Dict[str, str] = {}
@@ -251,6 +253,7 @@ class SessionLogger:
         self, game_profile_id: str, session_ids: List[str]
     ) -> Dict[str, List[SessionEvent]]:
         """Load multiple sessions from disk concurrently"""
+
         async def _load_single(session_id: str) -> tuple[str, List[SessionEvent]]:
             events = await asyncio.to_thread(self._load_session, game_profile_id, session_id)
             return session_id, events
@@ -301,7 +304,9 @@ class SessionLogger:
                     sessions_to_load.append(session_id)
 
             # Identify which ones are not in cache
-            missing_sessions = [sid for sid in sessions_to_load if sid not in self._historical_sessions_cache]
+            missing_sessions = [
+                sid for sid in sessions_to_load if sid not in self._historical_sessions_cache
+            ]
 
             # Load missing sessions concurrently
             if missing_sessions:
@@ -309,10 +314,12 @@ class SessionLogger:
                     # Get the current event loop, or run directly if there isn't one.
                     # asyncio.run cannot be called when another loop is running.
                     loop = asyncio.get_running_loop()
+
                     # We are in an async context but this is a sync function.
                     # Running it concurrently using a shared thread pool is the safest fallback without changing API
                     def _load(sid):
                         return sid, self._load_session(game_profile_id, sid)
+
                     for sid, evts in self._thread_pool.map(_load, missing_sessions):
                         self._historical_sessions_cache[sid] = evts
                         # LRU eviction
@@ -321,7 +328,9 @@ class SessionLogger:
                             self._historical_sessions_cache.popitem(last=False)
                 except RuntimeError:
                     # No running event loop, we can safely use asyncio.run
-                    loaded_sessions = asyncio.run(self._load_sessions_async(game_profile_id, missing_sessions))
+                    loaded_sessions = asyncio.run(
+                        self._load_sessions_async(game_profile_id, missing_sessions)
+                    )
                     for sid, evts in loaded_sessions.items():
                         self._historical_sessions_cache[sid] = evts
                         # LRU eviction
