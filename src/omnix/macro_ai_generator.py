@@ -336,36 +336,3 @@ IMPORTANT: Return ONLY the JSON object, nothing else."""
 
         return macro
 
-    def get_example_macros(self) -> str:
-        """Get example macros for user reference"""
-        examples = [
-            {
-                "name": "Quick Attack",
-                "description": "Press 1 then 2 quickly",
-                "steps": [
-                    {"type": "key_press", "key": "1"},
-                    {"type": "delay", "duration_ms": 100},
-                    {"type": "key_press", "key": "2"},
-                ],
-            },
-            {
-                "name": "Dodge Sequence",
-                "description": "Press spacebar then press space again after delay",
-                "steps": [
-                    {"type": "key_press", "key": "space"},
-                    {"type": "delay", "duration_ms": 200},
-                    {"type": "key_press", "key": "space"},
-                ],
-            },
-            {
-                "name": "Click Coordinates",
-                "description": "Move mouse and click",
-                "steps": [
-                    {"type": "mouse_move", "x": 500, "y": 400},
-                    {"type": "delay", "duration_ms": 100},
-                    {"type": "mouse_click", "button": "left"},
-                ],
-            },
-        ]
-
-        return json.dumps(examples, indent=2)
