@@ -581,7 +581,12 @@ class KnowledgeIndex:
             if isinstance(self.embedding_provider, SimpleTFIDFEmbedding)
             else question.split()
         )
-        expression = " OR ".join(f'"{token}"' for token in tokens if token)
+
+        # Escape double quotes in tokens for FTS MATCH syntax to prevent injection
+        # FTS5 allows escaping quotes inside a phrase by doubling them up (e.g. "")
+        clean_tokens = [t.replace('"', '""') for t in tokens if t]
+        expression = " OR ".join(f'"{token}"' for token in clean_tokens)
+
         if not expression:
             return set()
         try:
