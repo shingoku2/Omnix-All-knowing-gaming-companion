@@ -3,12 +3,14 @@ Session Logger Module
 Tracks user interactions and AI responses per game profile for coaching and recap
 """
 
+import asyncio
+import concurrent.futures
 import json
 import logging
 import os
 import tempfile
 import threading
-from collections import deque
+from collections import OrderedDict, deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -83,6 +85,15 @@ class SessionLogger:
 
         # In-memory event storage: {game_profile_id: deque of events}
         self.events: Dict[str, deque] = {}
+
+        # Cache for historical sessions loaded from disk: {session_id: List[SessionEvent]}
+        # Use OrderedDict as an LRU cache limited to 20 sessions to prevent unbounded memory growth.
+        self._historical_sessions_cache: OrderedDict[str, List[SessionEvent]] = OrderedDict()
+
+        # Shared thread pool executor for concurrent synchronous loading
+        self._thread_pool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=5, thread_name_prefix="SessionLogger"
+        )
 
         # Current session IDs: {game_profile_id: session_id}
         self.current_sessions: Dict[str, str] = {}
@@ -238,6 +249,18 @@ class SessionLogger:
             logger.error(f"Failed to load session: {e}")
             return []
 
+    async def _load_sessions_async(
+        self, game_profile_id: str, session_ids: List[str]
+    ) -> Dict[str, List[SessionEvent]]:
+        """Load multiple sessions from disk concurrently"""
+
+        async def _load_single(session_id: str) -> tuple[str, List[SessionEvent]]:
+            events = await asyncio.to_thread(self._load_session, game_profile_id, session_id)
+            return session_id, events
+
+        results = await asyncio.gather(*[_load_single(sid) for sid in session_ids])
+        return dict(results)
+
     def get_current_session_events(self, game_profile_id: str) -> List[SessionEvent]:
         """
         Get events from the current session
@@ -273,16 +296,58 @@ class SessionLogger:
                 self.logs_dir.glob(f"{game_profile_id}_*.json"), reverse=True  # Most recent first
             )
 
+            # Collect sessions that need to be loaded
+            sessions_to_load: List[str] = []
             for session_file in session_files[:5]:  # Check last 5 sessions
-                # Strip the known "{game_profile_id}_" prefix rather than
-                # splitting on the first underscore, which mis-parses when
-                # game_profile_id itself contains an underscore.
                 session_id = session_file.stem[len(game_profile_id) + 1 :]
                 if session_id not in self.current_sessions.values():
-                    # Load historical session
-                    historical_events = self._load_session(game_profile_id, session_id)
-                    events = historical_events + events
+                    sessions_to_load.append(session_id)
 
+            # Identify which ones are not in cache
+            missing_sessions = [
+                sid for sid in sessions_to_load if sid not in self._historical_sessions_cache
+            ]
+
+            # Load missing sessions concurrently
+            if missing_sessions:
+                try:
+                    # Get the current event loop, or run directly if there isn't one.
+                    # asyncio.run cannot be called when another loop is running.
+                    loop = asyncio.get_running_loop()
+
+                    # We are in an async context but this is a sync function.
+                    # Running it concurrently using a shared thread pool is the safest fallback without changing API
+                    def _load(sid):
+                        return sid, self._load_session(game_profile_id, sid)
+
+                    for sid, evts in self._thread_pool.map(_load, missing_sessions):
+                        self._historical_sessions_cache[sid] = evts
+                        # LRU eviction
+                        self._historical_sessions_cache.move_to_end(sid)
+                        if len(self._historical_sessions_cache) > 20:
+                            self._historical_sessions_cache.popitem(last=False)
+                except RuntimeError:
+                    # No running event loop, we can safely use asyncio.run
+                    loaded_sessions = asyncio.run(
+                        self._load_sessions_async(game_profile_id, missing_sessions)
+                    )
+                    for sid, evts in loaded_sessions.items():
+                        self._historical_sessions_cache[sid] = evts
+                        # LRU eviction
+                        self._historical_sessions_cache.move_to_end(sid)
+                        if len(self._historical_sessions_cache) > 20:
+                            self._historical_sessions_cache.popitem(last=False)
+
+            # Prepend events in correct order (matching original logic):
+            # sessions_to_load is sorted newest-to-oldest.
+            # Iterating normally, we prepend the 1st newest, then 2nd newest prepends to that...
+            # resulting in [2nd newest, 1st newest, current]
+            for session_id in sessions_to_load:
+                # Update LRU cache usage
+                if session_id in self._historical_sessions_cache:
+                    self._historical_sessions_cache.move_to_end(session_id)
+                historical_events = self._historical_sessions_cache.get(session_id, [])
+                events = historical_events + events
                 if len(events) >= limit:
                     break
 
