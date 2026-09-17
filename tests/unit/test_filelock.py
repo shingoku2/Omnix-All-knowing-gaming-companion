@@ -73,8 +73,10 @@ class TestFileLock:
         lock = FileLock(str(lock_file), timeout=0.1, delay=0.01)
 
         start = time.time()
-        with pytest.raises(TimeoutError, match=f"Timeout while waiting for lock {lock_file}"):
+        with pytest.raises(TimeoutError) as exc_info:
             lock.acquire()
+
+        assert f"Timeout while waiting for lock {lock_file}" in str(exc_info.value)
 
         # Ensure it waited for approximately the timeout duration
         assert time.time() - start >= 0.1
@@ -137,12 +139,19 @@ class TestFileLock:
         lock = FileLock(str(lock_file))
 
         lock.acquire()
-        # Manually remove the file to simulate unexpected deletion
-        lock_file.unlink()
+
+        # On Windows, deleting an open file raises PermissionError (WinError 32).
+        # To simulate the file missing at unlink time without raising PermissionError,
+        # we temporarily change the lock's file path to one that doesn't exist.
+        original_lock_file = lock.lock_file
+        lock.lock_file = tmp_path / "nonexistent.lock"
 
         # Should not raise FileNotFoundError
         lock.release()
         assert lock._fd is None
+
+        # Clean up the actual lock file
+        original_lock_file.unlink()
 
     def test_context_manager_exception_handling(self, tmp_path):
         """Test that the lock is released even if an exception occurs."""
