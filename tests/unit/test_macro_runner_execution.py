@@ -269,6 +269,30 @@ class TestExecutionStates:
             result = runner.execute_macro(macro)
             assert not runner.is_running()
 
+    def test_pause_and_resume_macro(self):
+        """Test pausing and resuming macro execution state"""
+        runner = MacroRunner()
+
+        # Test that pause doesn't work when IDLE
+        runner.pause_macro()
+        assert runner.state == MacroExecutionState.IDLE
+
+        # Force state to RUNNING to test transitions
+        runner.state = MacroExecutionState.RUNNING
+
+        # Test pause transition: RUNNING -> PAUSED
+        runner.pause_macro()
+        assert runner.state == MacroExecutionState.PAUSED
+
+        # Test resume transition: PAUSED -> RUNNING
+        runner.resume_macro()
+        assert runner.state == MacroExecutionState.RUNNING
+
+        # Test that resume doesn't work when IDLE
+        runner.state = MacroExecutionState.IDLE
+        runner.resume_macro()
+        assert runner.state == MacroExecutionState.IDLE
+
 
 @pytest.mark.unit
 class TestStopFunctionality:
