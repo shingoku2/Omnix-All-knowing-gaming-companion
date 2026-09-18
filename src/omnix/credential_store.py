@@ -527,7 +527,7 @@ class CredentialStore:
                     logger.debug("Using master password from interactive prompt")
                     return password
             except (EOFError, KeyboardInterrupt):
-                logger.debug("Password prompt cancelled")
+                logger.warning("Password prompt cancelled")
                 return None
 
         return None
