@@ -216,6 +216,25 @@ class TestSafetyLimits:
 class TestExecutionStates:
     """Test execution state transitions"""
 
+    def test_pause_macro_when_running(self):
+        """Test pause_macro transitions state from RUNNING to PAUSED"""
+        runner = MacroRunner()
+        runner.state = MacroExecutionState.RUNNING
+
+        runner.pause_macro()
+
+        assert runner.state == MacroExecutionState.PAUSED
+        assert runner.get_state() == MacroExecutionState.PAUSED
+
+    def test_pause_macro_when_not_running(self):
+        """Test pause_macro does nothing if not RUNNING"""
+        runner = MacroRunner()
+        runner.state = MacroExecutionState.IDLE
+
+        runner.pause_macro()
+
+        assert runner.state == MacroExecutionState.IDLE
+
     def test_state_idle_to_running(self):
         """Test state transition from IDLE to RUNNING"""
         runner = MacroRunner()
