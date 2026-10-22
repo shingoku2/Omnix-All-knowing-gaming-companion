@@ -12,3 +12,10 @@ Architecture and data-migration contracts live in
 CI uses GitHub-hosted Python 3.11 runners on Ubuntu, Windows, and macOS. Read
 [docs/CI_CD_GUIDE.md](docs/CI_CD_GUIDE.md) before changing runner packages,
 headless Qt setup, path-sensitive tests, or dependency auditing.
+
+Claude Code cloud sessions run `.claude/hooks/session-start.sh` (registered in
+`.claude/settings.json`). It installs the Qt system libraries, builds `.venv`
+with `.[dev,build]`, and exports the CI test variables (`QT_QPA_PLATFORM`,
+`OMNIX_MASTER_PASSWORD`, `PYNPUT_BACKEND`). Keep it in sync with the CI
+install steps. The CI lint job runs `black --check src tests` directly; never
+wrap it in `find -exec ... \;`, which swallows failures.
