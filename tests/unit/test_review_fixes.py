@@ -289,3 +289,42 @@ def test_save_migrates_legacy_json_api_key_into_vault(tmp_path, monkeypatch):
     assert "legacy-key" not in config_path.read_text(encoding="utf-8")
     reloaded = config_mod.Config(require_keys=False, config_path=str(config_path))
     assert reloaded.ai_api_key == "legacy-key"
+
+
+@pytest.mark.unit
+class TestIngestionRefresh:
+    def test_reindex_refetches_cached_file_content(self, qapp):
+        pack = _pack("p1", "old guide text")
+        worker, _, results = _worker(pack)  # pipeline returns "guide text"
+        worker.pipeline.ingest.assert_called_once()
+        assert pack.sources[0].content == "guide text"
+        assert results[0][0] is True
+
+    def test_failed_refetch_keeps_previous_content(self, qapp):
+        pack = _pack("p1", "old guide text")
+        _, _, results = _worker(pack, ingest_error="offline")
+        assert pack.sources[0].content == "old guide text"
+        assert results[0][0] is False
+
+
+@pytest.mark.unit
+def test_pause_does_not_outlive_macro_timeout():
+    runner = TestMacroRunnerFixes()._runner()
+    macro = Macro(
+        id="m",
+        name="hold",
+        description="",
+        execution_timeout=0.3,
+        steps=[
+            MacroStep(type=MacroStepType.KEY_DOWN.value, key="w", duration_ms=0),
+            MacroStep(type=MacroStepType.KEY_UP.value, key="w"),
+        ],
+    )
+    runner.on_step_executed = lambda done, total: done == 1 and runner.pause_macro()
+
+    assert runner.execute_macro(macro)
+    if runner.execution_thread:
+        runner.execution_thread.join(timeout=3)
+
+    assert runner.state == MacroExecutionState.ERROR
+    runner.keyboard_controller.release.assert_any_call("w")

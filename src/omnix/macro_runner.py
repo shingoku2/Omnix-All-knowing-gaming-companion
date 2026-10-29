@@ -233,6 +233,10 @@ class MacroRunner:
 
                 # Execute each step
                 for step_idx, step in enumerate(macro.steps):
+                    # Pausing doesn't suspend the safety deadline; the check
+                    # below runs after the wait so an expired pause errors out.
+                    self._wait_while_paused(start_time + timeout_seconds)
+
                     # Check for timeout in inner loop too
                     elapsed_time = time.monotonic() - start_time
                     if elapsed_time > timeout_seconds:
@@ -243,7 +247,6 @@ class MacroRunner:
                         self.state = MacroExecutionState.ERROR
                         return
 
-                    self._wait_while_paused()
                     if self.state == MacroExecutionState.STOPPED:
                         logger.info("Macro execution stopped by user")
                         break
@@ -279,9 +282,9 @@ class MacroRunner:
         finally:
             self._release_held_keys()
 
-    def _wait_while_paused(self) -> None:
-        """Block between steps while paused; returns on resume or stop."""
-        while self.state == MacroExecutionState.PAUSED:
+    def _wait_while_paused(self, deadline: float) -> None:
+        """Block between steps while paused; returns on resume, stop or deadline."""
+        while self.state == MacroExecutionState.PAUSED and time.monotonic() <= deadline:
             time.sleep(0.05)
 
     def _release_held_keys(self) -> None:
