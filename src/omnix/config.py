@@ -373,6 +373,15 @@ class Config:
             return False
 
         try:
+            # The key is kept out of the JSON, so make sure the vault holds it
+            # first (a legacy config.json may have been its only copy).
+            if self.ai_api_key:
+                try:
+                    self.credential_store.save_credentials({"AI_API_KEY": self.ai_api_key})
+                except CredentialStoreError as exc:
+                    logger.error("Not saving configuration: AI_API_KEY vault write failed: %s", exc)
+                    return False
+
             config_data = {
                 "ai_provider": self.ai_provider,
                 "ollama_host": self.ollama_host,

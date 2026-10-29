@@ -274,3 +274,18 @@ def test_legacy_idf_index_is_reembedded_on_load(tmp_path):
 
     assert min(provider.idf.values()) >= 1
     assert any(index.index["game"]["c1"][3])
+
+
+@pytest.mark.unit
+def test_save_migrates_legacy_json_api_key_into_vault(tmp_path, monkeypatch):
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"ai_api_key": "legacy-key"}', encoding="utf-8")
+
+    config = config_mod.Config(require_keys=False, config_path=str(config_path))
+    assert config.ai_api_key == "legacy-key"
+    assert config.save()
+
+    assert "legacy-key" not in config_path.read_text(encoding="utf-8")
+    reloaded = config_mod.Config(require_keys=False, config_path=str(config_path))
+    assert reloaded.ai_api_key == "legacy-key"
