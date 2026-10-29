@@ -38,8 +38,11 @@ def get_installation_id(store: CredentialBackend | None = None) -> str:
             store.set_credential("omnix", "installation_id", installation_id)
         except Exception as exc:
             # A vault that can't be written (no keyring, no master password)
-            # must not abort startup; the ID is simply regenerated next run.
-            logger.warning("Could not persist installation ID: %s", exc)
+            # must not abort startup. Fall back to an ID derived from the
+            # non-PII machine fingerprint so it stays stable across launches
+            # instead of presenting a new device every run.
+            logger.warning("Could not persist installation ID, using machine-derived ID: %s", exc)
+            installation_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"omnix:{get_machine_id()}"))
     return installation_id
 
 

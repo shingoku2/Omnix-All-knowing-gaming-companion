@@ -63,6 +63,7 @@ class IngestionWorker(QThread):
                 self.finished.emit(True, "No sources to ingest")
                 return
 
+            failed_sources = []
             for i, source in enumerate(self.pack.sources):
                 # Update progress
                 progress = int((i / total_sources) * 100)
@@ -83,18 +84,30 @@ class IngestionWorker(QThread):
                     # Leave content empty so the source is retried next time
                     # instead of indexing the error text as game knowledge.
                     logger.error(f"Failed to ingest {source.title}: {e}")
+                    failed_sources.append(source.title)
 
-            # Cache the ingested text with the pack; otherwise every later
-            # rebuild (which reads packs from the store) finds no content.
-            if not get_knowledge_pack_store().save_pack(self.pack):
-                logger.warning(f"Could not save ingested content for pack {self.pack.name}")
+            # Cache the ingested text with the pack, in the same store the
+            # index rebuilds from; otherwise later rebuilds find no content.
+            if not self.index.knowledge_store.save_pack(self.pack):
+                self.finished.emit(
+                    False, f"Could not save ingested content for pack '{self.pack.name}'"
+                )
+                return
 
             # Index the pack
             self.progress.emit(90, "Indexing knowledge pack...")
             self.index.add_pack(self.pack)
 
             self.progress.emit(100, "Complete!")
-            self.finished.emit(True, f"Successfully indexed {total_sources} sources")
+            if failed_sources:
+                indexed = total_sources - len(failed_sources)
+                self.finished.emit(
+                    False,
+                    f"Indexed {indexed} of {total_sources} sources. "
+                    f"Failed (will retry next time): {', '.join(failed_sources)}",
+                )
+            else:
+                self.finished.emit(True, f"Successfully indexed {total_sources} sources")
 
         except Exception as e:
             logger.error(f"Ingestion failed: {e}", exc_info=True)

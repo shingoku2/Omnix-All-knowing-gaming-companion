@@ -527,6 +527,7 @@ class KeybindManager(QObject):
         action_key = f"macro_{macro_keybind.macro_id}"
 
         # Store macro keybind separately to preserve game scope
+        previous = self.macro_keybinds.get(macro_keybind.macro_id)
         self.macro_keybinds[macro_keybind.macro_id] = macro_keybind
 
         # Register as regular keybind
@@ -544,6 +545,9 @@ class KeybindManager(QObject):
             logger.info(
                 f"Registered macro keybind: {macro_keybind.macro_id} -> {macro_keybind.keys}"
             )
+        elif previous is not None:
+            # The old binding is still registered; keep tracking it.
+            self.macro_keybinds[macro_keybind.macro_id] = previous
         else:
             # Don't leave an orphaned entry that blocks these keys later.
             self.macro_keybinds.pop(macro_keybind.macro_id, None)

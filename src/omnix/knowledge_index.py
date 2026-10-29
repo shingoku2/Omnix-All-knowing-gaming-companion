@@ -9,6 +9,7 @@ import logging
 import math
 import os
 import sqlite3
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -202,10 +203,44 @@ class KnowledgeIndex:
         # {game_profile_id: {chunk_id: (text, source_id, pack_id, embedding, meta)}}
         self.index: Dict[str, Dict[str, Tuple[str, str, str, List[float], Dict]]] = {}
 
+        # Serializes rebuilds so overlapping ingestion workers can't replace
+        # the game index with an older store snapshot.
+        self._rebuild_lock = threading.RLock()
+
         # Load existing index
         self._load_index()
+        self._refit_legacy_idf()
 
         logger.info(f"KnowledgeIndex initialized at {self.index_dir}")
+
+    def _refit_legacy_idf(self) -> None:
+        """Re-embed indexes saved under the old unsmoothed IDF formula.
+
+        The old ``log(N / (df + 1))`` produced weights <= 0 (and so all-zero
+        vectors on small corpora); smoothed IDF is always >= 1. Refit on the
+        stored chunk text so upgraded installs don't keep zero-scored vectors.
+        """
+        provider = self.embedding_provider
+        if not isinstance(provider, SimpleTFIDFEmbedding) or not provider.idf:
+            return
+        if min(provider.idf.values()) >= 1:
+            return
+
+        texts = [entry[0] for chunks in self.index.values() for entry in chunks.values()]
+        if not texts:
+            return
+        logger.info("Re-embedding %d chunks indexed with the legacy IDF formula", len(texts))
+        provider.fit(texts)
+        for chunks in self.index.values():
+            for chunk_id, (text, source_id, pack_id, _, meta) in list(chunks.items()):
+                chunks[chunk_id] = (
+                    text,
+                    source_id,
+                    pack_id,
+                    provider.generate_embedding(text),
+                    meta,
+                )
+        self._save_index()
 
     def _load_index(self) -> None:
         """Load index AND embedding model from disk (JSON format)"""
@@ -392,6 +427,16 @@ class KnowledgeIndex:
         return dot_product / (mag1 * mag2)
 
     def rebuild_index_for_game(
+        self,
+        game_profile_id: str,
+        override: Optional[KnowledgePack] = None,
+        exclude_pack_id: Optional[str] = None,
+    ) -> None:
+        """Rebuild a game's index; see ``_rebuild_index_for_game``."""
+        with self._rebuild_lock:
+            self._rebuild_index_for_game(game_profile_id, override, exclude_pack_id)
+
+    def _rebuild_index_for_game(
         self,
         game_profile_id: str,
         override: Optional[KnowledgePack] = None,

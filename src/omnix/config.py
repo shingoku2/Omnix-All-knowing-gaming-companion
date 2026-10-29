@@ -590,6 +590,13 @@ class Config:
             lines += [f"{key}={value}" for key, value in other.items()]
             lines.append("")
 
+        # A value containing a line break would inject extra KEY=VALUE lines
+        # that load on the next launch, so refuse it rather than write it.
+        for line in lines:
+            if "\n" in line or "\r" in line:
+                key = line.split("=", 1)[0]
+                raise ValueError(f"Refusing to write a line break into .env value for {key}")
+
         _atomic_write_text(env_path, "\n".join(lines) + "\n")
 
         ensure_private_file(env_path)
