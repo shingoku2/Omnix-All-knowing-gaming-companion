@@ -12,3 +12,19 @@ Architecture and data-migration contracts live in
 CI uses GitHub-hosted Python 3.11 runners on Ubuntu, Windows, and macOS. Read
 [docs/CI_CD_GUIDE.md](docs/CI_CD_GUIDE.md) before changing runner packages,
 headless Qt setup, path-sensitive tests, or dependency auditing.
+
+Run tests locally the way CI does: set `QT_QPA_PLATFORM=offscreen`,
+`OMNIX_MASTER_PASSWORD=<any>`, and `PYNPUT_BACKEND=dummy`, and install `libegl1`
+on Linux. `pytest.ini` pins `asyncio_default_fixture_loop_scope`; without it,
+`-W error::DeprecationWarning` turns pytest-asyncio's warning into an
+INTERNALERROR before collection.
+
+Data-durability conventions (see `tests/unit/test_review_fixes.py`):
+- Write user files atomically (temp file + `os.replace`); `config.py` has
+  `_atomic_write_text`/`_atomic_write_json`.
+- `Config.save_to_env` must keep `.env` keys it does not manage.
+- Never write `AI_API_KEY` to JSON or back to `.env` once it is in the vault.
+- `CredentialStore` quarantines the vault only on `InvalidToken`, never when the
+  key is merely unavailable this run.
+- `MainWindow` loads saved keybinds/macros into its managers at startup; the
+  Settings tabs fall back to defaults when a manager is empty.

@@ -133,9 +133,12 @@ class TestConfigSaveAndLoad:
 
             assert config2.ollama_host == "http://ollama.local:11434"
             assert config2.ollama_model == "llama3"
-            assert config2.ai_api_key == "secret-key"
             assert config2.ai_base_url == "http://custom.api.com"
             assert config2.ai_model == "gpt-4"
+
+            # The API key belongs in the encrypted credential store, never in
+            # the plaintext JSON config.
+            assert "secret-key" not in config_path.read_text(encoding="utf-8")
 
 
 @pytest.mark.unit

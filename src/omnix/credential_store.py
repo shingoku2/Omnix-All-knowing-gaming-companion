@@ -207,9 +207,15 @@ class CredentialStore:
 
                 try:
                     plaintext = self._get_cipher().decrypt(token)
-                except (InvalidToken, CredentialStoreError) as exc:
+                except InvalidToken as exc:
                     logger.warning("Failed to decrypt credentials: %s", exc)
                     self._quarantine_file(".decryption_failed")
+                    return {}
+                except CredentialStoreError as exc:
+                    # The key itself is unavailable (no keyring and no master
+                    # password this run). The vault is not corrupt, so leave it
+                    # in place for the next launch that can unlock it.
+                    logger.warning("Credential key unavailable, vault left untouched: %s", exc)
                     return {}
 
                 try:

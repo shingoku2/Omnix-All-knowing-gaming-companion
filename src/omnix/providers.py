@@ -156,9 +156,12 @@ class OllamaProvider(LLMProvider):
     def _initialize_client(self) -> None:
         """Initialize the Ollama client."""
         try:
+            import httpx
             import ollama
 
-            self.client = ollama.Client(host=self.base_url)
+            # httpx defaults to no timeout here, so an unreachable host hung
+            # the worker forever. Fail fast on connect, allow slow generation.
+            self.client = ollama.Client(host=self.base_url, timeout=httpx.Timeout(300, connect=10))
         except ImportError:
             logger.warning("Ollama library not installed. Install with: pip install ollama")
         except Exception as e:
@@ -208,7 +211,8 @@ class OllamaProvider(LLMProvider):
 
         try:
             models = self.client.list().get("models", [])
-            model_names = [m.get("name", "unknown") for m in models]
+            # ollama>=0.4 returns the model id in "model"; older servers used "name".
+            model_names = [m.get("model") or m.get("name") or "unknown" for m in models]
 
             if models:
                 return ProviderHealth(
@@ -239,7 +243,8 @@ class OllamaProvider(LLMProvider):
 
         try:
             models = self.client.list().get("models", [])
-            return [m.get("name", "") for m in models if m.get("name")]
+            names = (m.get("model") or m.get("name") for m in models)
+            return [name for name in names if name]
         except Exception as e:
             logger.warning(f"Failed to list Ollama models: {e}")
             return []

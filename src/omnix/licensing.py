@@ -34,7 +34,12 @@ def get_installation_id(store: CredentialBackend | None = None) -> str:
             return existing
     installation_id = str(uuid.uuid4())
     if store:
-        store.set_credential("omnix", "installation_id", installation_id)
+        try:
+            store.set_credential("omnix", "installation_id", installation_id)
+        except Exception as exc:
+            # A vault that can't be written (no keyring, no master password)
+            # must not abort startup; the ID is simply regenerated next run.
+            logger.warning("Could not persist installation ID: %s", exc)
     return installation_id
 
 
@@ -110,7 +115,10 @@ class LicenseValidator:
 
     def _save_last_valid(self, timestamp: float) -> None:
         if self.credential_store:
-            self.credential_store.set_credential("omnix", "license_last_valid", str(timestamp))
+            try:
+                self.credential_store.set_credential("omnix", "license_last_valid", str(timestamp))
+            except Exception as exc:
+                logger.warning("Could not persist license validation time: %s", exc)
 
     def _grace_fallback(self, reason: str) -> Tuple[bool, str]:
         if self._last_valid and time.time() - self._last_valid < self.GRACE_PERIOD_HOURS * 3600:

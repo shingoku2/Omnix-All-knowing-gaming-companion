@@ -203,7 +203,8 @@ class KeybindManager(QObject):
 
         # Also check macro keybinds for conflicts
         for macro_id, macro_keybind in self.macro_keybinds.items():
-            if macro_id == exclude_action:
+            # Macro keybinds are registered under the action "macro_<id>".
+            if exclude_action in (macro_id, f"macro_{macro_id}"):
                 continue
             if self._normalize_keys(macro_keybind.keys) == normalized_keys:
                 return True
@@ -514,7 +515,11 @@ class KeybindManager(QObject):
             True if successful
         """
         # Check for conflicts
-        if not override and self._macro_keybind_has_conflict(macro_keybind):
+        # Re-registering the same macro (e.g. changing its keys) must not
+        # conflict with its own previous binding.
+        if not override and self._macro_keybind_has_conflict(
+            macro_keybind, exclude_macro_id=macro_keybind.macro_id
+        ):
             logger.warning(f"Macro keybind conflict: {macro_keybind.keys} already assigned")
             return False
 
@@ -539,6 +544,9 @@ class KeybindManager(QObject):
             logger.info(
                 f"Registered macro keybind: {macro_keybind.macro_id} -> {macro_keybind.keys}"
             )
+        else:
+            # Don't leave an orphaned entry that blocks these keys later.
+            self.macro_keybinds.pop(macro_keybind.macro_id, None)
 
         return success
 

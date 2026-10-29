@@ -129,6 +129,10 @@ class KeybindingsTab(QWidget):
 
         self.setLayout(layout)
 
+        # Connect once here: connecting per row stacked one handler per row
+        # on every reload, so a single edit ran the handler N times.
+        self.keybinds_table.itemChanged.connect(self.on_keybind_changed)
+
         # Load initial keybinds
         self.load_keybinds()
 
@@ -143,8 +147,12 @@ class KeybindingsTab(QWidget):
                 self.keybind_manager.register_keybind(default_keybind, lambda: None, override=True)
             keybinds = self.keybind_manager.get_all_keybinds()
 
-        for keybind in keybinds:
-            self.add_keybind_row(keybind)
+        self.keybinds_table.blockSignals(True)
+        try:
+            for keybind in keybinds:
+                self.add_keybind_row(keybind)
+        finally:
+            self.keybinds_table.blockSignals(False)
 
     def add_keybind_row(self, keybind: Keybind):
         """Add a keybind row to the table"""
@@ -180,9 +188,6 @@ class KeybindingsTab(QWidget):
             Qt.CheckState.Checked if keybind.enabled else Qt.CheckState.Unchecked
         )
         self.keybinds_table.setItem(row, 4, enabled_item)
-
-        # Connect cell change signal
-        self.keybinds_table.itemChanged.connect(self.on_keybind_changed)
 
     def on_keybind_changed(self, item):
         """Handle keybind table changes"""

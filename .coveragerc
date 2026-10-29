@@ -14,7 +14,7 @@ omit =
     */venv/*
     */build/*
     */dist/*
-    */src/ui/examples/*
+    */src/omnix/ui/examples/*
     setup.py
     build_*.py
 

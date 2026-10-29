@@ -297,6 +297,10 @@ class MainWindow(QMainWindow):
 
         self.keybind_manager = KeybindManager(self.capabilities)
         self.macro_manager = MacroManager()
+        # Restore what Settings saved; otherwise the tabs fall back to
+        # defaults/examples and the next "Save All" overwrites the user's data.
+        self.keybind_manager.load_from_dict(getattr(config, "keybinds", None) or {})
+        self.macro_manager.load_from_dict(getattr(config, "macros", None) or {})
         self.theme_manager = OmnixThemeManager()
         self.settings_dialog: Optional[TabbedSettingsDialog] = None
 

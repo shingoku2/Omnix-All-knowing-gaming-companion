@@ -31,7 +31,7 @@ class ProviderTester:
         try:
             import ollama
 
-            client = ollama.Client(host=base_url)
+            client = ollama.Client(host=base_url, timeout=timeout)
             models_response = client.list()
             models = models_response.get("models", [])
             model_count = len(models)
@@ -43,7 +43,7 @@ class ProviderTester:
                     "ollama pull llama3"
                 )
 
-            model_names = [m.get("name", "unknown") for m in models[:5]]
+            model_names = [m.get("model") or m.get("name") or "unknown" for m in models[:5]]
             model_list = ", ".join(model_names)
             if model_count > 5:
                 model_list += f", ... (+{model_count - 5} more)"

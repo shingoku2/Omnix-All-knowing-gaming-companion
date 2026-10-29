@@ -80,8 +80,14 @@ class IngestionWorker(QThread):
                         source.content = self.pipeline.ingest("url", url=source.url)
                     # Notes already have content
                 except IngestionError as e:
+                    # Leave content empty so the source is retried next time
+                    # instead of indexing the error text as game knowledge.
                     logger.error(f"Failed to ingest {source.title}: {e}")
-                    source.content = f"[Ingestion failed: {str(e)}]"
+
+            # Cache the ingested text with the pack; otherwise every later
+            # rebuild (which reads packs from the store) finds no content.
+            if not get_knowledge_pack_store().save_pack(self.pack):
+                logger.warning(f"Could not save ingested content for pack {self.pack.name}")
 
             # Index the pack
             self.progress.emit(90, "Indexing knowledge pack...")

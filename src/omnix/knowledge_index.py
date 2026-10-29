@@ -103,7 +103,9 @@ class SimpleTFIDFEmbedding(EmbeddingProvider):
         # Compute IDF
         self.idf = {}
         for token, freq in doc_freq.items():
-            self.idf[token] = math.log(doc_count / (freq + 1))
+            # Smoothed IDF (always > 0). The unsmoothed log(N / (df + 1)) is
+            # zero or negative on small corpora, which zeroes every vector.
+            self.idf[token] = math.log((1 + doc_count) / (1 + freq)) + 1
 
         # Build vocabulary
         self.vocabulary = {token: idx for idx, token in enumerate(sorted(self.idf.keys()))}
@@ -389,21 +391,36 @@ class KnowledgeIndex:
 
         return dot_product / (mag1 * mag2)
 
-    def rebuild_index_for_game(self, game_profile_id: str) -> None:
+    def rebuild_index_for_game(
+        self,
+        game_profile_id: str,
+        override: Optional[KnowledgePack] = None,
+        exclude_pack_id: Optional[str] = None,
+    ) -> None:
         """
         Rebuild the entire index for a game profile.
         This ensures TF-IDF is calculated correctly across ALL packs for the game.
 
         Args:
             game_profile_id: Game profile ID to rebuild index for
+            override: In-memory pack that replaces the stored copy (it may hold
+                freshly ingested content that hasn't been saved yet)
+            exclude_pack_id: Pack to leave out (being removed from the store)
         """
         logger.info(f"Rebuilding index for game profile: {game_profile_id}")
 
         # Get all packs for this game using injected dependency
-        all_packs = self.knowledge_store.get_packs_for_game(game_profile_id)
+        all_packs = dict(self.knowledge_store.get_packs_for_game(game_profile_id) or {})
+        if override is not None:
+            all_packs[override.id] = override
+        if exclude_pack_id is not None:
+            all_packs.pop(exclude_pack_id, None)
 
         if not all_packs:
             logger.warning(f"No packs found for game profile: {game_profile_id}")
+            if exclude_pack_id is not None and game_profile_id in self.index:
+                del self.index[game_profile_id]
+                self._save_index()
             return
 
         # Clear existing index for this game
@@ -493,7 +510,7 @@ class KnowledgeIndex:
         logger.info(f"Adding knowledge pack: {pack.name}")
 
         # Rebuild entire index for this game to ensure correct TF-IDF
-        self.rebuild_index_for_game(pack.game_profile_id)
+        self.rebuild_index_for_game(pack.game_profile_id, override=pack)
 
     def remove_pack(self, pack_id: str, game_profile_id: Optional[str] = None) -> None:
         """
@@ -526,7 +543,7 @@ class KnowledgeIndex:
         # Rebuild index for affected games to recalculate TF-IDF
         for gp_id in affected_games:
             logger.info(f"Rebuilding index for game '{gp_id}' after pack removal")
-            self.rebuild_index_for_game(gp_id)
+            self.rebuild_index_for_game(gp_id, exclude_pack_id=pack_id)
 
         # Save index
         self._save_index()
