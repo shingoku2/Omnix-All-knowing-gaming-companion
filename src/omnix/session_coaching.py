@@ -312,7 +312,8 @@ Keep it brief and actionable."""
             # Use the router's chat method which handles provider selection
             response = await asyncio.to_thread(
                 self.router.chat,
-                messages=[{"role": "user", "content": prompt}], provider=self.config.ai_provider
+                messages=[{"role": "user", "content": prompt}],
+                provider=self.config.ai_provider,
             )
             return response["content"]
         except Exception as e:
@@ -340,7 +341,8 @@ Be specific and actionable."""
         try:
             response = await asyncio.to_thread(
                 self.router.chat,
-                messages=[{"role": "user", "content": prompt}], provider=self.config.ai_provider
+                messages=[{"role": "user", "content": prompt}],
+                provider=self.config.ai_provider,
             )
             return response["content"]
         except Exception as e:
@@ -353,7 +355,8 @@ Be specific and actionable."""
         try:
             response = await asyncio.to_thread(
                 self.router.chat,
-                messages=[{"role": "user", "content": prompt}], provider=self.config.ai_provider
+                messages=[{"role": "user", "content": prompt}],
+                provider=self.config.ai_provider,
             )
             return response["content"]
         except Exception as e:
