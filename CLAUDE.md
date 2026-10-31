@@ -30,6 +30,14 @@ Data-durability conventions (see `tests/unit/test_review_fixes.py`):
 - Write user files atomically (temp file + `os.replace`); `config.py` has
   `_atomic_write_text`/`_atomic_write_json`.
 - `Config.save_to_env` must keep `.env` keys it does not manage.
+- `Config.save()` writes `<config_dir>/config.json`, which loads after `.env`
+  and so wins. Any code that calls `save_to_env` with in-memory `Config` values
+  must also call `config.save()`, or a stale JSON value overrides the change on
+  restart. Only `_PERSISTED_FIELDS` load (type-checked; `_POSITIVE_FIELDS` must
+  be > 0; `ai_provider` must be supported), and only from files stamped with
+  exactly `int` `settings_version`; `save()` keeps unmanaged keys such as
+  `schema_version`. UI save handlers must check `save()`'s result and must not
+  report success when it returns False.
 - Never write `AI_API_KEY` to JSON or back to `.env` once it is in the vault.
 - `CredentialStore` quarantines the vault only on `InvalidToken`, never when the
   key is merely unavailable this run.

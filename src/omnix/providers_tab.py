@@ -396,6 +396,10 @@ class ProvidersTab(QWidget):
             except Exception as save_error:
                 logger.warning(f"Failed to save to .env: {save_error}")
 
+            # config.json overrides .env on load, so it must match too.
+            if not self.config.save():
+                raise OSError("could not write config.json; see the log for details")
+
             self.config_changed.emit(config_values)
             self.provider_config_changed.emit("ollama", {})
 
