@@ -419,3 +419,45 @@ def test_repeated_save_does_not_rewrite_unchanged_vault_key(tmp_path, monkeypatc
     config.ai_api_key = "k2"
     assert config.save()
     assert writes[-1] == {"AI_API_KEY": "k2"}
+
+
+@pytest.mark.unit
+def test_config_rejects_unusable_values_and_fake_stamps(tmp_path):
+    import json
+
+    baseline = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+    path = tmp_path / "config.json"
+    bad = {
+        "settings_version": 1,
+        "max_macro_repeat": -1,
+        "macro_execution_timeout": 0,
+        "ai_provider": "openai",
+    }
+    path.write_text(json.dumps(bad), encoding="utf-8")
+    config = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+    assert config.max_macro_repeat == baseline.max_macro_repeat
+    assert config.macro_execution_timeout == baseline.macro_execution_timeout
+    assert config.ai_provider == baseline.ai_provider
+
+    for stamp in (True, 1.0, "1"):
+        path.write_text(json.dumps({"settings_version": stamp, "overlay_y": 99}), encoding="utf-8")
+        config = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+        assert config.overlay_y == baseline.overlay_y, stamp
+
+
+@pytest.mark.unit
+def test_providers_tab_reports_failed_config_save(qapp, tmp_path, monkeypatch):
+    from omnix import providers_tab
+
+    monkeypatch.setattr(providers_tab.ProvidersTab, "refresh_models", lambda self: None)
+    monkeypatch.setattr(providers_tab.Config, "save_to_env", staticmethod(lambda **_: None))
+    errors = []
+    monkeypatch.setattr(
+        providers_tab.QMessageBox, "critical", staticmethod(lambda *a: errors.append(a))
+    )
+    config = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+    monkeypatch.setattr(config, "save", lambda: False)
+
+    tab = providers_tab.ProvidersTab(config)
+    assert tab.save_provider_config() is False
+    assert errors, "the user must be told the save failed"

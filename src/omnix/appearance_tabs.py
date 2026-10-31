@@ -504,7 +504,13 @@ class OverlayAppearanceTab(QWidget):
             overlay_opacity=self.config.overlay_opacity,
         )
         # config.json overrides .env on load, so it must match too.
-        self.config.save()
+        if not self.config.save():
+            QMessageBox.critical(
+                self,
+                "Save Failed",
+                "Overlay settings could not be saved to config.json; see the log for details.",
+            )
+            return
 
         self.overlay_appearance_changed.emit(self.get_overlay_settings())
 

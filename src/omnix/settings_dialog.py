@@ -248,6 +248,7 @@ class TabbedSettingsDialog(QDialog):
             theme: Dict[str, object] = {}  # Empty dict for backward compatibility
 
             overlay_appearance = self.overlay_appearance_tab.get_overlay_settings()
+            self.config.overlay_opacity = overlay_appearance["opacity"]
 
             # Save provider configuration
             provider_saved = self.providers_tab.save_provider_config()
@@ -283,7 +284,8 @@ class TabbedSettingsDialog(QDialog):
                 self.config.ai_provider = default_provider
 
             # config.json overrides .env on load, so it must match too.
-            self.config.save()
+            if not self.config.save():
+                raise OSError("could not write config.json; see the log for details")
 
             # Emit signals
             self.keybinds_changed.emit(keybinds)

@@ -76,6 +76,15 @@ CONFIG_FILENAME = "config.json"
 SETTINGS_VERSION_KEY = "settings_version"
 SETTINGS_VERSION = 1
 
+# Persisted ints that must be positive to be usable.
+_POSITIVE_FIELDS = {
+    "check_interval",
+    "overlay_width",
+    "overlay_height",
+    "max_macro_repeat",
+    "macro_execution_timeout",
+}
+
 # Attributes Config.save() persists, with the JSON types accepted on load.
 _PERSISTED_FIELDS = {
     "ai_provider": (str,),
@@ -96,6 +105,18 @@ _PERSISTED_FIELDS = {
     "max_macro_repeat": (int,),
     "macro_execution_timeout": (int,),
 }
+
+
+def _is_valid_setting(key: str, value, types: tuple) -> bool:
+    """Check a value read from config.json before applying it."""
+    # bool is an int subclass; only accept it where a bool is meant.
+    if not isinstance(value, types) or (isinstance(value, bool) and bool not in types):
+        return False
+    if key in _POSITIVE_FIELDS:
+        return value > 0
+    if key == "ai_provider":
+        return value in SUPPORTED_AI_PROVIDERS
+    return True
 
 
 class Config:
@@ -454,7 +475,9 @@ class Config:
             if isinstance(legacy_key, str) and legacy_key and not self.ai_api_key:
                 self.ai_api_key = legacy_key
 
-            if data.get(SETTINGS_VERSION_KEY) != SETTINGS_VERSION:
+            stamp = data.get(SETTINGS_VERSION_KEY)
+            # True and 1.0 compare equal to 1, so check the exact type too.
+            if type(stamp) is not int or stamp != SETTINGS_VERSION:
                 logger.info("Ignoring settings in legacy config file %s", path)
                 return
 
@@ -462,8 +485,7 @@ class Config:
                 if key not in data:
                     continue
                 value = data[key]
-                # bool is an int subclass; only accept it where a bool is meant.
-                if isinstance(value, types) and (bool in types or not isinstance(value, bool)):
+                if _is_valid_setting(key, value, types):
                     setattr(self, key, value)
                 else:
                     logger.warning("Ignoring invalid %s in %s: %r", key, path, value)
