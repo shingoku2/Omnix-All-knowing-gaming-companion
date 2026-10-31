@@ -493,14 +493,17 @@ class SetupWizard(QDialog):
 
         if current_index == self.pages.count() - 1:
             self.next_button.setText("Finish")
-            self.next_button.clicked.disconnect()
+            try:
+                self.next_button.clicked.disconnect()
+            except TypeError:
+                logger.debug("Next button had no connections to disconnect")
             self.next_button.clicked.connect(self.finish_setup)
         else:
             self.next_button.setText("Next →")
             try:
                 self.next_button.clicked.disconnect()
             except TypeError:
-                pass
+                logger.debug("Next button had no connections to disconnect")
             self.next_button.clicked.connect(self.next_page)
 
         # Enable/disable next based on page
