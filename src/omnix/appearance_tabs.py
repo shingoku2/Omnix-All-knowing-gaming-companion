@@ -503,6 +503,8 @@ class OverlayAppearanceTab(QWidget):
             overlay_minimized=self.config.overlay_minimized,
             overlay_opacity=self.config.overlay_opacity,
         )
+        # config.json overrides .env on load, so it must match too.
+        self.config.save()
 
         self.overlay_appearance_changed.emit(self.get_overlay_settings())
 

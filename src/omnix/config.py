@@ -69,6 +69,34 @@ DEFAULT_MACRO_SAFETY_UNDERSTOOD = False
 DEFAULT_MAX_MACRO_REPEAT = 10
 DEFAULT_MACRO_EXECUTION_TIMEOUT = 30
 
+CONFIG_FILENAME = "config.json"
+
+# Marks a config.json written by Config.save(). Files without it predate 3.0
+# (3.0 never wrote one), so their values are stale and must not override .env.
+SETTINGS_VERSION_KEY = "settings_version"
+SETTINGS_VERSION = 1
+
+# Attributes Config.save() persists, with the JSON types accepted on load.
+_PERSISTED_FIELDS = {
+    "ai_provider": (str,),
+    "ollama_host": (str,),
+    "ollama_model": (str,),
+    "ai_base_url": (str, type(None)),
+    "ai_model": (str, type(None)),
+    "overlay_hotkey": (str,),
+    "check_interval": (int,),
+    "overlay_x": (int,),
+    "overlay_y": (int,),
+    "overlay_width": (int,),
+    "overlay_height": (int,),
+    "overlay_minimized": (bool,),
+    "overlay_opacity": (int, float),
+    "macros_enabled": (bool,),
+    "macro_safety_understood": (bool,),
+    "max_macro_repeat": (int,),
+    "macro_execution_timeout": (int,),
+}
+
 
 class Config:
     """Application configuration (Ollama-only)"""
@@ -86,15 +114,16 @@ class Config:
         Args:
             env_file: Path to .env file (optional)
             require_keys: Ignored (kept for compatibility)
-            config_path: Optional path for persisted config data
+            config_path: Optional path for persisted config data; defaults to
+                config.json in the configuration directory
             config_dir: Optional configuration directory override
         """
-        self.config_path = config_path
         resolved_config_dir = (
             Path(config_dir)
             if config_dir
             else Path(config_path).parent if config_path else CONFIG_DIR
         )
+        self.config_path = str(config_path or resolved_config_dir / CONFIG_FILENAME)
         self.config_dir = str(resolved_config_dir)
         self.keybinds_file = resolved_config_dir / "keybinds.json"
         self.macros_file = resolved_config_dir / "macros.json"
@@ -140,17 +169,21 @@ class Config:
         self.ai_base_url = os.getenv("AI_BASE_URL")
         self.ai_model = os.getenv("AI_MODEL")
 
+        # The key value known to be in the vault, so save() can skip rewriting it.
+        self._vaulted_api_key: Optional[str] = None
         if self.ai_api_key:
             # A plaintext key found in .env (legacy) is migrated into the
             # encrypted credential store; save_to_env() no longer writes it
             # back to disk in plaintext once this has run.
             try:
                 self.credential_store.save_credentials({"AI_API_KEY": self.ai_api_key})
+                self._vaulted_api_key = self.ai_api_key
             except CredentialStoreError as exc:
                 logger.warning("Could not migrate AI_API_KEY into credential store: %s", exc)
         else:
             try:
                 self.ai_api_key = self.credential_store.get("AI_API_KEY")
+                self._vaulted_api_key = self.ai_api_key
             except CredentialStoreError as exc:
                 logger.warning("Could not read AI_API_KEY from credential store: %s", exc)
 
@@ -367,42 +400,35 @@ class Config:
             setattr(self, key, value)
 
     def save(self):
-        """Save configuration to JSON file if config_path is set"""
-        if not self.config_path:
-            logger.warning("No config_path set, cannot save configuration")
-            return False
-
+        """Save configuration to config.json"""
+        path = Path(self.config_path)
         try:
             # The key is kept out of the JSON, so make sure the vault holds it
             # first (a legacy config.json may have been its only copy).
-            if self.ai_api_key:
+            if self.ai_api_key and self.ai_api_key != self._vaulted_api_key:
                 try:
                     self.credential_store.save_credentials({"AI_API_KEY": self.ai_api_key})
+                    self._vaulted_api_key = self.ai_api_key
                 except CredentialStoreError as exc:
                     logger.error("Not saving configuration: AI_API_KEY vault write failed: %s", exc)
                     return False
 
-            config_data = {
-                "ai_provider": self.ai_provider,
-                "ollama_host": self.ollama_host,
-                "ollama_model": self.ollama_model,
-                "ai_base_url": self.ai_base_url,
-                "ai_model": self.ai_model,
-                "overlay_hotkey": self.overlay_hotkey,
-                "check_interval": self.check_interval,
-                "overlay_x": self.overlay_x,
-                "overlay_y": self.overlay_y,
-                "overlay_width": self.overlay_width,
-                "overlay_height": self.overlay_height,
-                "overlay_minimized": self.overlay_minimized,
-                "overlay_opacity": self.overlay_opacity,
-                "macros_enabled": self.macros_enabled,
-                "macro_safety_understood": self.macro_safety_understood,
-                "max_macro_repeat": self.max_macro_repeat,
-                "macro_execution_timeout": self.macro_execution_timeout,
-            }
+            # Keep keys this method doesn't manage (e.g. the migrations'
+            # schema_version), but never carry a plaintext key forward.
+            config_data = {}
+            if path.exists():
+                try:
+                    existing = json.loads(path.read_text(encoding="utf-8"))
+                    if isinstance(existing, dict):
+                        config_data = existing
+                except (OSError, ValueError) as exc:
+                    logger.warning("Overwriting unreadable config file %s: %s", path, exc)
+            config_data.pop("ai_api_key", None)
+            config_data.update({key: getattr(self, key) for key in _PERSISTED_FIELDS})
+            config_data[SETTINGS_VERSION_KEY] = SETTINGS_VERSION
 
-            _atomic_write_json(Path(self.config_path), config_data)
+            _atomic_write_json(path, config_data)
+            self._protect_file(path)
 
             logger.info(f"Saved configuration to {self.config_path}")
             return True
@@ -411,20 +437,40 @@ class Config:
             return False
 
     def _load_from_file(self):
-        """Load configuration from JSON file if it exists"""
-        if not self.config_path or not Path(self.config_path).exists():
+        """Load configuration from config.json if it exists"""
+        path = Path(self.config_path)
+        if not path.exists():
             return
 
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            if not isinstance(data, dict):
+                raise ValueError("config file must contain a JSON object")
 
-            for key, value in data.items():
-                if hasattr(self, key):
+            # A pre-3.0 file may hold the only copy of the API key; keep it
+            # in memory so save() moves it into the vault.
+            legacy_key = data.get("ai_api_key")
+            if isinstance(legacy_key, str) and legacy_key and not self.ai_api_key:
+                self.ai_api_key = legacy_key
+
+            if data.get(SETTINGS_VERSION_KEY) != SETTINGS_VERSION:
+                logger.info("Ignoring settings in legacy config file %s", path)
+                return
+
+            for key, types in _PERSISTED_FIELDS.items():
+                if key not in data:
+                    continue
+                value = data[key]
+                # bool is an int subclass; only accept it where a bool is meant.
+                if isinstance(value, types) and (bool in types or not isinstance(value, bool)):
                     setattr(self, key, value)
+                else:
+                    logger.warning("Ignoring invalid %s in %s: %r", key, path, value)
+            self.overlay_opacity = max(0.0, min(1.0, float(self.overlay_opacity)))
 
             logger.info(f"Loaded configuration from {self.config_path}")
-        except json.JSONDecodeError as e:
+        except (json.JSONDecodeError, ValueError) as e:
             logger.warning(f"Failed to parse config file, using defaults: {e}")
         except Exception as e:
             logger.error(f"Failed to load configuration: {e}")

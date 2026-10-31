@@ -32,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `Config.save()` was a no-op because `config_path` was never set, so overlay
+  position/size and the Quick Settings model choice were lost on restart. It
+  now defaults to `config.json` in the profile directory, which loads after
+  `.env` and is kept in sync by every Settings save. Only files stamped with
+  `settings_version` (written by this version) are applied; a pre-3.0
+  `config.json` contributes only its API key, which moves into the vault.
+  Loading accepts only known settings with valid types.
 - GitHub-hosted Ubuntu CI now installs `libegl1` before pytest imports PyQt6,
   preventing `ImportError: libEGL.so.1` during pytest-qt initialization.
 - Knowledge-ingestion containment checks now resolve both the candidate file and

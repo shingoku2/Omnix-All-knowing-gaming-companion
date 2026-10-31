@@ -328,3 +328,94 @@ def test_pause_does_not_outlive_macro_timeout():
 
     assert runner.state == MacroExecutionState.ERROR
     runner.keyboard_controller.release.assert_any_call("w")
+
+
+@pytest.mark.unit
+class TestConfigSaveDefaultPath:
+    """Config.save() used to be a no-op because config_path was never set."""
+
+    def test_default_config_saves_and_reloads(self, tmp_path):
+        config = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+        assert config.config_path == str(tmp_path / "config.json")
+
+        config.overlay_x = 640
+        config.ollama_model = "mistral"
+        assert config.save()
+
+        reloaded = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+        assert reloaded.overlay_x == 640
+        assert reloaded.ollama_model == "mistral"
+
+    def test_save_keeps_unmanaged_keys_and_drops_plaintext_key(self, tmp_path):
+        import json
+
+        path = tmp_path / "config.json"
+        path.write_text(
+            json.dumps({"schema_version": 3, "settings_version": 1, "ai_api_key": "k"}),
+            encoding="utf-8",
+        )
+        config = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+        assert config.save()
+
+        data = json.loads(path.read_text(encoding="utf-8"))
+        assert data["schema_version"] == 3
+        assert data["settings_version"] == config_mod.SETTINGS_VERSION
+        assert "ai_api_key" not in data
+
+    def test_legacy_file_does_not_override_settings(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("OLLAMA_MODEL", "from-env")
+        baseline = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+        (tmp_path / "config.json").write_text(
+            '{"ollama_model": "stale-2x-model", "overlay_x": 7}', encoding="utf-8"
+        )
+        config = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+        assert config.ollama_model == "from-env"
+        assert config.overlay_x == baseline.overlay_x
+
+    def test_invalid_values_are_ignored(self, tmp_path):
+        # Other tests leave .env values in os.environ, so compare to a baseline.
+        baseline = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+        (tmp_path / "config.json").write_text(
+            '{"settings_version": 1, "overlay_x": "left", "check_interval": true,'
+            ' "overlay_opacity": 4, "config_dir": "/etc", "overlay_y": 42}',
+            encoding="utf-8",
+        )
+        config = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+        assert config.overlay_x == baseline.overlay_x
+        assert config.check_interval == baseline.check_interval
+        assert config.overlay_opacity == 1.0
+        assert config.config_dir == str(tmp_path)
+        assert config.overlay_y == 42
+
+    def test_providers_tab_save_updates_config_json(self, qapp, tmp_path, monkeypatch):
+        from omnix import providers_tab
+
+        monkeypatch.setattr(providers_tab.ProvidersTab, "refresh_models", lambda self: None)
+        monkeypatch.setattr(providers_tab.Config, "save_to_env", staticmethod(lambda **_: None))
+        config = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+        tab = providers_tab.ProvidersTab(config)
+        tab.host_input.setText("http://gpu-box:11434")
+        assert tab.save_provider_config()
+
+        reloaded = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+        assert reloaded.ollama_host == "http://gpu-box:11434"
+
+
+@pytest.mark.unit
+def test_repeated_save_does_not_rewrite_unchanged_vault_key(tmp_path, monkeypatch):
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    config = config_mod.Config(require_keys=False, config_dir=str(tmp_path))
+    config.ai_api_key = "k1"
+    writes = []
+    original = config.credential_store.save_credentials
+    monkeypatch.setattr(
+        config.credential_store,
+        "save_credentials",
+        lambda creds: (writes.append(creds), original(creds))[1],
+    )
+
+    assert config.save() and config.save()  # e.g. two overlay drags
+    assert writes == [{"AI_API_KEY": "k1"}]
+    config.ai_api_key = "k2"
+    assert config.save()
+    assert writes[-1] == {"AI_API_KEY": "k2"}

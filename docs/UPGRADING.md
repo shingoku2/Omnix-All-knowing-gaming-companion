@@ -23,6 +23,12 @@ The v3 migration:
 - introduces a SQLite FTS5 knowledge database while retaining the legacy JSON
   index for compatibility and model metadata.
 
+Settings changed in the app (overlay position and size, model, Settings
+dialog values) persist to `config.json` in the profile directory, which takes
+precedence over `.env`. Values in a `config.json` left over from before 3.0
+are ignored, apart from an API key, which moves into the encrypted vault on the
+next save. To go back to `.env`-only settings, delete `config.json`.
+
 If a profile reports a schema newer than the application supports, Omnix stops
 instead of attempting a downgrade. Install the newer application or restore a
 matching backup.
