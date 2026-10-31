@@ -335,4 +335,3 @@ IMPORTANT: Return ONLY the JSON object, nothing else."""
         )
 
         return macro
-
