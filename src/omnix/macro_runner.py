@@ -83,6 +83,10 @@ class MacroRunner:
         self.keyboard_controller = None
         self.mouse_controller = None
 
+        # Keys pressed by KEY_DOWN steps and not yet released; released on any
+        # exit (stop, timeout, error) so a macro can't leave a key stuck down.
+        self._held_keys: list = []
+
         logger.info(
             f"MacroRunner initialized (enabled={enabled}, macro_manager={'present' if macro_manager else 'None'})"
         )
@@ -179,8 +183,8 @@ class MacroRunner:
         return self.state == MacroExecutionState.RUNNING
 
     def stop_macro(self) -> None:
-        """Stop any running macro execution."""
-        if self.state == MacroExecutionState.RUNNING:
+        """Stop any running or paused macro execution."""
+        if self.state in (MacroExecutionState.RUNNING, MacroExecutionState.PAUSED):
             self.state = MacroExecutionState.STOPPED
 
         # Join background thread if present
@@ -229,6 +233,10 @@ class MacroRunner:
 
                 # Execute each step
                 for step_idx, step in enumerate(macro.steps):
+                    # Pausing doesn't suspend the safety deadline; the check
+                    # below runs after the wait so an expired pause errors out.
+                    self._wait_while_paused(start_time + timeout_seconds)
+
                     # Check for timeout in inner loop too
                     elapsed_time = time.monotonic() - start_time
                     if elapsed_time > timeout_seconds:
@@ -256,6 +264,9 @@ class MacroRunner:
                             self.on_error(f"Error in step {step_idx + 1}: {str(e)}")
                         raise
 
+            if self.state == MacroExecutionState.STOPPED:
+                return
+
             # Macro completed successfully
             self.state = MacroExecutionState.COMPLETED
             logger.info(f"Macro execution completed: {macro.name}")
@@ -268,6 +279,23 @@ class MacroRunner:
             logger.error(f"Macro execution error: {e}")
             if self.on_error:
                 self.on_error(f"Macro execution error: {str(e)}")
+        finally:
+            self._release_held_keys()
+
+    def _wait_while_paused(self, deadline: float) -> None:
+        """Block between steps while paused; returns on resume, stop or deadline."""
+        while self.state == MacroExecutionState.PAUSED and time.monotonic() <= deadline:
+            time.sleep(0.05)
+
+    def _release_held_keys(self) -> None:
+        """Release every key a KEY_DOWN step left pressed."""
+        if self.keyboard_controller:
+            for key in reversed(self._held_keys):
+                try:
+                    self.keyboard_controller.release(key)
+                except Exception as e:
+                    logger.warning(f"Failed to release held key {key}: {e}")
+        self._held_keys.clear()
 
     def _interruptible_sleep(self, duration_sec: float):
         """
@@ -402,6 +430,7 @@ class MacroRunner:
 
         for key in keys:
             self.keyboard_controller.press(key)
+            self._held_keys.append(key)
             time.sleep(0.01)
 
     def _key_up(self, key_combo: str):
@@ -413,6 +442,8 @@ class MacroRunner:
 
         for key in reversed(keys):
             self.keyboard_controller.release(key)
+            if key in self._held_keys:
+                self._held_keys.remove(key)
             time.sleep(0.01)
 
     def _type_sequence(self, text: str):

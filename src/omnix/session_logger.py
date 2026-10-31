@@ -6,6 +6,7 @@ Tracks user interactions and AI responses per game profile for coaching and reca
 import json
 import logging
 import os
+import re
 import tempfile
 import threading
 from collections import deque
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+_SESSION_ID_RE = re.compile(r"\d{8}_\d{6}")
 
 
 @dataclass
@@ -58,10 +61,9 @@ class SessionLogger:
     Logs gaming session events for coaching and recap features
     """
 
-    # Maximum events to keep in memory per game
-    MAX_EVENTS_IN_MEMORY = 100
-
-    # Maximum events to persist to disk per game
+    # Maximum events kept per session. The in-memory buffer is the source
+    # for every full rewrite of the session file, so it must hold the whole
+    # (capped) session or older events are erased from disk.
     MAX_EVENTS_ON_DISK = 500
 
     # Session timeout (if no events for this duration, consider it a new session)
@@ -99,6 +101,23 @@ class SessionLogger:
         """Get the file path for a session log"""
         return self.logs_dir / f"{game_profile_id}_{session_id}.json"
 
+    def _session_files(self, game_profile_id: str) -> List[Path]:
+        """Session files for exactly this profile, most recent first.
+
+        A bare ``{id}_*.json`` glob also matches other profiles that share the
+        prefix (``elden`` vs ``elden_ring``), so require the remainder to be a
+        session timestamp.
+        """
+        prefix_len = len(game_profile_id) + 1
+        return sorted(
+            (
+                path
+                for path in self.logs_dir.glob(f"{game_profile_id}_*.json")
+                if _SESSION_ID_RE.fullmatch(path.stem[prefix_len:])
+            ),
+            reverse=True,
+        )
+
     def _get_current_session_id(self, game_profile_id: str) -> str:
         """
         Get or create current session ID for a game
@@ -113,9 +132,11 @@ class SessionLogger:
         last_time = self.last_event_time.get(game_profile_id)
         session_id: str
         if last_time is None or (now - last_time) > self.SESSION_TIMEOUT:
-            # New session
+            # New session: start a fresh buffer so the previous session's
+            # events aren't written into this session's file.
             session_id = now.strftime("%Y%m%d_%H%M%S")
             self.current_sessions[game_profile_id] = session_id
+            self.events[game_profile_id] = deque(maxlen=self.MAX_EVENTS_ON_DISK)
             logger.info(f"Started new session for {game_profile_id}: {session_id}")
         else:
             # Continue existing session
@@ -152,14 +173,13 @@ class SessionLogger:
                 meta=meta or {},
             )
 
-            # Add to in-memory storage
+            # Resolve the session first: a new session resets the buffer.
+            session_id = self._get_current_session_id(game_profile_id)
+
             if game_profile_id not in self.events:
-                self.events[game_profile_id] = deque(maxlen=self.MAX_EVENTS_IN_MEMORY)
+                self.events[game_profile_id] = deque(maxlen=self.MAX_EVENTS_ON_DISK)
 
             self.events[game_profile_id].append(event)
-
-            # Get current session
-            session_id = self._get_current_session_id(game_profile_id)
 
             # Persist to disk on every event so a crash/forced kill loses at
             # most the event currently being logged rather than up to 9.
@@ -269,9 +289,7 @@ class SessionLogger:
 
         # If we need more, load from recent session files
         if len(events) < limit:
-            session_files = sorted(
-                self.logs_dir.glob(f"{game_profile_id}_*.json"), reverse=True  # Most recent first
-            )
+            session_files = self._session_files(game_profile_id)
 
             for session_file in session_files[:5]:  # Check last 5 sessions
                 # Strip the known "{game_profile_id}_" prefix rather than
@@ -360,7 +378,7 @@ class SessionLogger:
         Returns:
             List of session IDs (sorted by date, most recent first)
         """
-        session_files = sorted(self.logs_dir.glob(f"{game_profile_id}_*.json"), reverse=True)
+        session_files = self._session_files(game_profile_id)
 
         session_ids = []
         for session_file in session_files:

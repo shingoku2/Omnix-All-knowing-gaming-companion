@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -18,6 +19,29 @@ from omnix.credential_store import CredentialDecryptionError, CredentialStore, C
 from omnix.security import ensure_private_dir, ensure_private_file
 
 logger = logging.getLogger(__name__)
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write text via temp file + rename so a crash can't truncate the target."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_name, path)
+    except Exception:
+        try:
+            os.unlink(temp_name)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def _atomic_write_json(path: Path, value) -> None:
+    _atomic_write_text(path, json.dumps(value, indent=2))
+
 
 # Configuration directory
 CONFIG_DIR = Path(os.getenv("OMNIX_CONFIG_DIR", str(Path.home() / ".gaming_ai_assistant")))
@@ -237,8 +261,7 @@ class Config:
         """Save keybinds to JSON file"""
         try:
             Path(self.config_dir).mkdir(parents=True, exist_ok=True)
-            with open(self.keybinds_file, "w", encoding="utf-8") as f:
-                json.dump(keybinds, f, indent=2)
+            _atomic_write_json(self.keybinds_file, keybinds)
             self.keybinds = keybinds
             self._protect_file(self.keybinds_file)
             logger.info(f"Saved {len(keybinds)} keybinds to {self.keybinds_file}")
@@ -251,8 +274,7 @@ class Config:
         """Save macros to JSON file"""
         try:
             Path(self.config_dir).mkdir(parents=True, exist_ok=True)
-            with open(self.macros_file, "w", encoding="utf-8") as f:
-                json.dump(macros, f, indent=2)
+            _atomic_write_json(self.macros_file, macros)
             self.macros = macros
             self._protect_file(self.macros_file)
             logger.info(f"Saved {len(macros)} macros to {self.macros_file}")
@@ -265,8 +287,7 @@ class Config:
         """Save theme to JSON file"""
         try:
             Path(self.config_dir).mkdir(parents=True, exist_ok=True)
-            with open(self.theme_file, "w", encoding="utf-8") as f:
-                json.dump(theme, f, indent=2)
+            _atomic_write_json(self.theme_file, theme)
             self.theme = theme
             self._protect_file(self.theme_file)
             logger.info(f"Saved theme to {self.theme_file}")
@@ -352,11 +373,19 @@ class Config:
             return False
 
         try:
+            # The key is kept out of the JSON, so make sure the vault holds it
+            # first (a legacy config.json may have been its only copy).
+            if self.ai_api_key:
+                try:
+                    self.credential_store.save_credentials({"AI_API_KEY": self.ai_api_key})
+                except CredentialStoreError as exc:
+                    logger.error("Not saving configuration: AI_API_KEY vault write failed: %s", exc)
+                    return False
+
             config_data = {
                 "ai_provider": self.ai_provider,
                 "ollama_host": self.ollama_host,
                 "ollama_model": self.ollama_model,
-                "ai_api_key": self.ai_api_key,
                 "ai_base_url": self.ai_base_url,
                 "ai_model": self.ai_model,
                 "overlay_hotkey": self.overlay_hotkey,
@@ -373,8 +402,7 @@ class Config:
                 "macro_execution_timeout": self.macro_execution_timeout,
             }
 
-            with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump(config_data, f, indent=2)
+            _atomic_write_json(Path(self.config_path), config_data)
 
             logger.info(f"Saved configuration to {self.config_path}")
             return True
@@ -467,9 +495,9 @@ class Config:
                         key, value = line.split("=", 1)
                         existing_content[key.strip()] = value.strip()
 
-        # Update with new values (use setdefault to preserve existing values)
-        existing_content.setdefault("OVERLAY_HOTKEY", overlay_hotkey)
-        existing_content.setdefault("CHECK_INTERVAL", str(check_interval))
+        # Callers always pass the value they want persisted.
+        existing_content["OVERLAY_HOTKEY"] = overlay_hotkey
+        existing_content["CHECK_INTERVAL"] = str(check_interval)
 
         if ollama_host:
             existing_content["OLLAMA_HOST"] = ollama_host
@@ -490,64 +518,95 @@ class Config:
         if overlay_opacity is not None:
             existing_content["OVERLAY_OPACITY"] = str(overlay_opacity)
 
-        # Write to .env file
-        with open(env_path, "w", encoding="utf-8") as f:
-            f.write("# Gaming AI Assistant Configuration (Ollama)\n")
-            f.write("# This file was generated by the Settings dialog\n\n")
+        # AI API key: migrate any plaintext value found in the existing
+        # .env into the encrypted credential store instead of writing it
+        # back to disk in plaintext on every settings save. Only drop it
+        # from .env once the vault write actually succeeds - otherwise
+        # (e.g. keyring unavailable and no master password configured)
+        # keep writing it in plaintext so the key isn't silently lost.
+        # This runs before the file is touched so a vault failure can't
+        # leave a half-written .env behind.
+        ai_api_key = existing_content.get("AI_API_KEY", "")
+        ai_base_url = existing_content.get("AI_BASE_URL", "")
+        ai_model = existing_content.get("AI_MODEL", "")
+        migrated = False
+        if ai_api_key:
+            try:
+                CredentialStore().save_credentials({"AI_API_KEY": ai_api_key})
+                migrated = True
+            except CredentialStoreError as exc:
+                logger.warning(
+                    "Could not migrate AI_API_KEY to credential store, keeping it in .env: %s",
+                    exc,
+                )
 
-            f.write("# Ollama Configuration\n")
-            f.write(
-                f"OLLAMA_HOST={existing_content.setdefault('OLLAMA_HOST', 'http://localhost:11434')}\n"
-            )
-            f.write(f"OLLAMA_MODEL={existing_content.setdefault('OLLAMA_MODEL', 'llama3')}\n\n")
+        lines = [
+            "# Gaming AI Assistant Configuration (Ollama)",
+            "# This file was generated by the Settings dialog",
+            "",
+            "# Ollama Configuration",
+            f"OLLAMA_HOST={existing_content.get('OLLAMA_HOST', 'http://localhost:11434')}",
+            f"OLLAMA_MODEL={existing_content.get('OLLAMA_MODEL', 'llama3')}",
+            "",
+            "# Application Settings",
+            f"OVERLAY_HOTKEY={existing_content['OVERLAY_HOTKEY']}",
+            f"CHECK_INTERVAL={existing_content['CHECK_INTERVAL']}",
+            "",
+        ]
 
-            f.write("# Application Settings\n")
-            f.write(
-                f"OVERLAY_HOTKEY={existing_content.setdefault('OVERLAY_HOTKEY', overlay_hotkey)}\n"
-            )
-            f.write(
-                f"CHECK_INTERVAL={existing_content.setdefault('CHECK_INTERVAL', str(check_interval))}\n\n"
-            )
+        if (ai_api_key and not migrated) or ai_base_url or ai_model:
+            lines.append("# AI API Settings")
+            if ai_api_key and not migrated:
+                lines.append(f"AI_API_KEY={ai_api_key}")
+            if ai_base_url:
+                lines.append(f"AI_BASE_URL={ai_base_url}")
+            if ai_model:
+                lines.append(f"AI_MODEL={ai_model}")
+            lines.append("")
 
-            # AI API key: migrate any plaintext value found in the existing
-            # .env into the encrypted credential store instead of writing it
-            # back to disk in plaintext on every settings save. Only drop it
-            # from .env once the vault write actually succeeds - otherwise
-            # (e.g. keyring unavailable and no master password configured)
-            # keep writing it in plaintext so the key isn't silently lost.
-            ai_api_key = existing_content.get("AI_API_KEY", "")
-            ai_base_url = existing_content.get("AI_BASE_URL", "")
-            ai_model = existing_content.get("AI_MODEL", "")
-            migrated = False
-            if ai_api_key:
-                try:
-                    CredentialStore().save_credentials({"AI_API_KEY": ai_api_key})
-                    migrated = True
-                except CredentialStoreError as exc:
-                    logger.warning(
-                        "Could not migrate AI_API_KEY to credential store, "
-                        "keeping it in .env: %s",
-                        exc,
-                    )
-            if (ai_api_key and not migrated) or ai_base_url or ai_model:
-                f.write("# AI API Settings\n")
-                if ai_api_key and not migrated:
-                    f.write(f"AI_API_KEY={ai_api_key}\n")
-                if ai_base_url:
-                    f.write(f"AI_BASE_URL={ai_base_url}\n")
-                if ai_model:
-                    f.write(f"AI_MODEL={ai_model}\n")
-                f.write("\n")
+        if "OVERLAY_X" in existing_content:
+            lines += [
+                "# Overlay Window Settings",
+                f"OVERLAY_X={existing_content.get('OVERLAY_X', '100')}",
+                f"OVERLAY_Y={existing_content.get('OVERLAY_Y', '100')}",
+                f"OVERLAY_WIDTH={existing_content.get('OVERLAY_WIDTH', '900')}",
+                f"OVERLAY_HEIGHT={existing_content.get('OVERLAY_HEIGHT', '700')}",
+                f"OVERLAY_MINIMIZED={existing_content.get('OVERLAY_MINIMIZED', 'false')}",
+                f"OVERLAY_OPACITY={existing_content.get('OVERLAY_OPACITY', '0.95')}",
+                "",
+            ]
 
-            # Write overlay settings if they exist
-            if "OVERLAY_X" in existing_content:
-                f.write("# Overlay Window Settings\n")
-                f.write(f"OVERLAY_X={existing_content.get('OVERLAY_X', '100')}\n")
-                f.write(f"OVERLAY_Y={existing_content.get('OVERLAY_Y', '100')}\n")
-                f.write(f"OVERLAY_WIDTH={existing_content.get('OVERLAY_WIDTH', '900')}\n")
-                f.write(f"OVERLAY_HEIGHT={existing_content.get('OVERLAY_HEIGHT', '700')}\n")
-                f.write(f"OVERLAY_MINIMIZED={existing_content.get('OVERLAY_MINIMIZED', 'false')}\n")
-                f.write(f"OVERLAY_OPACITY={existing_content.get('OVERLAY_OPACITY', '0.95')}\n")
+        # Keep keys this function doesn't manage (SUPABASE_URL, AI_PROVIDER,
+        # MACROS_ENABLED, ...) instead of silently dropping them on save.
+        managed = {
+            "OLLAMA_HOST",
+            "OLLAMA_MODEL",
+            "OVERLAY_HOTKEY",
+            "CHECK_INTERVAL",
+            "AI_API_KEY",
+            "AI_BASE_URL",
+            "AI_MODEL",
+            "OVERLAY_X",
+            "OVERLAY_Y",
+            "OVERLAY_WIDTH",
+            "OVERLAY_HEIGHT",
+            "OVERLAY_MINIMIZED",
+            "OVERLAY_OPACITY",
+        }
+        other = {k: v for k, v in existing_content.items() if k not in managed}
+        if other:
+            lines.append("# Other Settings")
+            lines += [f"{key}={value}" for key, value in other.items()]
+            lines.append("")
+
+        # A value containing a line break would inject extra KEY=VALUE lines
+        # that load on the next launch, so refuse it rather than write it.
+        for line in lines:
+            if "\n" in line or "\r" in line:
+                key = line.split("=", 1)[0]
+                raise ValueError(f"Refusing to write a line break into .env value for {key}")
+
+        _atomic_write_text(env_path, "\n".join(lines) + "\n")
 
         ensure_private_file(env_path)
 

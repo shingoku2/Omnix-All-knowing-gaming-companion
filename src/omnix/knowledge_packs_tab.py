@@ -63,32 +63,51 @@ class IngestionWorker(QThread):
                 self.finished.emit(True, "No sources to ingest")
                 return
 
+            failed_sources = []
             for i, source in enumerate(self.pack.sources):
                 # Update progress
                 progress = int((i / total_sources) * 100)
                 self.progress.emit(progress, f"Processing {source.title}...")
 
-                # Skip if already has content
-                if source.content:
+                # Notes carry their own content. Files and URLs are always
+                # re-fetched: ingestion runs on create, edit and "Re-index",
+                # and the cached copy only serves index rebuilds.
+                if source.type not in ("file", "url"):
                     continue
 
-                # Ingest based on type
                 try:
                     if source.type == "file":
                         source.content = self.pipeline.ingest("file", file_path=source.path)
-                    elif source.type == "url":
+                    else:
                         source.content = self.pipeline.ingest("url", url=source.url)
-                    # Notes already have content
                 except IngestionError as e:
+                    # Keep any previously cached text (or none, so the source
+                    # is retried) rather than indexing the error as knowledge.
                     logger.error(f"Failed to ingest {source.title}: {e}")
-                    source.content = f"[Ingestion failed: {str(e)}]"
+                    failed_sources.append(source.title)
+
+            # Cache the ingested text with the pack, in the same store the
+            # index rebuilds from; otherwise later rebuilds find no content.
+            if not self.index.knowledge_store.save_pack(self.pack):
+                self.finished.emit(
+                    False, f"Could not save ingested content for pack '{self.pack.name}'"
+                )
+                return
 
             # Index the pack
             self.progress.emit(90, "Indexing knowledge pack...")
             self.index.add_pack(self.pack)
 
             self.progress.emit(100, "Complete!")
-            self.finished.emit(True, f"Successfully indexed {total_sources} sources")
+            if failed_sources:
+                indexed = total_sources - len(failed_sources)
+                self.finished.emit(
+                    False,
+                    f"Indexed {indexed} of {total_sources} sources. "
+                    f"Failed to fetch (previous content kept, if any): {', '.join(failed_sources)}",
+                )
+            else:
+                self.finished.emit(True, f"Successfully indexed {total_sources} sources")
 
         except Exception as e:
             logger.error(f"Ingestion failed: {e}", exc_info=True)

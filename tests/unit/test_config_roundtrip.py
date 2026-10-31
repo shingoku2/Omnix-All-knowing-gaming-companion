@@ -118,14 +118,13 @@ class TestConfigSaveAndLoad:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.json"
 
-            config1 = Config(require_keys=False)
+            config1 = Config(require_keys=False, config_path=str(config_path))
             config1.ai_provider = "ollama"
             config1.ollama_host = "http://ollama.local:11434"
             config1.ollama_model = "llama3"
             config1.ai_api_key = "secret-key"
             config1.ai_base_url = "http://custom.api.com"
             config1.ai_model = "gpt-4"
-            config1.config_path = str(config_path)
 
             # Save and reload
             config1.save()
@@ -133,9 +132,13 @@ class TestConfigSaveAndLoad:
 
             assert config2.ollama_host == "http://ollama.local:11434"
             assert config2.ollama_model == "llama3"
-            assert config2.ai_api_key == "secret-key"
+            assert config2.ai_api_key == "secret-key"  # Restored from the vault
             assert config2.ai_base_url == "http://custom.api.com"
             assert config2.ai_model == "gpt-4"
+
+            # The API key belongs in the encrypted credential store, never in
+            # the plaintext JSON config.
+            assert "secret-key" not in config_path.read_text(encoding="utf-8")
 
 
 @pytest.mark.unit
