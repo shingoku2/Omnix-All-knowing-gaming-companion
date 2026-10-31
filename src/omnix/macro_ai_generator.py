@@ -221,8 +221,8 @@ IMPORTANT: Return ONLY the JSON object, nothing else."""
             # First try direct parsing
             try:
                 return json.loads(response.strip())
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logger.debug(f"Direct JSON parsing failed: {e}")
 
             # Try removing markdown code blocks
             if "```json" in response:
