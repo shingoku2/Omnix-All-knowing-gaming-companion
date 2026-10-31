@@ -96,7 +96,7 @@ class TestFileLock:
             lock_file.unlink()
             original_sleep(secs)
 
-        with patch('time.sleep', side_effect=mock_sleep):
+        with patch("time.sleep", side_effect=mock_sleep):
             lock.acquire()
 
         assert lock._fd is not None
@@ -117,7 +117,7 @@ class TestFileLock:
             lock_file.unlink()
             original_sleep(secs)
 
-        with patch('time.sleep', side_effect=mock_sleep):
+        with patch("time.sleep", side_effect=mock_sleep):
             lock.acquire()
 
         assert lock._fd is not None
