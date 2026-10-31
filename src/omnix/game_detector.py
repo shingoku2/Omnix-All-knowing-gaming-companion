@@ -315,6 +315,9 @@ class GameDetector:
         with self._cache_lock:
             current_processes = self._running_processes_cache.copy()
 
+        # Ensure we only fetch detailed process info once per scan if needed
+        detailed_procs_by_name = None
+
         # Fast lookup using cached processes
         for process_name in current_processes:
             game_name = self._process_index.get(process_name)
@@ -325,14 +328,23 @@ class GameDetector:
 
             # Get detailed process info only when we have a match
             try:
-                for proc in psutil.process_iter(["pid", "name", "exe"]):
-                    try:
-                        proc_name = proc.info.get("name")
-                        if proc_name and proc_name.lower() == process_name:
-                            running_games.append(self._build_game_info(proc, game_name))
-                            break  # Found the process, no need to continue
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        continue
+                if detailed_procs_by_name is None:
+                    detailed_procs_by_name = {}
+                    for proc in psutil.process_iter(["pid", "name", "exe"]):
+                        try:
+                            proc_name = proc.info.get("name")
+                            if proc_name:
+                                proc_name_lower = proc_name.lower()
+                                if proc_name_lower not in detailed_procs_by_name:
+                                    detailed_procs_by_name[proc_name_lower] = []
+                                detailed_procs_by_name[proc_name_lower].append(proc)
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            continue
+
+                # Find matching process in our local cache
+                matching_procs = detailed_procs_by_name.get(process_name, [])
+                if matching_procs:
+                    running_games.append(self._build_game_info(matching_procs[0], game_name))
             except Exception as e:
                 logger.error(f"Error getting process info for {game_name}: {e}", exc_info=True)
                 continue
