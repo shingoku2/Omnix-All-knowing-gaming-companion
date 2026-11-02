@@ -25,7 +25,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
       OMNIX_MASTER_PASSWORD: build-only-master-password
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
