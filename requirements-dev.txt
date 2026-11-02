@@ -28,7 +28,7 @@ pip-audit>=2.10.0         # Dependency vulnerability checking
 # Testing Utilities
 freezegun>=1.5.5          # Time mocking
 responses>=0.26.3         # HTTP request mocking
-faker>=40.38.0            # Fake data generation
+faker>=40.44.0            # Fake data generation
 filelock>=3.32.5          # Cross-platform file locking
 
 # Development Tools
